@@ -1,0 +1,32 @@
+{
+    "name": "wp-cli/media-command",
+    "description": "Manage attachments.",
+    "type": "wp-cli-package",
+    "homepage": "https://github.com/wp-cli/media-command",
+    "support": {
+        "issues": "https://github.com/wp-cli/media-command/issues"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Daniel Bachhuber",
+            "email": "daniel@runcommand.io",
+            "homepage": "https://runcommand.io"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {"": "src/"},
+        "files": [ "media-command.php" ]
+    },
+    "require": {},
+    "require-dev": {
+        "behat/behat": "~2.5"
+    },
+    "extra": {
+        "commands": [
+            "media import",
+            "media regenerate"
+        ]
+    }
+}
