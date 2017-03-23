@@ -19,11 +19,16 @@
         "psr-4": {"": "src/"},
         "files": [ "media-command.php" ]
     },
-    "require": {},
+    "require": {
+        "wp-cli/wp-cli": "dev-master"
+    },
     "require-dev": {
         "behat/behat": "~2.5"
     },
     "extra": {
+        "branch-alias": {
+            "dev-master": "1.0.x-dev"
+        },
         "commands": [
             "media import",
             "media regenerate"
