@@ -46,5 +46,4 @@ before_script:
   - composer validate
 
 script:
-  - BEHAT_TAGS=$(WP_VERSION=99.99.99 php utils/behat-tags.php) && echo $BEHAT_TAGS
-  - behat --format progress --strict $BEHAT_TAGS
+  - ./bin/test.sh
