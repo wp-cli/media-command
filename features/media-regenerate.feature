@@ -74,7 +74,7 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/large-image-125x125.jpg file should exist
     And the wp-content/uploads/large-image-200x200.jpg file should exist
 
-  @require-wp-4.7.1
+  @require-wp-4.7.3 @require-extension-imagick
   Scenario: Delete existing thumbnails when media including PDF is regenerated
     Given download:
       | path                              | url                                                   |
@@ -122,7 +122,7 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/minimal-us-letter-pdf-125x125.jpg file should not exist
     And the wp-content/uploads/minimal-us-letter-pdf-200x200.jpg file should exist
 
-  @require-wp-4.7.1
+  @require-wp-4.7.3 @require-extension-imagick
   Scenario: Skip deletion of existing thumbnails when media including PDF is regenerated
     Given download:
       | path                              | url                                                   |
