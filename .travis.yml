@@ -35,6 +35,8 @@ matrix:
 
 before_install:
   - phpenv config-rm xdebug.ini
+  - if [[ $TRAVIS_PHP_VERSION = '5.6' || $TRAVIS_PHP_VERSION = '7.0' ]]; then printf "\n" | pecl install imagick; fi
+  - php -m
 
 install:
   - composer install
@@ -44,4 +46,5 @@ before_script:
   - composer validate
 
 script:
-  - behat --format progress --strict
+  - BEHAT_TAGS=$(WP_VERSION=99.99.99 php utils/behat-tags.php) && echo $BEHAT_TAGS
+  - behat --format progress --strict $BEHAT_TAGS
