@@ -74,7 +74,7 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/large-image-125x125.jpg file should exist
     And the wp-content/uploads/large-image-200x200.jpg file should exist
 
-  @require-wp-4.7.1
+  @require-wp-4.7.3 @require-extension-imagick
   Scenario: Delete existing thumbnails when media including PDF is regenerated
     Given download:
       | path                              | url                                                   |
@@ -99,7 +99,7 @@ Feature: Regenerate WordPress attachments
 
     When I run `wp media import {CACHE_DIR}/minimal-us-letter.pdf --title="My imported PDF attachment" --porcelain`
     Then save STDOUT as {ATTACHMENT_ID2}
-    And the wp-content/uploads/minimal-us-letter-125x125.jpg file should exist
+    And the wp-content/uploads/minimal-us-letter-pdf-125x125.jpg file should exist
 
     Given a wp-content/mu-plugins/media-settings.php file:
       """
@@ -119,10 +119,10 @@ Feature: Regenerate WordPress attachments
       """
     And the wp-content/uploads/large-image-125x125.jpg file should not exist
     And the wp-content/uploads/large-image-200x200.jpg file should exist
-    And the wp-content/uploads/minimal-us-letter-125x125.jpg file should not exist
-    And the wp-content/uploads/minimal-us-letter-200x200.jpg file should exist
+    And the wp-content/uploads/minimal-us-letter-pdf-125x125.jpg file should not exist
+    And the wp-content/uploads/minimal-us-letter-pdf-200x200.jpg file should exist
 
-  @require-wp-4.7.1
+  @require-wp-4.7.3 @require-extension-imagick
   Scenario: Skip deletion of existing thumbnails when media including PDF is regenerated
     Given download:
       | path                              | url                                                   |
@@ -147,7 +147,7 @@ Feature: Regenerate WordPress attachments
 
     When I run `wp media import {CACHE_DIR}/minimal-us-letter.pdf --title="My imported PDF attachment" --porcelain`
     Then save STDOUT as {ATTACHMENT_ID2}
-    And the wp-content/uploads/minimal-us-letter-125x125.jpg file should exist
+    And the wp-content/uploads/minimal-us-letter-pdf-125x125.jpg file should exist
 
     Given a wp-content/mu-plugins/media-settings.php file:
       """
@@ -167,8 +167,8 @@ Feature: Regenerate WordPress attachments
       """
     And the wp-content/uploads/large-image-125x125.jpg file should exist
     And the wp-content/uploads/large-image-200x200.jpg file should exist
-    And the wp-content/uploads/minimal-us-letter-125x125.jpg file should exist
-    And the wp-content/uploads/minimal-us-letter-200x200.jpg file should exist
+    And the wp-content/uploads/minimal-us-letter-pdf-125x125.jpg file should exist
+    And the wp-content/uploads/minimal-us-letter-pdf-1-200x200.jpg file should exist
 
   Scenario: Provide helpful error messages when media can't be regenerated
     Given download:

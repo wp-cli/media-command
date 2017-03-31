@@ -17,7 +17,8 @@ cache:
 
 env:
   global:
-    - WP_CLI_BIN_DIR=/tmp/wp-cli-phar
+    - PATH="$TRAVIS_BUILD_DIR/vendor/bin:$PATH"
+    - WP_CLI_BIN_DIR="$TRAVIS_BUILD_DIR/vendor/bin"
 
 matrix:
   include:
@@ -32,9 +33,18 @@ matrix:
     - php: 5.3
       env: WP_VERSION=latest
 
-before_script:
+before_install:
   - phpenv config-rm xdebug.ini
-  - composer validate
+  - if [[ $TRAVIS_PHP_VERSION = '5.6' || $TRAVIS_PHP_VERSION = '7.0' ]]; then printf "\n" | pecl install imagick; fi
+  - php -m
+
+install:
+  - composer require wp-cli/wp-cli:dev-master
+  - composer install
   - bash bin/install-package-tests.sh
 
-script: ./vendor/bin/behat --format progress --strict
+before_script:
+  - composer validate
+
+script:
+  - ./bin/test.sh
