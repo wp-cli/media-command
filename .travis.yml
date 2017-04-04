@@ -24,7 +24,7 @@ matrix:
   include:
     - php: 7.1
       env: WP_VERSION=latest
-    - php: 7.0.14
+    - php: 7.0
       env: WP_VERSION=latest
     - php: 5.6
       env: WP_VERSION=latest
@@ -35,7 +35,7 @@ matrix:
 
 before_install:
   - phpenv config-rm xdebug.ini
-  - if [[ $TRAVIS_PHP_VERSION = '5.6' || $TRAVIS_PHP_VERSION = '7.0.14' ]]; then printf "\n" | pecl install imagick; fi
+  - if [[ $TRAVIS_PHP_VERSION = '5.6' ]]; then printf "\n" | pecl install imagick; fi
   - php -m
 
 install:
