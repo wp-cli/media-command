@@ -439,25 +439,25 @@ class Media_Command extends WP_CLI_Command {
 		$sizes = array();
 		foreach ( $intermediate_image_sizes as $s ) {
 			if ( isset( $_wp_additional_image_sizes[ $s ]['width'] ) ) {
-				$sizes[ $s ]['width'] = intval( $_wp_additional_image_sizes[ $s ]['width'] );
+				$sizes[ $s ]['width'] = (int) $_wp_additional_image_sizes[ $s ]['width'];
 			} else {
-				$sizes[ $s ]['width'] = intval( get_option( "{$s}_size_w" ) );
+				$sizes[ $s ]['width'] = (int) get_option( "{$s}_size_w" );
 			}
 
 			if ( isset( $_wp_additional_image_sizes[ $s ]['height'] ) ) {
-				$sizes[ $s ]['height'] = intval( $_wp_additional_image_sizes[ $s ]['height'] );
+				$sizes[ $s ]['height'] = (int) $_wp_additional_image_sizes[ $s ]['height'];
 			} else {
-				$sizes[ $s ]['height'] = intval( get_option( "{$s}_size_h" ) );
+				$sizes[ $s ]['height'] = (int) get_option( "{$s}_size_h" );
 			}
 
 			if ( isset( $_wp_additional_image_sizes[ $s ]['crop'] ) ) {
-				$sizes[ $s ]['crop'] = !! $_wp_additional_image_sizes[ $s ]['crop'];
+				$sizes[ $s ]['crop'] = (bool) $_wp_additional_image_sizes[ $s ]['crop'];
 			} else {
 				// Force PDF thumbnails to be soft crops.
 				if ( $is_pdf && 'thumbnail' === $s ) {
 					$sizes[ $s ]['crop'] = false;
 				} else {
-					$sizes[ $s ]['crop'] = !! get_option( "{$s}_crop" );
+					$sizes[ $s ]['crop'] = (bool) get_option( "{$s}_crop" );
 				}
 			}
 		}
