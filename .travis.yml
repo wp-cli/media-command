@@ -35,7 +35,7 @@ matrix:
 
 before_install:
   - phpenv config-rm xdebug.ini
-  - if [[ $TRAVIS_PHP_VERSION = '5.6' || $TRAVIS_PHP_VERSION = '7.0' ]]; then printf "\n" | pecl install imagick; fi
+  - if [[ $TRAVIS_PHP_VERSION = '5.6' ]]; then printf "\n" | pecl install imagick; fi
   - php -m
 
 install:
