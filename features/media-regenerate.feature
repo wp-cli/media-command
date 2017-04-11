@@ -383,3 +383,216 @@ Feature: Regenerate WordPress attachments
       Success: Regenerated 1 of 1 images.
       """
     And the wp-content/uploads/white-150-square-150x150.jpg file should not exist
+
+  Scenario: Regenerate a specific image size
+    Given download:
+      | path                        | url                                          |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.org/behat-data/canola.jpg      |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'test1', 400, 400, true );
+        add_image_size( 'too_big', 4000, 4000, true );
+      });
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported attachment" --porcelain`
+    Then the wp-content/uploads/canola-300x225.jpg file should exist
+    And the wp-content/uploads/canola-400x400.jpg file should exist
+
+    # Remove "medium" image size and run for "test1" size only if missing - nothing should happen.
+    When I run `rm wp-content/uploads/canola-300x225.jpg`
+    And I run `wp media regenerate --image-size=test1 --only-missing --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 No "test1" thumbnail regeneration needed for "My imported attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And the wp-content/uploads/canola-300x225.jpg file should not exist
+
+    # Remove "test1" image size and run for "test1" size only if missing - should be regenerated.
+    When I run `rm wp-content/uploads/canola-400x400.jpg`
+    And I run `wp media regenerate --image-size=test1 --only-missing --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 Regenerated "test1" thumbnail for "My imported attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And the wp-content/uploads/canola-300x225.jpg file should not exist
+    And the wp-content/uploads/canola-400x400.jpg file should exist
+
+    # Regenerate "medium" image size removed above - should be regenerated.
+    When I run `wp media regenerate --image-size=medium --only-missing --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 Regenerated "medium" thumbnail for "My imported attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And the wp-content/uploads/canola-300x225.jpg file should exist
+
+    # Regenerate "medium" image size whether missing or not - should be regenerated.
+    When I run `wp media regenerate --image-size=medium --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 Regenerated "medium" thumbnail for "My imported attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+
+    # The "too_big" thumbnail is never created so nothing should happen.
+    When I run `wp media regenerate --image-size=too_big --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 No "too_big" thumbnail regeneration needed for "My imported attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+
+  @require-wp-4.7.3 @require-extension-imagick
+  Scenario: Regenerate a specific image size for a PDF attachment
+    Given download:
+      | path                              | url                                                   |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf    |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'test1', 400, 400, true );
+        add_image_size( 'not_in_fallback', 300, 300, true );
+        add_filter( 'fallback_intermediate_image_sizes', function( $fallback_sizes ){
+          $fallback_sizes[] = 'test1';
+          return $fallback_sizes;
+        });
+      });
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/minimal-us-letter.pdf --title="My imported PDF attachment" --porcelain`
+    And save STDOUT as {ATTACHMENT_ID}
+    Then the wp-content/uploads/minimal-us-letter-pdf-116x150.jpg file should exist
+    And the wp-content/uploads/minimal-us-letter-pdf-400x400.jpg file should exist
+
+    # Remove "thumbnail" image size and run for "test1" size - nothing should happen.
+    When I run `rm wp-content/uploads/minimal-us-letter-pdf-116x150.jpg`
+    And I run `wp media regenerate --image-size=test1 --only-missing --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 No "test1" thumbnail regeneration needed for "My imported PDF attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And the wp-content/uploads/minimal-us-letter-pdf-1-116x150.jpg file should not exist
+
+    # Remove "test1" image size and run for "test1" size only if missing - should be regenerated.
+    When I run `rm wp-content/uploads/minimal-us-letter-pdf-400x400.jpg`
+    And I run `wp media regenerate --image-size=test1 --only-missing --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 Regenerated "test1" thumbnail for "My imported PDF attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And the wp-content/uploads/minimal-us-letter-pdf-1-116x150.jpg file should not exist
+    And the wp-content/uploads/minimal-us-letter-pdf-1-400x400.jpg file should exist
+
+    # Check metadata updated.
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_metadata --format=json | grep -o '"test1":{[^}]*"file":"minimal-us-letter-pdf-1-400x400.jpg"'`
+    Then STDOUT should contain:
+      """
+      "file":"minimal-us-letter-pdf-1-400x400.jpg"
+      """
+
+    # Regenerate "test1" image size whether missing or not - should be regenerated.
+    # But skip deleting the existing thumbnail so its version increments.
+    When I run `wp media regenerate --image-size=test1 --skip-delete --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 Regenerated "test1" thumbnail for "My imported PDF attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And the wp-content/uploads/minimal-us-letter-pdf-2-116x150.jpg file should not exist
+    And the wp-content/uploads/minimal-us-letter-pdf-1-400x400.jpg file should exist
+    And the wp-content/uploads/minimal-us-letter-pdf-2-400x400.jpg file should exist
+
+    # Check metadata updated with incremented version.
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_metadata --format=json | grep -o '"test1":{[^}]*"file":"minimal-us-letter-pdf-2-400x400.jpg"'`
+    Then STDOUT should contain:
+      """
+      "file":"minimal-us-letter-pdf-2-400x400.jpg"
+      """
+
+    # The "not_in_fallback" thumbnail is never created for PDFs so nothing should happen.
+    When I run `wp media regenerate --image-size=not_in_fallback --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 No "not_in_fallback" thumbnail regeneration needed for "My imported PDF attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+
+  Scenario: Provide error message when non-existent image size requested for regeneration
+    When I try `wp media regenerate --image-size=test1`
+    Then STDERR should be:
+      """
+      Error: Unknown image size "test1".
+      """
