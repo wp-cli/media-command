@@ -1,7 +1,7 @@
 wp-cli/media-command
 ====================
 
-Manage attachments.
+Import and regenerate attachments.
 
 [![Build Status](https://travis-ci.org/wp-cli/media-command.svg?branch=master)](https://travis-ci.org/wp-cli/media-command)
 
