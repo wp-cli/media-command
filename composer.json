@@ -1,6 +1,6 @@
 {
     "name": "wp-cli/media-command",
-    "description": "Manage attachments.",
+    "description": "Import and regenerate attachments.",
     "type": "wp-cli-package",
     "homepage": "https://github.com/wp-cli/media-command",
     "support": {
