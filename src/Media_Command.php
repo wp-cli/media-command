@@ -31,7 +31,7 @@ class Media_Command extends WP_CLI_Command {
 	 * [<attachment-id>...]
 	 * : One or more IDs of the attachments to regenerate.
 	 *
-	 * [--image-size=<image_size>]
+	 * [--image_size=<image_size>]
 	 * : Name of the image size to regenerate. Only thumbnails of this image size will be regenerated, thumbnails of other image sizes will not.
 	 *
 	 * [--skip-delete]
@@ -71,7 +71,7 @@ class Media_Command extends WP_CLI_Command {
 	 *     Success: Regenerated 4 of 4 images.
 	 *
 	 *     # Re-generate only the thumbnails of "large" image size for all images.
-	 *     $ wp media regenerate --image-size=large
+	 *     $ wp media regenerate --image_size=large
 	 *     Do you really want to regenerate the "large" image size for all images? [y/n] y
 	 *     Found 3 images to regenerate.
 	 *     1/3 Regenerated "large" thumbnail for "Yoogest Image Ever, Really" (ID 9999).
@@ -81,13 +81,12 @@ class Media_Command extends WP_CLI_Command {
 	 */
 	function regenerate( $args, $assoc_args = array() ) {
 		$assoc_args = wp_parse_args( $assoc_args, array(
-			'image-size' => '',
+			'image_size' => '',
 		) );
 
-		$image_size = $assoc_args['image-size'];
+		$image_size = $assoc_args['image_size'];
 		if ( $image_size && ! in_array( $image_size, get_intermediate_image_sizes(), true ) ) {
 			WP_CLI::error( sprintf( 'Unknown image size "%s".', $image_size ) );
-			return;
 		}
 
 		if ( empty( $args ) ) {
@@ -421,24 +420,26 @@ class Media_Command extends WP_CLI_Command {
 
 		// Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
 
-		// Check that no new sizes required.
+		// Check whether there's new sizes or they've changed.
+		$image_sizes = $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata );
+
 		if ( $image_size ) {
-			if ( ! in_array( $image_size, $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata ), true ) ) {
+			if ( empty( $image_sizes[ $image_size ] ) ) {
 				return false;
 			}
 			if ( empty( $metadata['sizes'][ $image_size ] ) ) {
 				return true;
 			}
 			$metadata['sizes'] = array( $image_size => $metadata['sizes'][ $image_size ] );
-		} else {
-			if ( array_diff( $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata ), array_keys( $metadata['sizes'] ) ) ) {
-				return true;
-			}
+		}
+
+		if ( $this->image_sizes_differ( $image_sizes, $metadata['sizes'] ) ) {
+			return true;
 		}
 
 		$dir_path = dirname( $fullsizepath ) . '/';
 
-		// Check that no existing sizes required.
+		// Check that the thumbnail files exist.
 		foreach( $metadata['sizes'] as $size_info ) {
 			$intermediate_path = $dir_path . $size_info['file'];
 
@@ -452,7 +453,23 @@ class Media_Command extends WP_CLI_Command {
 		return false;
 	}
 
-	// Like WP's get_intermediate_image_sizes(), but removes sizes that won't be generated for a particular attachment due to its being on or below their thresholds.
+	// Whether there's new image sizes or the width/height of existing image sizes have changed.
+	private function image_sizes_differ( $image_sizes, $meta_sizes ) {
+		// Check if have new image size(s).
+		if ( array_diff( array_keys( $image_sizes ), array_keys( $meta_sizes ) ) ) {
+			return true;
+		}
+		// Check if image sizes have changed.
+		foreach ( $image_sizes as $name => $image_size ) {
+			if ( $image_size['width'] !== $meta_sizes[ $name ]['width'] || $image_size['height'] !== $meta_sizes[ $name ]['height'] ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// Like WP's get_intermediate_image_sizes(), but removes sizes that won't be generated for a particular attachment due to its being on or below their thresholds,
+	// and returns associative array with size name => width/height entries, resolved to crop values if applicable.
 	private function get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata ) {
 
 		// Need to get width, height of attachment for image_resize_dimensions().
@@ -472,8 +489,9 @@ class Media_Command extends WP_CLI_Command {
 		$sizes = array();
 		foreach ( $this->get_intermediate_sizes( $is_pdf, $metadata ) as $name => $size ) {
 			// Need to check destination and original width or height differ before calling image_resize_dimensions(), otherwise it will return non-false.
-			if ( ( $width !== $size['width'] || $height !== $size['height'] ) && image_resize_dimensions( $width, $height, $size['width'], $size['height'], $size['crop'] ) ) {
-				$sizes[] = $name;
+			if ( ( $width !== $size['width'] || $height !== $size['height'] ) && ( $dims = image_resize_dimensions( $width, $height, $size['width'], $size['height'], $size['crop'] ) ) ) {
+				list( $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h ) = $dims;
+				$sizes[ $name ] = array( 'width' => $dst_w, 'height' => $dst_h );
 			}
 		}
 		return $sizes;
@@ -522,6 +540,11 @@ class Media_Command extends WP_CLI_Command {
 				}
 			}
 		}
+
+		if ( ! $is_pdf ) {
+			$sizes = apply_filters( 'intermediate_image_sizes_advanced', $sizes, $metadata );
+		}
+
 		return $sizes;
 	}
 
