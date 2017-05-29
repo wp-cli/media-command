@@ -2,7 +2,7 @@
 
 set -ex
 
-# ImageMagick/Imagick versions to use
+# ImageMagick/Imagick versions to use.
 IMAGEMAGICK_VERSION='6.9.7-10'
 IMAGICK_VERSION='3.4.3'
 
@@ -27,8 +27,8 @@ install_imagemagick() {
 	cd "$TRAVIS_BUILD_DIR"
 }
 
-# Install ImageMagick if the current version isn't up to date
+# Install ImageMagick if the current version isn't up to date.
 PATH="$HOME/opt/$WP_VERSION/$TRAVIS_PHP_VERSION/bin:$PATH" identify -version | grep "$IMAGEMAGICK_VERSION" || install_imagemagick
 
-# Install Imagick for PHP
+# Install Imagick for PHP.
 echo "$HOME/opt/$WP_VERSION/$TRAVIS_PHP_VERSION" | pecl install -f "imagick-$IMAGICK_VERSION"
