@@ -7,8 +7,7 @@ IMAGEMAGICK_VERSION='6.9.7-10'
 IMAGICK_VERSION='3.4.3'
 
 if [[ "$TRAVIS_PHP_VERSION" = '7.1' ]]; then
-	# This non-10 version will probably disappear in the near future.
-	IMAGEMAGICK_VERSION='6.9.8-8'
+	IMAGEMAGICK_VERSION='7.0.4-10'
 fi
 
 # Based on http://stackoverflow.com/a/41138688/664741
