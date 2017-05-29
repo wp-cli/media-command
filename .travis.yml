@@ -15,7 +15,7 @@ cache:
   directories:
     - vendor
     - $HOME/.composer/cache
-    - $HOME/opt/$TRAVIS_PHP_VERSION
+    - $HOME/opt/$WP_VERSION/$TRAVIS_PHP_VERSION
 env:
   global:
     - PATH="$TRAVIS_BUILD_DIR/vendor/bin:$PATH"
