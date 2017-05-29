@@ -6,6 +6,10 @@ set -ex
 IMAGEMAGICK_VERSION='6.9.7-10'
 IMAGICK_VERSION='3.4.3'
 
+if [[ "$TRAVIS_PHP_VERSION" = '7.1' ]]; then
+	IMAGEMAGICK_VERSION='6.9.8-8'
+fi
+
 # Based on http://stackoverflow.com/a/41138688/664741
 install_imagemagick() {
 	curl -O "https://www.imagemagick.org/download/releases/ImageMagick-$IMAGEMAGICK_VERSION.tar.xz" -f
