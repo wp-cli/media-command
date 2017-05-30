@@ -17,8 +17,12 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "autoload": {
-        "psr-4": {"": "src/"},
-        "files": [ "media-command.php" ]
+        "psr-4": {
+            "": "src/"
+        },
+        "files": [
+            "media-command.php"
+        ]
     },
     "require": {
         "wp-cli/wp-cli": "*"
@@ -33,6 +37,7 @@
         "commands": [
             "media import",
             "media regenerate"
-        ]
+        ],
+        "bundled": true
     }
 }
