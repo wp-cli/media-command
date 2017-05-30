@@ -80,13 +80,16 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 Regenerate thumbnails for one or more attachments.
 
 ~~~
-wp media regenerate [<attachment-id>...] [--skip-delete] [--only-missing] [--yes]
+wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-delete] [--only-missing] [--yes]
 ~~~
 
 **OPTIONS**
 
 	[<attachment-id>...]
 		One or more IDs of the attachments to regenerate.
+
+	[--image_size=<image_size>]
+		Name of the image size to regenerate. Only thumbnails of this image size will be regenerated, thumbnails of other image sizes will not.
 
 	[--skip-delete]
 		Skip deletion of the original thumbnails. If your thumbnails are linked from sources outside your control, it's likely best to leave them around. Defaults to false.
@@ -124,11 +127,22 @@ wp media regenerate [<attachment-id>...] [--skip-delete] [--only-missing] [--yes
     4/4 Regenerated thumbnails for "I Am Worth Loving Wallpaper" (ID 1023).
     Success: Regenerated 4 of 4 images.
 
+    # Re-generate only the thumbnails of "large" image size for all images.
+    $ wp media regenerate --image_size=large
+    Do you really want to regenerate the "large" image size for all images? [y/n] y
+    Found 3 images to regenerate.
+    1/3 Regenerated "large" thumbnail for "Yoogest Image Ever, Really" (ID 9999).
+    2/3 No "large" thumbnail regeneration needed for "Snowflake" (ID 9998).
+    3/3 Regenerated "large" thumbnail for "Even Yooger than the Yoogest Image Ever, Really" (ID 9997).
+    Success: Regenerated 3 of 3 images.
+
 ## Installing
 
-Installing this package requires WP-CLI v0.23.0 or greater. Update to the latest stable release with `wp cli update`.
+This package is included with WP-CLI itself, no additional installation necessary.
 
-Once you've done so, you can install this package with `wp package install wp-cli/media-command`.
+To install the latest version of this package over what's included in WP-CLI, run:
+
+    wp package install git@github.com:wp-cli/media-command.git
 
 ## Contributing
 
