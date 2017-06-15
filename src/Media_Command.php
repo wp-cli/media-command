@@ -186,7 +186,7 @@ class Media_Command extends WP_CLI_Command {
 	 *     $ wp media import ~/Pictures/**\/*.jpg
 	 *     Imported file '/home/person/Pictures/beautiful-youg-girl-in-ivy.jpg' as attachment ID 1751.
 	 *     Imported file '/home/person/Pictures/fashion-girl.jpg' as attachment ID 1752.
-	 *     Success: Imported 2 of 2 images.
+	 *     Success: Imported 2 of 2 items.
 	 *
 	 *     # Import a local image and set it to be the post thumbnail for a post.
 	 *     $ wp media import ~/Downloads/image.png --post_id=123 --title="A downloaded picture" --featured_image
@@ -213,6 +213,14 @@ class Media_Command extends WP_CLI_Command {
 			'alt' => '',
 			'desc' => '',
 		) );
+
+		// Assume the most generic term
+		$noun = 'item';
+
+		// Use the noun `image` when sure the media file is an image
+		if ( Utils\get_flag_value( $assoc_args, 'featured_image' ) || $assoc_args['alt'] ) {
+			$noun = 'image';
+		}
 
 		if ( isset( $assoc_args['post_id'] ) ) {
 			if ( !get_post( $assoc_args['post_id'] ) ) {
@@ -317,8 +325,10 @@ class Media_Command extends WP_CLI_Command {
 			}
 			$successes++;
 		}
+
+		// Report the result of the operation
 		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
-			Utils\report_batch_operation_results( 'image', 'import', count( $args ), $successes, $errors );
+			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors );
 		} elseif ( $errors ) {
 			WP_CLI::halt( 1 );
 		}
