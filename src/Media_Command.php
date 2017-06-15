@@ -214,7 +214,6 @@ class Media_Command extends WP_CLI_Command {
 			'caption' => '',
 			'alt' => '',
 			'desc' => '',
-			''
 		) );
 
 		if ( isset( $assoc_args['post_id'] ) ) {
