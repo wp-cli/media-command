@@ -22,7 +22,7 @@ Feature: Manage WordPress attachments
       """
     And STDOUT should contain:
       """
-      Success: Imported 1 of 1 images.
+      Success: Imported 1 of 1
       """
 
   Scenario: Fail to import missing image
