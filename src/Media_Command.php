@@ -173,6 +173,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--desc=<description>]
 	 * : "Description" field (post content) of attachment post.
 	 *
+	 * [--allow_unsafe]
+	 * : If set, bypasses the `reject_unsafe_urls` check; required when importing from remote domain not publically resolvable.
+	 *
 	 * [--featured_image]
 	 * : If set, set the imported image as the Featured Image of the post its attached to.
 	 *
@@ -243,7 +246,7 @@ class Media_Command extends WP_CLI_Command {
 				}
 				$tempfile = $this->make_copy( $file );
 			} else {
-				$tempfile = download_url( $file );
+				$tempfile = $this->download_url( $file, null, \WP_CLI\Utils\get_flag_value( $assoc_args, 'allow_unsafe' ) );
 				if ( is_wp_error( $tempfile ) ) {
 					WP_CLI::warning( sprintf(
 						"Unable to import file '%s'. Reason: %s",
@@ -617,5 +620,59 @@ class Media_Command extends WP_CLI_Command {
 			// Treat removing unused metadata as no change.
 		}
 		return false;
+	}
+
+	/**
+	 * Custom version of download_url() that accepts reject_unsafe_urls arg.
+	 *
+	 * Downloads a URL to a local temporary file using the WordPress HTTP Class.
+	 * Please note, That the calling function must unlink() the file.
+	 *
+	 * @since 2.5.0
+	 *
+	 * @param string $url The URL of the file to download.
+	 * @param int    $timeout The timeout for the request to download the file default 300 seconds.
+	 * @param bool   $allow_unsafe Whether to run reject_unsafe_urls check.
+	 * @return mixed WP_Error on failure, string Filename on success.
+	 */
+	private function download_url( $url, $timeout = 300, $allow_unsafe = false ) {
+	        // WARNING: The file is not automatically deleted, The script must unlink() the file.
+	        if ( ! $url ) {
+				return new WP_Error( 'http_no_url', __( 'Invalid URL Provided.' ) );
+	        }
+
+	        $url_filename = basename( parse_url( $url, PHP_URL_PATH ) );
+
+	        $tmpfname = wp_tempnam( $url_filename );
+	        if ( ! $tmpfname ) {
+				return new WP_Error( 'http_no_file', __( 'Could not create Temporary file.' ) );
+	        }
+
+	        if ( $allow_unsafe ) {
+	        	$response = wp_remote_get( $url, array( 'timeout' => $timeout, 'stream' => true, 'filename' => $tmpfname ) );
+	        } else {
+	        	$response = wp_safe_remote_get( $url, array( 'timeout' => $timeout, 'stream' => true, 'filename' => $tmpfname ) );
+	        }
+
+	        if ( is_wp_error( $response ) ) {
+	                unlink( $tmpfname );
+	                return $response;
+	        }
+
+	        if ( 200 != wp_remote_retrieve_response_code( $response ) ) {
+	                unlink( $tmpfname );
+	                return new WP_Error( 'http_404', trim( wp_remote_retrieve_response_message( $response ) ) );
+	        }
+
+	        $content_md5 = wp_remote_retrieve_header( $response, 'content-md5' );
+	        if ( $content_md5 ) {
+	                $md5_check = verify_file_md5( $tmpfname, $content_md5 );
+	                if ( is_wp_error( $md5_check ) ) {
+	                        unlink( $tmpfname );
+	                        return $md5_check;
+	                }
+	        }
+
+	        return $tmpfname;
 	}
 }
