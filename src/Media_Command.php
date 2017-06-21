@@ -238,7 +238,7 @@ class Media_Command extends WP_CLI_Command {
 				}
 				$tempfile = $this->make_copy( $file );
 			} else {
-				$tempfile = $this->download_url( $file, null, $reject_unsafe, \WP_CLI\Utils\get_flag_value( $assoc_args, 'allow_unsafe' ) );
+				$tempfile = $this->download_url( $file, null, \WP_CLI\Utils\get_flag_value( $assoc_args, 'allow_unsafe' ) );
 				if ( is_wp_error( $tempfile ) ) {
 					WP_CLI::warning( sprintf(
 						"Unable to import file '%s'. Reason: %s",
@@ -635,8 +635,11 @@ class Media_Command extends WP_CLI_Command {
 	        if ( ! $tmpfname )
 	                return new WP_Error('http_no_file', __('Could not create Temporary file.'));
 
-	        $reject_unsafe = !$allow_unsafe;
-	        $response = wp_safe_remote_get( $url, array( 'timeout' => $timeout, 'stream' => true, 'filename' => $tmpfname, 'reject_unsafe_urls' => $reject_unsafe ) );
+	        if ( $allow_unsafe ) {
+	        	$response = wp_remote_get( $url, array( 'timeout' => $timeout, 'stream' => true, 'filename' => $tmpfname ) );
+	        } else {
+	        	$response = wp_safe_remote_get( $url, array( 'timeout' => $timeout, 'stream' => true, 'filename' => $tmpfname ) );
+	        }
 
 	        if ( is_wp_error( $response ) ) {
 	                unlink( $tmpfname );
