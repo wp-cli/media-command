@@ -620,20 +620,23 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * @since 2.5.0
 	 *
-	 * @param string $url the URL of the file to download
-	 * @param int $timeout The timeout for the request to download the file default 300 seconds
+	 * @param string $url The URL of the file to download.
+	 * @param int    $timeout The timeout for the request to download the file default 300 seconds.
+	 * @param bool   $allow_unsafe Whether to run reject_unsafe_urls check.
 	 * @return mixed WP_Error on failure, string Filename on success.
 	 */
 	private function download_url( $url, $timeout = 300, $allow_unsafe = false ) {
-	        //WARNING: The file is not automatically deleted, The script must unlink() the file.
-	        if ( ! $url )
-	                return new WP_Error('http_no_url', __('Invalid URL Provided.'));
+	        // WARNING: The file is not automatically deleted, The script must unlink() the file.
+	        if ( ! $url ) {
+				return new WP_Error( 'http_no_url', __( 'Invalid URL Provided.' ) );
+	        }
 
 	        $url_filename = basename( parse_url( $url, PHP_URL_PATH ) );
 
 	        $tmpfname = wp_tempnam( $url_filename );
-	        if ( ! $tmpfname )
-	                return new WP_Error('http_no_file', __('Could not create Temporary file.'));
+	        if ( ! $tmpfname ) {
+				return new WP_Error( 'http_no_file', __( 'Could not create Temporary file.' ) );
+	        }
 
 	        if ( $allow_unsafe ) {
 	        	$response = wp_remote_get( $url, array( 'timeout' => $timeout, 'stream' => true, 'filename' => $tmpfname ) );
@@ -646,7 +649,7 @@ class Media_Command extends WP_CLI_Command {
 	                return $response;
 	        }
 
-	        if ( 200 != wp_remote_retrieve_response_code( $response ) ){
+	        if ( 200 != wp_remote_retrieve_response_code( $response ) ) {
 	                unlink( $tmpfname );
 	                return new WP_Error( 'http_404', trim( wp_remote_retrieve_response_message( $response ) ) );
 	        }
