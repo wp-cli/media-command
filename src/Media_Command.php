@@ -173,6 +173,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--desc=<description>]
 	 * : "Description" field (post content) of attachment post.
 	 *
+	 * [--import_only]
+	 * : If set, media files (local only) are imported to the library but not moved on disk.
+	 *
 	 * [--featured_image]
 	 * : If set, set the imported image as the Featured Image of the post its attached to.
 	 *
@@ -235,7 +238,11 @@ class Media_Command extends WP_CLI_Command {
 				}
 				$tempfile = $this->make_copy( $file );
 			} else {
-				$tempfile = download_url( $file );
+				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'import_only' ) ) {
+					$tempfile = $file;
+				} else {
+					$tempfile = $this->make_copy( $file );
+				}
 				if ( is_wp_error( $tempfile ) ) {
 					WP_CLI::warning( sprintf(
 						"Unable to import file '%s'. Reason: %s",
@@ -278,15 +285,34 @@ class Media_Command extends WP_CLI_Command {
 				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Utils\basename( $file ) );
 			}
 
-			// Deletes the temporary file.
-			$success = media_handle_sideload( $file_array, $assoc_args['post_id'], $assoc_args['title'], $post_array );
-			if ( is_wp_error( $success ) ) {
-				WP_CLI::warning( sprintf(
-					"Unable to import file '%s'. Reason: %s",
-					$orig_filename, implode( ', ', $success->get_error_messages() )
-				) );
-				$errors++;
-				continue;
+			if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'import_only' ) ) {
+				$wp_filetype = wp_check_filetype( $file, null );
+				$post_array['post_mime_type'] = $wp_filetype['type'];
+				$post_array['post_status'] = 'inherit';
+
+				$success = wp_insert_attachment( $post_array, $file, $assoc_args['post_id'] );
+				if ( ! is_wp_error( $success ) ) {
+					wp_update_attachment_metadata( $success, wp_generate_attachment_metadata( $success, $file ) );
+				}
+				if ( is_wp_error( $success ) ) {
+					WP_CLI::warning( sprintf(
+						"Unable to insert file '%s'. Reason: %s",
+						$orig_filename, implode( ', ', $success->get_error_messages() )
+					) );
+					$errors++;
+					continue;
+				}
+			} else {
+				// Deletes the temporary file.
+				$success = media_handle_sideload( $file_array, $assoc_args['post_id'], $assoc_args['title'], $post_array );
+				if ( is_wp_error( $success ) ) {
+					WP_CLI::warning( sprintf(
+						"Unable to import file '%s'. Reason: %s",
+						$orig_filename, implode( ', ', $success->get_error_messages() )
+					) );
+					$errors++;
+					continue;
+				}
 			}
 
 			// Set alt text.
