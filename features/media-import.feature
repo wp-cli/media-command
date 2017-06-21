@@ -14,6 +14,17 @@ Feature: Manage WordPress attachments
       Success: Imported 1 of 1 images.
       """
 
+  Scenario: Import image from remote (unsafe) URL
+    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --allow_unsafe`
+    Then STDOUT should contain:
+      """
+      Imported file 'http://wp-cli.org/behat-data/codeispoetry.png'
+      """
+    And STDOUT should contain:
+      """
+      Success: Imported 1 of 1 images.
+      """
+
   Scenario: Fail to import missing image
     When I try `wp media import gobbledygook.png`
     Then STDERR should be:
