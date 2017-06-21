@@ -81,7 +81,7 @@ Feature: Manage WordPress attachments
       """
     And STDOUT should contain:
       """
-      Success: Imported 1 of 1 images.
+      Success: Imported 1 of 1
       """
     And the {CACHE_DIR}/large-image.jpg file should exist
     And the return code should be 0
