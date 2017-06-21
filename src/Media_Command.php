@@ -236,13 +236,13 @@ class Media_Command extends WP_CLI_Command {
 					$errors++;
 					continue;
 				}
-				$tempfile = $this->make_copy( $file );
-			} else {
 				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'import_only' ) ) {
 					$tempfile = $file;
 				} else {
 					$tempfile = $this->make_copy( $file );
 				}
+			} else {
+				$tempfile = download_url( $file );
 				if ( is_wp_error( $tempfile ) ) {
 					WP_CLI::warning( sprintf(
 						"Unable to import file '%s'. Reason: %s",
