@@ -174,7 +174,7 @@ class Media_Command extends WP_CLI_Command {
 	 * [--desc=<description>]
 	 * : "Description" field (post content) of attachment post.
 	 *
-	 * [--import_only]
+	 * [--skip-copy]
 	 * : If set, media files (local only) are imported to the library but not moved on disk.
 	 *
 	 * [--featured_image]
@@ -237,7 +237,7 @@ class Media_Command extends WP_CLI_Command {
 					$errors++;
 					continue;
 				}
-				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'import_only' ) ) {
+				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
 					$tempfile = $file;
 				} else {
 					$tempfile = $this->make_copy( $file );
@@ -286,7 +286,7 @@ class Media_Command extends WP_CLI_Command {
 				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Utils\basename( $file ) );
 			}
 
-			if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'import_only' ) ) {
+			if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
 				$wp_filetype = wp_check_filetype( $file, null );
 				$post_array['post_mime_type'] = $wp_filetype['type'];
 				$post_array['post_status'] = 'inherit';
