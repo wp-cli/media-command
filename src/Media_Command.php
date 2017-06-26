@@ -292,9 +292,6 @@ class Media_Command extends WP_CLI_Command {
 				$post_array['post_status'] = 'inherit';
 
 				$success = wp_insert_attachment( $post_array, $file, $assoc_args['post_id'] );
-				if ( ! is_wp_error( $success ) ) {
-					wp_update_attachment_metadata( $success, wp_generate_attachment_metadata( $success, $file ) );
-				}
 				if ( is_wp_error( $success ) ) {
 					WP_CLI::warning( sprintf(
 						"Unable to insert file '%s'. Reason: %s",
@@ -303,6 +300,7 @@ class Media_Command extends WP_CLI_Command {
 					$errors++;
 					continue;
 				}
+				wp_update_attachment_metadata( $success, wp_generate_attachment_metadata( $success, $file ) );
 			} else {
 				// Deletes the temporary file.
 				$success = media_handle_sideload( $file_array, $assoc_args['post_id'], $assoc_args['title'], $post_array );
