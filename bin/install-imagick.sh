@@ -3,11 +3,11 @@
 set -ex
 
 # ImageMagick/Imagick versions to use.
-IMAGEMAGICK_VERSION='6.9.7-10'
+IMAGEMAGICK_VERSION='6.9.6-8'
 IMAGICK_VERSION='3.4.3'
 
-if [[ "$TRAVIS_PHP_VERSION" = '7.1' ]]; then
-	IMAGEMAGICK_VERSION='7.0.4-10'
+if [[ "$TRAVIS_PHP_VERSION" = 7.1 ]]; then
+	IMAGEMAGICK_VERSION='7.0.3-10'
 fi
 
 # Based on http://stackoverflow.com/a/41138688/664741
