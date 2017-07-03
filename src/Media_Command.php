@@ -113,19 +113,20 @@ class Media_Command extends WP_CLI_Command {
 			'post_mime_type' => $mime_types,
 			'post_status' => 'any',
 			'posts_per_page' => -1,
-			'fields' => 'ids',
+			'fields' => 'ids'
 		);
 
 		$images = new WP_Query( $query_args );
 
 		$count = $images->post_count;
 
-		if ( ! $count ) {
+		if ( !$count ) {
 			WP_CLI::warning( 'No images found.' );
 			return;
 		}
 
-		WP_CLI::log( sprintf( 'Found %1$d %2$s to regenerate.', $count, _n( 'image', 'images', $count ) ) );
+		WP_CLI::log( sprintf( 'Found %1$d %2$s to regenerate.', $count,
+			_n( 'image', 'images', $count ) ) );
 
 		if ( $image_size ) {
 			$image_size_filters = $this->add_image_size_filters( $image_size );
@@ -172,6 +173,9 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * [--desc=<description>]
 	 * : "Description" field (post content) of attachment post.
+	 *
+	 * [--skip-copy]
+	 * : If set, media files (local only) are imported to the library but not moved on disk.
 	 *
 	 * [--featured_image]
 	 * : If set, set the imported image as the Featured Image of the post its attached to.
@@ -222,8 +226,8 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		if ( isset( $assoc_args['post_id'] ) ) {
-			if ( ! get_post( $assoc_args['post_id'] ) ) {
-				WP_CLI::warning( 'Invalid --post_id' );
+			if ( !get_post( $assoc_args['post_id'] ) ) {
+				WP_CLI::warning( "Invalid --post_id" );
 				$assoc_args['post_id'] = false;
 			}
 		} else {
@@ -236,12 +240,16 @@ class Media_Command extends WP_CLI_Command {
 			$orig_filename = $file;
 
 			if ( empty( $is_file_remote ) ) {
-				if ( ! file_exists( $file ) ) {
+				if ( !file_exists( $file ) ) {
 					WP_CLI::warning( "Unable to import file '$file'. Reason: File doesn't exist." );
 					$errors++;
 					continue;
 				}
-				$tempfile = $this->make_copy( $file );
+				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
+					$tempfile = $file;
+				} else {
+					$tempfile = $this->make_copy( $file );
+				}
 			} else {
 				$tempfile = download_url( $file );
 				if ( is_wp_error( $tempfile ) ) {
@@ -256,17 +264,17 @@ class Media_Command extends WP_CLI_Command {
 
 			$file_array = array(
 				'tmp_name' => $tempfile,
-				'name' => Utils\basename( $file ),
+				'name' => Utils\basename( $file )
 			);
 
-			$post_array = array(
+			$post_array= array(
 				'post_title' => $assoc_args['title'],
 				'post_excerpt' => $assoc_args['caption'],
-				'post_content' => $assoc_args['desc'],
+				'post_content' => $assoc_args['desc']
 			);
 			$post_array = wp_slash( $post_array );
 
-			// use image exif/iptc data for title and caption defaults if possible.
+			// use image exif/iptc data for title and caption defaults if possible
 			if ( empty( $post_array['post_title'] ) || empty( $post_array['post_excerpt'] ) ) {
 				// @codingStandardsIgnoreStart
 				$image_meta = @wp_read_image_metadata( $tempfile );
@@ -286,23 +294,40 @@ class Media_Command extends WP_CLI_Command {
 				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Utils\basename( $file ) );
 			}
 
-			// Deletes the temporary file.
-			$success = media_handle_sideload( $file_array, $assoc_args['post_id'], $assoc_args['title'], $post_array );
-			if ( is_wp_error( $success ) ) {
-				WP_CLI::warning( sprintf(
-					"Unable to import file '%s'. Reason: %s",
-					$orig_filename, implode( ', ', $success->get_error_messages() )
-				) );
-				$errors++;
-				continue;
+			if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
+				$wp_filetype = wp_check_filetype( $file, null );
+				$post_array['post_mime_type'] = $wp_filetype['type'];
+				$post_array['post_status'] = 'inherit';
+
+				$success = wp_insert_attachment( $post_array, $file, $assoc_args['post_id'] );
+				if ( is_wp_error( $success ) ) {
+					WP_CLI::warning( sprintf(
+						"Unable to insert file '%s'. Reason: %s",
+						$orig_filename, implode( ', ', $success->get_error_messages() )
+					) );
+					$errors++;
+					continue;
+				}
+				wp_update_attachment_metadata( $success, wp_generate_attachment_metadata( $success, $file ) );
+			} else {
+				// Deletes the temporary file.
+				$success = media_handle_sideload( $file_array, $assoc_args['post_id'], $assoc_args['title'], $post_array );
+				if ( is_wp_error( $success ) ) {
+					WP_CLI::warning( sprintf(
+						"Unable to import file '%s'. Reason: %s",
+						$orig_filename, implode( ', ', $success->get_error_messages() )
+					) );
+					$errors++;
+					continue;
+				}
 			}
 
-			// Set alt text.
+			// Set alt text
 			if ( $assoc_args['alt'] ) {
 				update_post_meta( $success, '_wp_attachment_image_alt', wp_slash( $assoc_args['alt'] ) );
 			}
 
-			// Set as featured image, if --post_id and --featured_image are set.
+			// Set as featured image, if --post_id and --featured_image are set
 			if ( $assoc_args['post_id'] && \WP_CLI\Utils\get_flag_value( $assoc_args, 'featured_image' ) ) {
 				update_post_meta( $assoc_args['post_id'], '_thumbnail_id', $success );
 			}
@@ -310,9 +335,8 @@ class Media_Command extends WP_CLI_Command {
 			$attachment_success_text = '';
 			if ( $assoc_args['post_id'] ) {
 				$attachment_success_text = " and attached to post {$assoc_args['post_id']}";
-				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'featured_image' ) ) {
+				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'featured_image' ) )
 					$attachment_success_text .= ' as featured image';
-				}
 			}
 
 			if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
@@ -334,18 +358,16 @@ class Media_Command extends WP_CLI_Command {
 		}
 	}
 
-	// wp_tempnam() inexplicably forces a .tmp extension, which spoils MIME type detection.
+	// wp_tempnam() inexplicably forces a .tmp extension, which spoils MIME type detection
 	private function make_copy( $path ) {
 		$dir = get_temp_dir();
 		$filename = Utils\basename( $path );
-		if ( empty( $filename ) ) {
+		if ( empty( $filename ) )
 			$filename = time();
-		}
 
 		$filename = $dir . wp_unique_filename( $dir, $filename );
-		if ( ! copy( $path, $filename ) ) {
+		if ( !copy( $path, $filename ) )
 			WP_CLI::error( "Could not create temporary file for $path." );
-		}
 
 		return $filename;
 	}
@@ -356,7 +378,7 @@ class Media_Command extends WP_CLI_Command {
 		$att_desc = sprintf( '"%1$s" (ID %2$d)', get_the_title( $id ), $id );
 		$thumbnail_desc = $image_size ? sprintf( '"%s" thumbnail', $image_size ) : 'thumbnail';
 
-		if ( false === $fullsizepath || ! file_exists( $fullsizepath ) ) {
+		if ( false === $fullsizepath || !file_exists( $fullsizepath ) ) {
 			WP_CLI::warning( "Can't find $att_desc." );
 			return false;
 		}
@@ -418,19 +440,17 @@ class Media_Command extends WP_CLI_Command {
 		foreach ( $metadata['sizes'] as $size_info ) {
 			$intermediate_path = $dir_path . $size_info['file'];
 
-			if ( $intermediate_path === $fullsizepath ) {
+			if ( $intermediate_path === $fullsizepath )
 				continue;
-			}
 
-			if ( file_exists( $intermediate_path ) ) {
+			if ( file_exists( $intermediate_path ) )
 				unlink( $intermediate_path );
-			}
 		}
 	}
 
 	private function needs_regeneration( $att_id, $fullsizepath, $is_pdf, $image_size ) {
 
-		$metadata = wp_get_attachment_metadata( $att_id );
+		$metadata = wp_get_attachment_metadata($att_id);
 
 		// Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
 
@@ -454,12 +474,11 @@ class Media_Command extends WP_CLI_Command {
 		$dir_path = dirname( $fullsizepath ) . '/';
 
 		// Check that the thumbnail files exist.
-		foreach ( $metadata['sizes'] as $size_info ) {
+		foreach( $metadata['sizes'] as $size_info ) {
 			$intermediate_path = $dir_path . $size_info['file'];
 
-			if ( $intermediate_path === $fullsizepath ) {
+			if ( $intermediate_path === $fullsizepath )
 				continue;
-			}
 
 			if ( ! file_exists( $intermediate_path ) ) {
 				return true;
