@@ -28,6 +28,7 @@ install_imagemagick() {
 }
 
 # Install ImageMagick if the current version isn't up to date.
+ls "$HOME/opt/$WP_VERSION/$TRAVIS_PHP_VERSION/bin"
 PATH="$HOME/opt/$WP_VERSION/$TRAVIS_PHP_VERSION/bin:$PATH" identify -version | grep "$IMAGEMAGICK_VERSION" || install_imagemagick
 
 # Install Imagick for PHP.
