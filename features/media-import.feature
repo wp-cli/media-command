@@ -69,6 +69,25 @@ Feature: Manage WordPress attachments
       My fabulous caption
       """
 
+  Scenario: Import a file as attachment from a local image and leave it in it's current location
+    Given download:
+      | path                        | url                                              |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --skip-copy`
+    Then STDOUT should contain:
+      """
+      Imported file
+      """
+    And STDOUT should contain:
+      """
+      Success: Imported 1 of 1 items.
+      """
+    And the {CACHE_DIR}/large-image.jpg file should exist
+    And the wp-content/uploads/large-image.jpg file should not exist
+    And the return code should be 0
+
   Scenario: Import a file and use its filename as the title
     Given download:
       | path                        | url                                              |
