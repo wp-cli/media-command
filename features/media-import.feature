@@ -73,6 +73,7 @@ Feature: Manage WordPress attachments
     Given download:
       | path                        | url                                              |
       | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --skip-copy`
     Then STDOUT should contain:
@@ -86,7 +87,6 @@ Feature: Manage WordPress attachments
     And the {CACHE_DIR}/large-image.jpg file should exist
     And the wp-content/uploads/large-image.jpg file should not exist
     And the return code should be 0
-
 
   Scenario: Import a file and use its filename as the title
     Given download:
