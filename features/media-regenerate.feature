@@ -207,6 +207,15 @@ Feature: Regenerate WordPress attachments
       add_action( 'after_setup_theme', function(){
         add_image_size( 'test1', 125, 125, true );
       });
+      // Handle WP < 4.4 when there was no dash before numbers (changeset 35276).
+      add_filter( 'wp_handle_upload', function ( $info, $upload_type = null ) {
+        if ( ( $new_file = str_replace( 'image1.jpg', 'image-1.jpg', $info['file'] ) ) !== $info['file'] ) {
+            rename( $info['file'], $new_file );
+            $info['file'] = $new_file;
+            $info['url'] = str_replace( 'image1.jpg', 'image-1.jpg', $info['url'] );
+        }
+        return $info;
+      } );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -264,15 +273,6 @@ Feature: Regenerate WordPress attachments
       add_action( 'after_setup_theme', function(){
         add_image_size( 'test1', 200, 200, true );
       });
-      // Handle WP < 4.4 when there was no dash before numbers (changeset 35276).
-      add_filter( 'wp_handle_upload', function ( $info, $upload_type = null ) {
-        if ( ( $new_file = str_replace( 'image1.jpg', 'image-1.jpg', $info['file'] ) ) !== $info['file'] ) {
-            rename( $info['file'], $new_file );
-            $info['file'] = $new_file;
-            $info['url'] = str_replace( 'image1.jpg', 'image-1.jpg', $info['url'] );
-        }
-        return $info;
-      } );
       """
     Then the wp-content/uploads/large-image-125x125.jpg file should exist
     And the wp-content/uploads/large-image-1-125x125.jpg file should exist
