@@ -264,6 +264,15 @@ Feature: Regenerate WordPress attachments
       add_action( 'after_setup_theme', function(){
         add_image_size( 'test1', 200, 200, true );
       });
+      // Handle WP < 4.4 when there was no dash before numbers (changeset 35276).
+      add_filter( 'wp_handle_upload', function ( $info, $upload_type = null ) {
+        if ( ( $new_file = str_replace( 'image1.jpg', 'image-1.jpg', $info['file'] ) ) !== $info['file'] ) {
+            rename( $info['file'], $new_file );
+            $info['file'] = $new_file;
+            $info['url'] = str_replace( 'image1.jpg', 'image-1.jpg', $info['url'] );
+        }
+        return $info;
+      } );
       """
     Then the wp-content/uploads/large-image-125x125.jpg file should exist
     And the wp-content/uploads/large-image-1-125x125.jpg file should exist
@@ -432,6 +441,14 @@ Feature: Regenerate WordPress attachments
       | path                             | url                                               |
       | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      // Use GD as Imagick editor for WP < 4.2 would produce thumbnails (changeset 31576).
+      add_filter( 'wp_image_editors', function ( $image_editors ) {
+          return array( 'WP_Image_Editor_GD' );
+      } );
+      """
 
     When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported attachment" --porcelain`
     Then the wp-content/uploads/white-150-square-150x150.jpg file should not exist
