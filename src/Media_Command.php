@@ -3,7 +3,7 @@
 use WP_CLI\Utils;
 
 /**
- * Manage attachments.
+ * Import new attachments or regenerate existing.
  *
  * ## EXAMPLES
  *
