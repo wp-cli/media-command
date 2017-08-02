@@ -50,4 +50,4 @@ before_script:
   - composer validate
 
 script:
-  - ./bin/test.sh
+  - bash bin/test.sh
