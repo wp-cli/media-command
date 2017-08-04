@@ -1,4 +1,4 @@
-sudo: false
+sudo: true
 dist: trusty
 
 language: php
@@ -36,10 +36,13 @@ matrix:
       env: WP_VERSION=trunk
     - php: 5.3
       dist: precise
+      sudo: false
       env: WP_VERSION=latest
 
 before_install:
   - phpenv config-rm xdebug.ini
+  - bash bin/install-ghostscript.sh
+  - gs -v
   - bash bin/install-imagick.sh
   - php -m
 
