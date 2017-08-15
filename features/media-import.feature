@@ -14,6 +14,17 @@ Feature: Manage WordPress attachments
       Success: Imported 1 of 1 items.
       """
 
+  Scenario: Import media from remote URL with query string
+    When I run `wp media import 'http://via.placeholder.com/350x150.jpg?text=Foo'`
+    Then STDOUT should contain:
+      """
+      Imported file 'http://via.placeholder.com/350x150.jpg?text=Foo' as attachment ID 86.
+      """
+    And STDOUT should contain:
+      """
+      Success: Imported 1 of 1 items.
+      """
+
   Scenario: Fail to import missing image
     When I try `wp media import gobbledygook.png`
     Then STDERR should be:
