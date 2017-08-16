@@ -250,6 +250,7 @@ class Media_Command extends WP_CLI_Command {
 				} else {
 					$tempfile = $this->make_copy( $file );
 				}
+				$name = Utils\basename( $file );
 			} else {
 				$tempfile = download_url( $file );
 				if ( is_wp_error( $tempfile ) ) {
@@ -260,11 +261,12 @@ class Media_Command extends WP_CLI_Command {
 					$errors++;
 					continue;
 				}
+				$name = strtok( Utils\basename( $file ), '?' );
 			}
 
 			$file_array = array(
 				'tmp_name' => $tempfile,
-				'name' => Utils\basename( $file )
+				'name' => $name,
 			);
 
 			$post_array= array(
