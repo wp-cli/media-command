@@ -18,7 +18,7 @@ Feature: Manage WordPress attachments
     When I run `wp media import 'http://via.placeholder.com/350x150.jpg?text=Foo'`
     Then STDOUT should contain:
       """
-      Imported file 'http://via.placeholder.com/350x150.jpg?text=Foo' as attachment ID 86.
+      Imported file 'http://via.placeholder.com/350x150.jpg?text=Foo' as attachment ID
       """
     And STDOUT should contain:
       """
