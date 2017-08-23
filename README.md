@@ -166,6 +166,21 @@ wp media sizes [--fields=<fields>] [--format=<format>]
 		  - count
 		---
 
+**EXAMPLES**
+
+    # List all registered image sizes
+    $ wp media sizes
+    +---------------------------+-------+--------+-------+
+    | name                      | width | height | crop  |
+    +---------------------------+-------+--------+-------+
+    | full                      |       |        | false |
+    | twentyfourteen-full-width | 1038  | 576    | true  |
+    | large                     | 1024  | 1024   | true  |
+    | post-thumbnail            | 672   | 372    | true  |
+    | medium                    | 300   | 300    | true  |
+    | thumbnail                 | 150   | 150    | true  |
+    +---------------------------+-------+--------+-------+
+
 ## Installing
 
 This package is included with WP-CLI itself, no additional installation necessary.
