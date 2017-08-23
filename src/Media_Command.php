@@ -379,6 +379,21 @@ class Media_Command extends WP_CLI_Command {
 	 *   - yaml
 	 *   - count
 	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # List all registered image sizes
+	 *     $ wp media sizes
+	 *     +---------------------------+-------+--------+-------+
+	 *     | name                      | width | height | crop  |
+	 *     +---------------------------+-------+--------+-------+
+	 *     | full                      |       |        | false |
+	 *     | twentyfourteen-full-width | 1038  | 576    | true  |
+	 *     | large                     | 1024  | 1024   | true  |
+	 *     | post-thumbnail            | 672   | 372    | true  |
+	 *     | medium                    | 300   | 300    | true  |
+	 *     | thumbnail                 | 150   | 150    | true  |
+	 *     +---------------------------+-------+--------+-------+
 	 */
 	public function sizes( $args, $assoc_args ) {
 		global $_wp_additional_image_sizes;
