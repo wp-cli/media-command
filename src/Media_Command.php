@@ -360,6 +360,82 @@ class Media_Command extends WP_CLI_Command {
 		}
 	}
 
+	/**
+	 * List media sizes registered with WordPress.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--fields=<fields>]
+	 * : Limit the output to specific fields. Defaults to all fields.
+	 *
+	 * [--format=<format>]
+	 * : Render output in a specific format
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 *   - csv
+	 *   - yaml
+	 *   - count
+	 * ---
+	 */
+	public function sizes( $args, $assoc_args ) {
+		global $_wp_additional_image_sizes;
+
+		$assoc_args = array_merge( array(
+			'fields'      => 'name,width,height,crop'
+		), $assoc_args );
+
+		$sizes = array(
+			array(
+				'name'    => 'large',
+				'width'   => intval( get_option( 'large_size_w' ) ),
+				'height'  => intval( get_option( 'large_size_h' ) ),
+				'crop'    => 'true',
+			),
+			array(
+				'name'    => 'medium_large',
+				'width'   => intval( get_option( 'medium_large_size_w' ) ),
+				'height'  => intval( get_option( 'medium_large_size_h' ) ),
+				'crop'    => 'true',
+			),
+			array(
+				'name'    => 'medium',
+				'width'   => intval( get_option( 'medium_size_w' ) ),
+				'height'  => intval( get_option( 'medium_size_h' ) ),
+				'crop'    => 'true',
+			),
+			array(
+				'name'    => 'thumbnail',
+				'width'   => intval( get_option( 'thumbnail_size_w' ) ),
+				'height'  => intval( get_option( 'thumbnail_size_h' ) ),
+				'crop'    => 'true',
+			),
+		);
+		foreach( $_wp_additional_image_sizes as $size => $size_args ) {
+			$sizes[] = array(
+				'name'     => $size,
+				'width'    => $size_args['width'],
+				'height'   => $size_args['height'],
+				'crop'     => $size_args['crop'] ? 'true' : 'false',
+			);
+		}
+		usort( $sizes, function( $a, $b ){
+			if ( $a['width'] == $b['width'] ) {
+				return 0;
+			}
+			return ( $a['width'] < $b['width'] ) ? 1 : -1;
+		});
+		array_unshift( $sizes, array(
+				'name'    => 'full',
+				'width'   => '',
+				'height'  => '',
+				'crop'    => 'false',
+		) );
+		WP_CLI\Utils\format_items( $assoc_args['format'], $sizes, explode( ',', $assoc_args['fields'] ) );
+	}
+
 	// wp_tempnam() inexplicably forces a .tmp extension, which spoils MIME type detection
 	private function make_copy( $path ) {
 		$dir = get_temp_dir();
