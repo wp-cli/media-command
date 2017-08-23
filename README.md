@@ -139,6 +139,33 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-del
     3/3 Regenerated "large" thumbnail for "Even Yooger than the Yoogest Image Ever, Really" (ID 9997).
     Success: Regenerated 3 of 3 images.
 
+
+
+### wp media sizes
+
+List media sizes registered with WordPress.
+
+~~~
+wp media sizes [--fields=<fields>] [--format=<format>]
+~~~
+
+**OPTIONS**
+
+	[--fields=<fields>]
+		Limit the output to specific fields. Defaults to all fields.
+
+	[--format=<format>]
+		Render output in a specific format
+		---
+		default: table
+		options:
+		  - table
+		  - json
+		  - csv
+		  - yaml
+		  - count
+		---
+
 ## Installing
 
 This package is included with WP-CLI itself, no additional installation necessary.
