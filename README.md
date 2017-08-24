@@ -166,6 +166,14 @@ wp media sizes [--fields=<fields>] [--format=<format>]
 		  - count
 		---
 
+**AVAILABLE FIELDS**
+
+These fields will be displayed by default for each image size:
+* name
+* width
+* height
+* crop
+
 **EXAMPLES**
 
     # List all registered image sizes
