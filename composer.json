@@ -36,7 +36,8 @@
         },
         "commands": [
             "media import",
-            "media regenerate"
+            "media regenerate",
+            "media sizes"
         ],
         "bundled": true
     }
