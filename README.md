@@ -141,12 +141,12 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-del
 
 
 
-### wp media sizes
+### wp media image-size
 
-List media sizes registered with WordPress.
+List image sizes registered with WordPress.
 
 ~~~
-wp media sizes [--fields=<fields>] [--format=<format>]
+wp media image-size [--fields=<fields>] [--format=<format>]
 ~~~
 
 **OPTIONS**
@@ -177,7 +177,7 @@ These fields will be displayed by default for each image size:
 **EXAMPLES**
 
     # List all registered image sizes
-    $ wp media sizes
+    $ wp media image-size
     +---------------------------+-------+--------+-------+
     | name                      | width | height | crop  |
     +---------------------------+-------+--------+-------+
