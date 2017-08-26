@@ -1,9 +1,9 @@
-Feature: List media sizes
+Feature: List image sizes
 
   Scenario: Basic usage
     Given a WP install
 
-    When I run `wp media sizes`
+    When I run `wp media image-size`
     Then STDOUT should be a table containing rows:
       | name       | width     | height    | crop   |
       | full       |           |           | false  |

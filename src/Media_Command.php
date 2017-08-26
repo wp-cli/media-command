@@ -361,7 +361,7 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * List media sizes registered with WordPress.
+	 * List image sizes registered with WordPress.
 	 *
 	 * ## OPTIONS
 	 *
@@ -391,7 +391,7 @@ class Media_Command extends WP_CLI_Command {
 	 * ## EXAMPLES
 	 *
 	 *     # List all registered image sizes
-	 *     $ wp media sizes
+	 *     $ wp media image-size
 	 *     +---------------------------+-------+--------+-------+
 	 *     | name                      | width | height | crop  |
 	 *     +---------------------------+-------+--------+-------+
@@ -402,8 +402,10 @@ class Media_Command extends WP_CLI_Command {
 	 *     | medium                    | 300   | 300    | true  |
 	 *     | thumbnail                 | 150   | 150    | true  |
 	 *     +---------------------------+-------+--------+-------+
+	 *
+	 * @subcommand image-size
 	 */
-	public function sizes( $args, $assoc_args ) {
+	public function image_size( $args, $assoc_args ) {
 		global $_wp_additional_image_sizes;
 
 		$assoc_args = array_merge( array(
