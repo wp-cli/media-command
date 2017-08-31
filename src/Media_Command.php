@@ -438,13 +438,15 @@ class Media_Command extends WP_CLI_Command {
 				'crop'    => 'true',
 			),
 		);
-		foreach( $_wp_additional_image_sizes as $size => $size_args ) {
-			$sizes[] = array(
-				'name'     => $size,
-				'width'    => $size_args['width'],
-				'height'   => $size_args['height'],
-				'crop'     => $size_args['crop'] ? 'true' : 'false',
-			);
+		if ( is_array( $_wp_additional_image_sizes ) ) {
+			foreach( $_wp_additional_image_sizes as $size => $size_args ) {
+				$sizes[] = array(
+					'name'     => $size,
+					'width'    => $size_args['width'],
+					'height'   => $size_args['height'],
+					'crop'     => $size_args['crop'] ? 'true' : 'false',
+				);
+			}
 		}
 		usort( $sizes, function( $a, $b ){
 			if ( $a['width'] == $b['width'] ) {
