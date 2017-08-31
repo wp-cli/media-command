@@ -8,3 +8,6 @@ Feature: List image sizes
       | name       | width     | height    | crop   |
       | full       |           |           | false  |
       | large      | 1024      | 1024      | true   |
+
+    When I run `wp media image-size --skip-themes`
+    Then STDERR should be empty
