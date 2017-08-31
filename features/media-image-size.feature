@@ -8,3 +8,11 @@ Feature: List image sizes
       | name       | width     | height    | crop   |
       | full       |           |           | false  |
       | large      | 1024      | 1024      | true   |
+    And STDERR should be empty
+
+    When I run `wp media image-size --skip-themes`
+    Then STDOUT should be a table containing rows:
+      | name       | width     | height    | crop   |
+      | full       |           |           | false  |
+      | large      | 1024      | 1024      | true   |
+    And STDERR should be empty
