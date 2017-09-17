@@ -1,4 +1,4 @@
-sudo: true
+sudo: false
 dist: trusty
 
 language: php
@@ -16,7 +16,7 @@ cache:
   directories:
     - vendor
     - $HOME/.composer/cache
-    - $HOME/opt/$WP_VERSION/$TRAVIS_PHP_VERSION
+
 env:
   global:
     - PATH="$TRAVIS_BUILD_DIR/vendor/bin:$PATH"
@@ -36,15 +36,16 @@ matrix:
       env: WP_VERSION=trunk
     - php: 5.3
       dist: precise
-      sudo: false
       env: WP_VERSION=latest
 
 before_install:
-  - phpenv config-rm xdebug.ini
-  - bash bin/install-ghostscript.sh
-  - gs -v
-  - bash bin/install-imagick.sh
-  - php -m
+  - |
+    # Remove Xdebug for a huge performance increase:
+    if [ -f ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/xdebug.ini ]; then
+      phpenv config-rm xdebug.ini
+    else
+      echo "xdebug.ini does not exist"
+    fi
 
 install:
   - composer require wp-cli/wp-cli:dev-master
