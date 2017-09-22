@@ -60,6 +60,27 @@ Feature: Manage WordPress attachments
     And the {CACHE_DIR}/large-image.jpg file should exist
     And the return code should be 0
 
+  Scenario: Import a file as attachment from a local image and preserve the file modified time.
+    Given download:
+      | path                        | url                                              |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+    And I run `touch -m 1505787257 {CACHE_DIR}/large-image.jpg`
+    And I run `wp option update gmt_offset -5`
+    And I run `wp media import {CACHE_DIR}/large-image.jpg --post_id=1 --filetime`
+    And I run `wp post get 1 --field=post_date`
+    Then STDOUT should be:
+      """
+      1999-12-31 19:00:00
+      """
+
+    When I run `wp post get 1 --field=post_date_gmt`
+    Then STDOUT should be:
+      """
+      2000-01-01 00:00:00
+      """
+
+    And the return code should be 0
+
   Scenario: Import a file as an attachment but porcelain style
     Given download:
       | path                        | url                                              |
