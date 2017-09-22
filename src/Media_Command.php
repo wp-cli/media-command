@@ -288,9 +288,9 @@ class Media_Command extends WP_CLI_Command {
 			);
 
 			if ( ! empty( $file_time ) ) {
-				$post_array['post_date'] = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * 60 * 60 ) );
+				$post_array['post_date'] = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) );
 				$post_array['post_date_gmt'] = gmdate( 'Y-m-d H:i:s', $file_time );
-				$post_array['post_modified'] = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * 60 * 60 ) );
+				$post_array['post_modified'] = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) );
 				$post_array['post_modified_gmt'] = gmdate( 'Y-m-d H:i:s', $file_time );
 			}
 
