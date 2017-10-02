@@ -10,6 +10,69 @@ Feature: Regenerate WordPress attachments
       No images found.
       """
 
+  Scenario: Regenerate all images default behavior
+    Given download:
+      | path                             | url                                               |
+      | {CACHE_DIR}/large-image.jpg      | http://wp-cli.org/behat-data/large-image.jpg      |
+      | {CACHE_DIR}/canola.jpg           | http://wp-cli.org/behat-data/canola.jpg           |
+      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
+    Then save STDOUT as {LARGE_ATTACHMENT_ID}
+    And the wp-content/uploads/large-image.jpg file should exist
+    And the wp-content/uploads/large-image-150x150.jpg file should exist
+    And the wp-content/uploads/large-image-300x225.jpg file should exist
+    And the wp-content/uploads/large-image-1024x768.jpg file should exist
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported medium attachment" --porcelain`
+    Then save STDOUT as {MEDIUM_ATTACHMENT_ID}
+    And the wp-content/uploads/canola.jpg file should exist
+    And the wp-content/uploads/canola-150x150.jpg file should exist
+    And the wp-content/uploads/canola-300x225.jpg file should exist
+    And the wp-content/uploads/canola-1024x768.jpg file should not exist
+
+    When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported small attachment" --porcelain`
+    Then save STDOUT as {SMALL_ATTACHMENT_ID}
+    And the wp-content/uploads/white-150-square.jpg file should exist
+    And the wp-content/uploads/white-150-square-150x150.jpg file should not exist
+    And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
+    And the wp-content/uploads/white-150-square-1024x1024.jpg file should not exist
+
+    When I run `wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 3 images to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /3 Regenerated thumbnails for "My imported large attachment" (ID {LARGE_ATTACHMENT_ID})
+      """
+    And STDOUT should contain:
+      """
+      /3 Regenerated thumbnails for "My imported medium attachment" (ID {MEDIUM_ATTACHMENT_ID})
+      """
+    And STDOUT should contain:
+      """
+      /3 Regenerated thumbnails for "My imported small attachment" (ID {SMALL_ATTACHMENT_ID})
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 3 of 3 images.
+      """
+    And the wp-content/uploads/large-image.jpg file should exist
+    And the wp-content/uploads/large-image-150x150.jpg file should exist
+    And the wp-content/uploads/large-image-300x225.jpg file should exist
+    And the wp-content/uploads/large-image-1024x768.jpg file should exist
+    And the wp-content/uploads/canola.jpg file should exist
+    And the wp-content/uploads/canola-150x150.jpg file should exist
+    And the wp-content/uploads/canola-300x225.jpg file should exist
+    And the wp-content/uploads/canola-1024x768.jpg file should not exist
+    And the wp-content/uploads/white-150-square.jpg file should exist
+    And the wp-content/uploads/white-150-square-150x150.jpg file should not exist
+    And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
+    And the wp-content/uploads/white-150-square-1024x1024.jpg file should not exist
+
   Scenario: Delete existing thumbnails when media is regenerated
     Given download:
       | path                        | url                                              |
@@ -194,7 +257,7 @@ Feature: Regenerate WordPress attachments
     Then STDERR should be:
       """
       Warning: Can't find "My imported attachment" (ID {ATTACHMENT_ID}).
-      Error: No images regenerated.
+      Error: No images regenerated (1 failed).
       """
 
   Scenario: Only regenerate images which are missing sizes
@@ -780,3 +843,527 @@ Feature: Regenerate WordPress attachments
       """
       Error: Unknown image size "test1".
       """
+
+  Scenario: Regenerating SVGs should be marked as skipped and not produce PHP notices
+    Given an svg.svg file:
+      """
+      <svg xmlns="http://www.w3.org/2000/svg"/>
+      """
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function () {
+        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['svg'] = 'image/svg+xml'; return $mimes; } );
+      } );
+      """
+    And a stderr-error-log.php file:
+      """
+      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {RUN_DIR}/svg.svg --title="My imported SVG attachment" --porcelain`
+    And save STDOUT as {ATTACHMENT_ID}
+    Then the wp-content/uploads/svg.svg file should exist
+    And STDERR should be empty
+
+    When I run `wp --require=stderr-error-log.php media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {ATTACHMENT_ID})
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 0 of 1 images (1 skipped).
+      """
+    And STDERR should be empty
+
+    # Behavior should be the same if --only-missing.
+    When I run `wp --require=stderr-error-log.php media regenerate --yes --only-missing`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {ATTACHMENT_ID})
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 0 of 1 images (1 skipped).
+      """
+    And STDERR should be empty
+
+  Scenario: Regenerating PDFs when thumbnails disabled should be marked as skipped and not produce PHP notices
+    Given download:
+      | path                              | url                                                |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf |
+      | {CACHE_DIR}/canola.jpg            | http://wp-cli.org/behat-data/canola.jpg            |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      // Disable PDF thumbnails.
+      add_filter( 'wp_image_editors', function ( $image_editors ) {
+          if ( false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+            unset( $image_editors[ $idx ] );
+            $image_editors = array_values( $image_editors );
+          }
+          return $image_editors;
+      } );
+      """
+    And a stderr-error-log.php file:
+      """
+      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/minimal-us-letter.pdf --title="My imported PDF attachment" --porcelain`
+    Then save STDOUT as {PDF_ATTACHMENT_ID}
+    And the wp-content/uploads/minimal-us-letter-pdf.jpg file should not exist
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported JPG attachment" --porcelain`
+    Then save STDOUT as {JPG_ATTACHMENT_ID}
+    Then the wp-content/uploads/canola-300x225.jpg file should exist
+
+    When I run `wp --require=stderr-error-log.php media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 2 images to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /2 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      """
+    And STDOUT should contain:
+      """
+      /2 Regenerated thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID})
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 2 images (1 skipped).
+      """
+    And STDERR should be empty
+
+    # Behavior should be the same if --only-missing.
+    When I run `wp --require=stderr-error-log.php media regenerate --yes --only-missing`
+    Then STDOUT should contain:
+      """
+      Found 2 images to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /2 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      """
+    And STDOUT should contain:
+      """
+      /2 No thumbnail regeneration needed for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID})
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 2 images (1 skipped).
+      """
+    And STDERR should be empty
+
+  @require-wp-4.7.3 @require-extension-imagick
+  Scenario: Regenerating PDFs when thumbnails enabled on import but disabled on regeneration
+    Given download:
+      | path                              | url                                                |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      // Disable PDF thumbnails.
+      add_filter( 'wp_image_editors', function ( $image_editors ) {
+          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_PDF' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+            unset( $image_editors[ $idx ] );
+            $image_editors = array_values( $image_editors );
+          }
+          return $image_editors;
+      } );
+      """
+    And a stderr-error-log.php file:
+      """
+      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    # Enable PDF thumbnails on import.
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp media import {CACHE_DIR}/minimal-us-letter.pdf --title="My imported PDF attachment" --porcelain`
+    Then save STDOUT as {PDF_ATTACHMENT_ID}
+    And the wp-content/uploads/minimal-us-letter-pdf.jpg file should exist
+    And the wp-content/uploads/minimal-us-letter-pdf-116x150.jpg file should exist
+
+    # Disable PDF thumbnails on regeneration.
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=0 wp --require=stderr-error-log.php media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /1 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 0 of 1 images (1 skipped).
+      """
+    And STDERR should be empty
+
+    # Re-enable PDF thumbnails on regeneration.
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp --require=stderr-error-log.php media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /1 Regenerated thumbnails for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And STDERR should be empty
+
+  @require-wp-4.7.3 @require-extension-imagick
+  Scenario: Regenerating PDFs when thumbnails disabled on import but enabled on regeneration
+    Given download:
+      | path                              | url                                                |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      // Disable PDF thumbnails.
+      add_filter( 'wp_image_editors', function ( $image_editors ) {
+          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_PDF' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+            unset( $image_editors[ $idx ] );
+            $image_editors = array_values( $image_editors );
+          }
+          return $image_editors;
+      } );
+      """
+    And a stderr-error-log.php file:
+      """
+      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    # Disable PDF thumbnails on import.
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=0 wp media import {CACHE_DIR}/minimal-us-letter.pdf --title="My imported PDF attachment" --porcelain`
+    Then save STDOUT as {PDF_ATTACHMENT_ID}
+    And the wp-content/uploads/minimal-us-letter-pdf.jpg file should not exist
+    And the wp-content/uploads/minimal-us-letter-pdf-116x150.jpg file should not exist
+
+    # Enable PDF thumbnails on regeneration.
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp --require=stderr-error-log.php media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /1 Regenerated thumbnails for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And STDERR should be empty
+
+    # Re-disable PDF thumbnails on regeneration.
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=0 wp --require=stderr-error-log.php media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /1 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 0 of 1 images (1 skipped).
+      """
+    And STDERR should be empty
+
+  Scenario: Regenerating audio with thumbnail
+    Given download:
+      | path                                     | url                                                              |
+      | {CACHE_DIR}/audio-with-400x300-cover.mp3 | http://gitlostbonger.com/behat-data/audio-with-400x300-cover.mp3 |
+      | {CACHE_DIR}/audio-with-no-cover.mp3      | http://gitlostbonger.com/behat-data/audio-with-no-cover.mp3      |
+    And a stderr-error-log.php file:
+      """
+      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/audio-with-400x300-cover.mp3 --title="My imported audio with cover attachment" --porcelain`
+    Then save STDOUT as {COVER_ATTACHMENT_ID}
+    And the wp-content/uploads/audio-with-400x300-cover.mp3 file should exist
+    And the wp-content/uploads/audio-with-400x300-cover-mp3-image.png file should exist
+    And the wp-content/uploads/audio-with-400x300-cover-mp3-image-150x150.png file should exist
+    And the wp-content/uploads/audio-with-400x300-cover-mp3-image-300x225.png file should exist
+    When I run `wp post meta get {COVER_ATTACHMENT_ID} _thumbnail_id`
+    Then save STDOUT as {COVER_SUB_ATTACHMENT_ID}
+
+    When I run `wp media import {CACHE_DIR}/audio-with-no-cover.mp3 --title="My imported audio with no cover attachment" --porcelain`
+    Then save STDOUT as {NO_COVER_ATTACHMENT_ID}
+    And the wp-content/uploads/audio-with-no-cover.mp3 file should exist
+    And the wp-content/uploads/audio-with-no-cover-mp3-image.png file should not exist
+    And the wp-content/uploads/audio-with-no-cover-mp3-image-150x150.png file should not exist
+    And the wp-content/uploads/audio-with-no-cover-mp3-image-300x225.png file should not exist
+    When I try `wp post meta get {NO_COVER_ATTACHMENT_ID} _thumbnail_id`
+    Then the return code should be 1
+
+    When I run `wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Regenerated thumbnails for cover attachment (ID {COVER_SUB_ATTACHMENT_ID}).
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And STDERR should be empty
+
+  Scenario: Regenerating video with thumbnail
+    Given download:
+      | path                                        | url                                                                 |
+      | {CACHE_DIR}/video-400x300-with-cover.mp4    | http://gitlostbonger.com/behat-data/video-400x300-with-cover.mp4    |
+      | {CACHE_DIR}/video-400x300-with-no-cover.mp4 | http://gitlostbonger.com/behat-data/video-400x300-with-no-cover.mp4 |
+    And a stderr-error-log.php file:
+      """
+      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/video-400x300-with-cover.mp4 --title="My imported video with cover attachment" --porcelain`
+    Then save STDOUT as {COVER_ATTACHMENT_ID}
+    And the wp-content/uploads/video-400x300-with-cover.mp4 file should exist
+    And the wp-content/uploads/video-400x300-with-cover-mp4-image.png file should exist
+    And the wp-content/uploads/video-400x300-with-cover-mp4-image-150x150.png file should exist
+    And the wp-content/uploads/video-400x300-with-cover-mp4-image-300x225.png file should exist
+    When I run `wp post meta get {COVER_ATTACHMENT_ID} _thumbnail_id`
+    Then save STDOUT as {COVER_SUB_ATTACHMENT_ID}
+
+    When I run `wp media import {CACHE_DIR}/video-400x300-with-no-cover.mp4 --title="My imported video with no cover attachment" --porcelain`
+    Then save STDOUT as {NO_COVER_ATTACHMENT_ID}
+    And the wp-content/uploads/video-400x300-with-no-cover.mp4 file should exist
+    And the wp-content/uploads/video-400x300-with-no-cover-mp4-image.png file should not exist
+    And the wp-content/uploads/video-400x300-with-no-cover-mp4-image-150x150.png file should not exist
+    And the wp-content/uploads/video-400x300-with-no-cover-mp4-image-300x225.png file should not exist
+    When I try `wp post meta get {NO_COVER_ATTACHMENT_ID} _thumbnail_id`
+    Then the return code should be 1
+
+    When I run `wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Regenerated thumbnails for cover attachment (ID {COVER_SUB_ATTACHMENT_ID}).
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And STDERR should be empty
+
+  @require-wp-4.7.3 @require-extension-imagick
+  Scenario: Regenerating melange: needing regeneration, not needing regeneration and skipped
+    Given download:
+      | path                                     | url                                                              |
+      | {CACHE_DIR}/canola.jpg                   | http://wp-cli.org/behat-data/canola.jpg                          |
+      | {CACHE_DIR}/minimal-us-letter.pdf        | http://wp-cli.org/behat-data/minimal-us-letter.pdf               |
+      | {CACHE_DIR}/video-400x300-with-cover.mp4 | http://gitlostbonger.com/behat-data/video-400x300-with-cover.mp4 |
+    And an svg.svg file:
+      """
+      <svg xmlns="http://www.w3.org/2000/svg"/>
+      """
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function () {
+        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['svg'] = 'image/svg+xml'; return $mimes; } );
+      } );
+      // Disable PDF thumbnails.
+      add_filter( 'wp_image_editors', function ( $image_editors ) {
+          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_PDF' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+            unset( $image_editors[ $idx ] );
+            $image_editors = array_values( $image_editors );
+          }
+          return $image_editors;
+      } );
+      """
+    And a stderr-error-log.php file:
+      """
+      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported JPG attachment" --porcelain`
+    Then save STDOUT as {JPG_ATTACHMENT_ID}
+    And the wp-content/uploads/canola-150x150.jpg file should exist
+
+    When I run `wp media import {RUN_DIR}/svg.svg --title="My imported SVG attachment" --porcelain`
+    And save STDOUT as {SVG_ATTACHMENT_ID}
+    Then the wp-content/uploads/svg.svg file should exist
+
+    # Disable PDF thumbnails on import.
+    When I run `wp media import {CACHE_DIR}/minimal-us-letter.pdf --title="My imported PDF attachment" --porcelain`
+    Then save STDOUT as {PDF_ATTACHMENT_ID}
+    And the wp-content/uploads/minimal-us-letter-pdf-116x150.jpg file should not exist
+
+    When I run `wp media import {CACHE_DIR}/video-400x300-with-cover.mp4 --title="My imported video attachment" --porcelain`
+    Then save STDOUT as {VIDEO_ATTACHMENT_ID}
+    And the wp-content/uploads/video-400x300-with-cover-mp4-image-150x150.png file should exist
+    When I run `wp post meta get {VIDEO_ATTACHMENT_ID} _thumbnail_id`
+    Then save STDOUT as {VIDEO_SUB_ATTACHMENT_ID}
+
+    # Regenerate with PDF thumbnails enabled.
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 4 images to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /4 Regenerated thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Regenerated thumbnails for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Regenerated thumbnails for cover attachment (ID {VIDEO_SUB_ATTACHMENT_ID}).
+      """
+    And STDOUT should not contain:
+      """
+      Warning
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 3 of 4 images (1 skipped).
+      """
+    And STDERR should be empty
+
+    # Regenerate with PDF thumbnails disabled after being enabled.
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=0 wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 4 images to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /4 Regenerated thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      """
+    And STDOUT should not contain:
+      """
+      /4 Regenerated thumbnails for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Regenerated thumbnails for cover attachment (ID {VIDEO_SUB_ATTACHMENT_ID}).
+      """
+    And STDERR should not contain:
+      """
+      Warning:
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 2 of 4 images (2 skipped).
+      """
+    And STDERR should be empty
+
+    # Make canola.jpg fail.
+    Given a wp-content/uploads/canola.jpg file:
+      """
+      """
+    When I try `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 4 images to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Regenerated thumbnails for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Regenerated thumbnails for cover attachment (ID {VIDEO_SUB_ATTACHMENT_ID}).
+      """
+    And STDERR should contain:
+      """
+      /4 Couldn't regenerate thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID}).
+      """
+    And STDERR should contain:
+      """
+      Warning:
+      """
+    And STDERR should contain:
+      """
+      Error: Only regenerated 2 of 4 images (1 failed, 1 skipped).
+      """
+    And the return code should be 1

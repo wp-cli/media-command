@@ -132,21 +132,16 @@ class Media_Command extends WP_CLI_Command {
 			$image_size_filters = $this->add_image_size_filters( $image_size );
 		}
 
-		$errored = false;
-		$successes = $errors = 0;
+		$successes = $errors = $skips = 0;
 		foreach ( $images->posts as $number => $id ) {
-			if ( $this->process_regeneration( $id, $skip_delete, $only_missing, $image_size, ( $number + 1 ) . '/' . $count ) ) {
-				$successes++;
-			} else {
-				$errors++;
-			}
+			$this->process_regeneration( $id, $skip_delete, $only_missing, $image_size, ( $number + 1 ) . '/' . $count, $successes, $errors, $skips );
 		}
 
 		if ( $image_size ) {
 			$this->remove_image_size_filters( $image_size_filters );
 		}
 
-		Utils\report_batch_operation_results( 'image', 'regenerate', count( $images->posts ), $successes, $errors );
+		self::report_batch_operation_results( 'image', 'regenerate', $count, $successes, $errors, $skips );
 	}
 
 	/**
@@ -477,15 +472,28 @@ class Media_Command extends WP_CLI_Command {
 		return $filename;
 	}
 
-	private function process_regeneration( $id, $skip_delete, $only_missing, $image_size, $progress ) {
-		$fullsizepath = get_attached_file( $id );
+	private function process_regeneration( $id, $skip_delete, $only_missing, $image_size, $progress, &$successes, &$errors, &$skips ) {
 
-		$att_desc = sprintf( '"%1$s" (ID %2$d)', get_the_title( $id ), $id );
+		$title = get_the_title( $id );
+		if ( '' === $title ) {
+			// If audio or video cover art then the id is the sub attachment id, which has no title.
+			if ( metadata_exists( 'post', $id, '_cover_hash' ) ) {
+				// Unfortunately the only way to get the attachment title would be to do a non-indexed query against the meta value of `_thumbnail_id`. So don't.
+				$att_desc = sprintf( 'cover attachment (ID %d)', $id );
+			} else {
+				$att_desc = sprintf( '"(no title)" (ID %d)', $id );
+			}
+		} else {
+			$att_desc = sprintf( '"%1$s" (ID %2$d)', $title, $id );
+		}
 		$thumbnail_desc = $image_size ? sprintf( '"%s" thumbnail', $image_size ) : 'thumbnail';
+
+		$fullsizepath = get_attached_file( $id );
 
 		if ( false === $fullsizepath || !file_exists( $fullsizepath ) ) {
 			WP_CLI::warning( "Can't find $att_desc." );
-			return false;
+			$errors++;
+			return;
 		}
 
 		if ( ! $skip_delete ) {
@@ -494,40 +502,54 @@ class Media_Command extends WP_CLI_Command {
 
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
-		if ( ! $only_missing || $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size ) ) {
+		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_it );
 
-			$metadata = wp_generate_attachment_metadata( $id, $fullsizepath );
-			if ( is_wp_error( $metadata ) ) {
-				WP_CLI::warning( $metadata->get_error_message() );
-				return false;
-			}
-
-			// Note it's possible for no metadata to generated for PDFs if restricted to a specific image size.
-			if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
-				WP_CLI::warning( "$progress Couldn't regenerate thumbnails for $att_desc." );
-				return false;
-			}
-
-			if ( $image_size ) {
-				if ( $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_size ) ) {
-					WP_CLI::log( "$progress Regenerated $thumbnail_desc for $att_desc." );
-				} else {
-					WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
-				}
-			} else {
-				wp_update_attachment_metadata( $id, $metadata );
-
-				WP_CLI::log( "$progress Regenerated thumbnails for $att_desc." );
-			}
-			return true;
-		} else {
-			WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
-			return true;
+		if ( $skip_it ) {
+			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc." );
+			$skips++;
+			return;
 		}
+
+		if ( $only_missing && ! $needs_regeneration ) {
+			WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
+			$successes++;
+			return;
+		}
+
+		$metadata = wp_generate_attachment_metadata( $id, $fullsizepath );
+		if ( is_wp_error( $metadata ) ) {
+			WP_CLI::warning( $metadata->get_error_message() );
+			$errors++;
+			return;
+		}
+
+		// Note it's possible for no metadata to generated for PDFs if restricted to a specific image size.
+		if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
+			WP_CLI::warning( "$progress Couldn't regenerate thumbnails for $att_desc." );
+			$errors++;
+			return;
+		}
+
+		if ( $image_size ) {
+			if ( $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_size ) ) {
+				WP_CLI::log( "$progress Regenerated $thumbnail_desc for $att_desc." );
+			} else {
+				WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
+			}
+		} else {
+			wp_update_attachment_metadata( $id, $metadata );
+
+			WP_CLI::log( "$progress Regenerated thumbnails for $att_desc." );
+		}
+		$successes++;
 	}
 
 	private function remove_old_images( $att_id, $fullsizepath, $image_size ) {
 		$metadata = wp_get_attachment_metadata( $att_id );
+
+		if ( ! is_array( $metadata ) ) {
+			return;
+		}
 
 		if ( empty( $metadata['sizes'] ) ) {
 			return;
@@ -553,14 +575,49 @@ class Media_Command extends WP_CLI_Command {
 		}
 	}
 
-	private function needs_regeneration( $att_id, $fullsizepath, $is_pdf, $image_size ) {
+	private function needs_regeneration( $att_id, $fullsizepath, $is_pdf, $image_size, &$skip_it ) {
+
+		// Assume not skipping.
+		$skip_it = false;
 
 		$metadata = wp_get_attachment_metadata($att_id);
+
+		if ( ! is_array( $metadata ) ) {
+			if ( $is_pdf ) {
+				$editor = wp_get_image_editor( $fullsizepath );
+				$no_pdf_editor = is_wp_error( $editor );
+				unset( $editor );
+				if ( $no_pdf_editor ) {
+					// No PDF thumbnail generation available, so skip.
+					$skip_it = true;
+					return false;
+				}
+				// Assume it may be possible to regenerate the PDF thumbnails and allow processing to continue and possibly fail.
+				return true;
+			}
+			// Assume it's not a standard image (eg an SVG) and skip.
+			$skip_it = true;
+			return false;
+		}
 
 		// Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
 
 		// Check whether there's new sizes or they've changed.
 		$image_sizes = $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata );
+		if ( is_wp_error( $image_sizes ) ) {
+			if ( $is_pdf && 'image_no_editor' === $image_sizes->get_error_code() ) {
+				// No PDF thumbnail generation available, so skip.
+				$skip_it = true;
+				return false;
+			}
+			// Warn but assume it may be possible to regenerate and allow processing to continue and possibly fail.
+			WP_CLI::warning( $image_sizes->get_error_message() );
+			return true;
+		}
+		if ( ! $image_sizes ) {
+			// This shouldn't really happen so assume that it may be possible to regenerate and allow processing to continue and possibly fail.
+			return true;
+		}
 
 		if ( $image_size ) {
 			if ( empty( $image_sizes[ $image_size ] ) ) {
@@ -614,13 +671,11 @@ class Media_Command extends WP_CLI_Command {
 		// Need to get width, height of attachment for image_resize_dimensions().
 		$editor = wp_get_image_editor( $fullsizepath );
 		if ( is_wp_error( $editor ) ) {
-			WP_CLI::warning( $editor->get_error_message() );
-			return array();
+			return $editor;
 		}
 		if ( is_wp_error( $result = $editor->load() ) ) {
-			WP_CLI::warning( $result->get_error_message() );
 			unset( $editor );
-			return array();
+			return $result;
 		}
 		list( $width, $height ) = array_values( $editor->get_size() );
 		unset( $editor );
@@ -736,6 +791,10 @@ class Media_Command extends WP_CLI_Command {
 	private function update_attachment_metadata_for_image_size( $id, $new_metadata, $image_size ) {
 		$metadata = wp_get_attachment_metadata( $id );
 
+		if ( ! is_array( $metadata ) ) {
+			return false;
+		}
+
 		// If have metadata for image_size.
 		if ( ! empty( $new_metadata['sizes'][ $image_size ] ) ) {
 			$metadata['sizes'][ $image_size ] = $new_metadata['sizes'][ $image_size ];
@@ -751,4 +810,40 @@ class Media_Command extends WP_CLI_Command {
 		}
 		return false;
 	}
+
+	/**
+	 * Report the results of the same operation against multiple resources.
+	 *
+	 * @access public
+	 * @category Input
+	 *
+	 * @param string  $noun      Resource being affected (e.g. plugin)
+	 * @param string  $verb      Type of action happening to the noun (e.g. activate)
+	 * @param integer $total     Total number of resource being affected.
+	 * @param integer $successes Number of successful operations.
+	 * @param integer $failures  Number of failures.
+	 * @param integer $skips     Number of skipped operations.
+	 */
+	private function report_batch_operation_results( $noun, $verb, $total, $successes, $failures, $skips = 0 ) {
+		$plural_noun = $noun . 's';
+		$past_tense_verb = Utils\past_tense_verb( $verb );
+		$past_tense_verb_upper = ucfirst( $past_tense_verb );
+		if ( $failures ) {
+			$failed_skipped_message =  " ({$failures} failed" . ( $skips ? ", {$skips} skipped" : '' ) . ')';
+			if ( $successes ) {
+				WP_CLI::error( "Only {$past_tense_verb} {$successes} of {$total} {$plural_noun}{$failed_skipped_message}." );
+			} else {
+				WP_CLI::error( "No {$plural_noun} {$past_tense_verb}{$failed_skipped_message}." );
+			}
+		} else {
+			$skipped_message = $skips ? " ({$skips} skipped)" : '';
+			if ( $successes || $skips ) {
+				WP_CLI::success( "{$past_tense_verb_upper} {$successes} of {$total} {$plural_noun}{$skipped_message}." );
+			} else {
+				$message = $total > 1 ? ucfirst( $plural_noun ) : ucfirst( $noun );
+				WP_CLI::success( "{$message} already {$past_tense_verb}." );
+			}
+		}
+	}
+
 }
