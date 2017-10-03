@@ -15,7 +15,6 @@ Feature: Regenerate WordPress attachments
       | path                             | url                                               |
       | {CACHE_DIR}/large-image.jpg      | http://wp-cli.org/behat-data/large-image.jpg      |
       | {CACHE_DIR}/canola.jpg           | http://wp-cli.org/behat-data/canola.jpg           |
-      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
@@ -32,6 +31,40 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/canola-300x225.jpg file should exist
     And the wp-content/uploads/canola-1024x768.jpg file should not exist
 
+    When I run `wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 2 images to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /2 Regenerated thumbnails for "My imported large attachment" (ID {LARGE_ATTACHMENT_ID})
+      """
+    And STDOUT should contain:
+      """
+      /2 Regenerated thumbnails for "My imported medium attachment" (ID {MEDIUM_ATTACHMENT_ID})
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 2 of 2 images.
+      """
+    And the wp-content/uploads/large-image.jpg file should exist
+    And the wp-content/uploads/large-image-150x150.jpg file should exist
+    And the wp-content/uploads/large-image-300x225.jpg file should exist
+    And the wp-content/uploads/large-image-1024x768.jpg file should exist
+    And the wp-content/uploads/canola.jpg file should exist
+    And the wp-content/uploads/canola-150x150.jpg file should exist
+    And the wp-content/uploads/canola-300x225.jpg file should exist
+    And the wp-content/uploads/canola-1024x768.jpg file should not exist
+
+  # WP < 4.2 produced thumbnails duplicating original, https://core.trac.wordpress.org/ticket/31296
+  @require-wp-4.2
+  Scenario: Regenerate all images default behavior
+    Given download:
+      | path                             | url                                               |
+      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
     When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported small attachment" --porcelain`
     Then save STDOUT as {SMALL_ATTACHMENT_ID}
     And the wp-content/uploads/white-150-square.jpg file should exist
@@ -42,32 +75,16 @@ Feature: Regenerate WordPress attachments
     When I run `wp media regenerate --yes`
     Then STDOUT should contain:
       """
-      Found 3 images to regenerate.
+      Found 1 image to regenerate.
       """
     And STDOUT should contain:
       """
-      /3 Regenerated thumbnails for "My imported large attachment" (ID {LARGE_ATTACHMENT_ID})
+      1/1 Regenerated thumbnails for "My imported small attachment" (ID {SMALL_ATTACHMENT_ID})
       """
     And STDOUT should contain:
       """
-      /3 Regenerated thumbnails for "My imported medium attachment" (ID {MEDIUM_ATTACHMENT_ID})
+      Success: Regenerated 1 of 1 images.
       """
-    And STDOUT should contain:
-      """
-      /3 Regenerated thumbnails for "My imported small attachment" (ID {SMALL_ATTACHMENT_ID})
-      """
-    And STDOUT should contain:
-      """
-      Success: Regenerated 3 of 3 images.
-      """
-    And the wp-content/uploads/large-image.jpg file should exist
-    And the wp-content/uploads/large-image-150x150.jpg file should exist
-    And the wp-content/uploads/large-image-300x225.jpg file should exist
-    And the wp-content/uploads/large-image-1024x768.jpg file should exist
-    And the wp-content/uploads/canola.jpg file should exist
-    And the wp-content/uploads/canola-150x150.jpg file should exist
-    And the wp-content/uploads/canola-300x225.jpg file should exist
-    And the wp-content/uploads/canola-1024x768.jpg file should not exist
     And the wp-content/uploads/white-150-square.jpg file should exist
     And the wp-content/uploads/white-150-square-150x150.jpg file should not exist
     And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
@@ -499,19 +516,13 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/minimal-us-letter-pdf-1100x1100.jpg file should not exist
     And the wp-content/uploads/minimal-us-letter-pdf-1000x1000.jpg file should exist
 
+  # WP < 4.2 produced thumbnails duplicating original, https://core.trac.wordpress.org/ticket/31296
+  @require-wp-4.2
   Scenario: Only regenerate images that are missing if it has thumbnails
     Given download:
       | path                             | url                                               |
       | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
-    And a wp-content/mu-plugins/media-settings.php file:
-      """
-      <?php
-      // Use GD as Imagick editor for WP < 4.2 would produce thumbnails (changeset 31576).
-      add_filter( 'wp_image_editors', function ( $image_editors ) {
-          return array( 'WP_Image_Editor_GD' );
-      } );
-      """
 
     When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported attachment" --porcelain`
     Then the wp-content/uploads/white-150-square-150x150.jpg file should not exist
@@ -858,7 +869,10 @@ Feature: Regenerate WordPress attachments
       """
     And a stderr-error-log.php file:
       """
-      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      <?php
+      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
+        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      }
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -906,6 +920,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should be empty
 
+  @require-wp-4.7.3
   Scenario: Regenerating PDFs when thumbnails disabled should be marked as skipped and not produce PHP notices
     Given download:
       | path                              | url                                                |
@@ -925,7 +940,10 @@ Feature: Regenerate WordPress attachments
       """
     And a stderr-error-log.php file:
       """
-      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      <?php
+      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
+        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      }
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1003,7 +1021,10 @@ Feature: Regenerate WordPress attachments
       """
     And a stderr-error-log.php file:
       """
-      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      <?php
+      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
+        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      }
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1072,7 +1093,10 @@ Feature: Regenerate WordPress attachments
       """
     And a stderr-error-log.php file:
       """
-      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      <?php
+      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
+        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      }
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1122,14 +1146,22 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should be empty
 
+  # Audio/video `_cover_hash` meta, used to determine if sub attachment, added in WP 3.9
+  @require-wp-3.9
   Scenario: Regenerating audio with thumbnail
     Given download:
       | path                                     | url                                                              |
       | {CACHE_DIR}/audio-with-400x300-cover.mp3 | http://gitlostbonger.com/behat-data/audio-with-400x300-cover.mp3 |
       | {CACHE_DIR}/audio-with-no-cover.mp3      | http://gitlostbonger.com/behat-data/audio-with-no-cover.mp3      |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php add_post_type_support( 'attachment:audio', 'thumbnail' );
+      """
     And a stderr-error-log.php file:
       """
-      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
+        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      }
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1170,6 +1202,8 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should be empty
 
+  # Video cover support requires ID3 library 1.9.9, updated WP 4.3 https://core.trac.wordpress.org/ticket/32806
+  @require-wp-4.3
   Scenario: Regenerating video with thumbnail
     Given download:
       | path                                        | url                                                                 |
@@ -1177,7 +1211,10 @@ Feature: Regenerate WordPress attachments
       | {CACHE_DIR}/video-400x300-with-no-cover.mp4 | http://gitlostbonger.com/behat-data/video-400x300-with-no-cover.mp4 |
     And a stderr-error-log.php file:
       """
-      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      <?php
+      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
+        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      }
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1246,7 +1283,10 @@ Feature: Regenerate WordPress attachments
       """
     And a stderr-error-log.php file:
       """
-      <?php define( 'WP_DEBUG', true ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      <?php
+      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
+        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
+      }
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
