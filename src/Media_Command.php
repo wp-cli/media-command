@@ -614,10 +614,6 @@ class Media_Command extends WP_CLI_Command {
 			WP_CLI::warning( $image_sizes->get_error_message() );
 			return true;
 		}
-		if ( ! $image_sizes ) {
-			// This shouldn't really happen so assume that it may be possible to regenerate and allow processing to continue and possibly fail.
-			return true;
-		}
 
 		if ( $image_size ) {
 			if ( empty( $image_sizes[ $image_size ] ) ) {
