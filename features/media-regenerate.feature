@@ -1256,7 +1256,7 @@ Feature: Regenerate WordPress attachments
     And STDERR should be empty
 
   @require-wp-4.7.3 @require-extension-imagick
-  Scenario: Regenerating melange: needing regeneration, not needing regeneration and skipped
+  Scenario: Regenerating melange with batch results: regenerated (and not needing regeneration), skipped, failed
     Given download:
       | path                                     | url                                                              |
       | {CACHE_DIR}/canola.jpg                   | http://wp-cli.org/behat-data/canola.jpg                          |
@@ -1355,17 +1355,43 @@ Feature: Regenerate WordPress attachments
       """
       /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
       """
-    And STDOUT should not contain:
+    And STDOUT should contain:
       """
-      /4 Regenerated thumbnails for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
+      /4 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
       """
     And STDOUT should contain:
       """
       /4 Regenerated thumbnails for cover attachment (ID {VIDEO_SUB_ATTACHMENT_ID}).
       """
-    And STDERR should not contain:
+    And STDOUT should contain:
       """
-      Warning:
+      Success: Regenerated 2 of 4 images (2 skipped).
+      """
+    And STDERR should be empty
+
+    # Regenerate canola only.
+    Given I run `rm wp-content/uploads/canola-150x150.jpg`
+
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=0 wp media regenerate --yes --only-missing`
+    Then STDOUT should contain:
+      """
+      Found 4 images to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /4 Regenerated thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 No thumbnail regeneration needed for cover attachment (ID {VIDEO_SUB_ATTACHMENT_ID}).
       """
     And STDOUT should contain:
       """
@@ -1377,6 +1403,7 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/uploads/canola.jpg file:
       """
       """
+
     When I try `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp media regenerate --yes`
     Then STDOUT should contain:
       """
@@ -1405,5 +1432,46 @@ Feature: Regenerate WordPress attachments
     And STDERR should contain:
       """
       Error: Only regenerated 2 of 4 images (1 failed, 1 skipped).
+      """
+    And the return code should be 1
+
+    # Make minimal pdf fail.
+    Given a wp-content/uploads/minimal-us-letter.pdf file:
+      """
+      %PDF-1.1
+      %¥±ë
+
+      %%EOF
+      """
+    And I run `rm wp-content/uploads/minimal-us-letter-pdf-116x150.jpg`
+
+    When I try `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp media regenerate --yes --only-missing`
+    Then STDOUT should contain:
+      """
+      Found 4 images to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 No thumbnail regeneration needed for cover attachment (ID {VIDEO_SUB_ATTACHMENT_ID}).
+      """
+    And STDERR should contain:
+      """
+      /4 Couldn't regenerate thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID}).
+      """
+    And STDERR should contain:
+      """
+      /4 Couldn't regenerate thumbnails for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
+      """
+    And STDERR should contain:
+      """
+      Warning:
+      """
+    And STDERR should contain:
+      """
+      Error: Only regenerated 1 of 4 images (2 failed, 1 skipped).
       """
     And the return code should be 1
