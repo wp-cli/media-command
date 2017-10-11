@@ -1150,9 +1150,9 @@ Feature: Regenerate WordPress attachments
   @require-wp-3.9
   Scenario: Regenerating audio with thumbnail
     Given download:
-      | path                                     | url                                                              |
-      | {CACHE_DIR}/audio-with-400x300-cover.mp3 | http://gitlostbonger.com/behat-data/audio-with-400x300-cover.mp3 |
-      | {CACHE_DIR}/audio-with-no-cover.mp3      | http://gitlostbonger.com/behat-data/audio-with-no-cover.mp3      |
+      | path                                     | url                                                       |
+      | {CACHE_DIR}/audio-with-400x300-cover.mp3 | http://wp-cli.org/behat-data/audio-with-400x300-cover.mp3 |
+      | {CACHE_DIR}/audio-with-no-cover.mp3      | http://wp-cli.org/behat-data/audio-with-no-cover.mp3      |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php add_post_type_support( 'attachment:audio', 'thumbnail' );
@@ -1206,9 +1206,9 @@ Feature: Regenerate WordPress attachments
   @require-wp-4.3
   Scenario: Regenerating video with thumbnail
     Given download:
-      | path                                        | url                                                                 |
-      | {CACHE_DIR}/video-400x300-with-cover.mp4    | http://gitlostbonger.com/behat-data/video-400x300-with-cover.mp4    |
-      | {CACHE_DIR}/video-400x300-with-no-cover.mp4 | http://gitlostbonger.com/behat-data/video-400x300-with-no-cover.mp4 |
+      | path                                        | url                                                          |
+      | {CACHE_DIR}/video-400x300-with-cover.mp4    | http://wp-cli.org/behat-data/video-400x300-with-cover.mp4    |
+      | {CACHE_DIR}/video-400x300-with-no-cover.mp4 | http://wp-cli.org/behat-data/video-400x300-with-no-cover.mp4 |
     And a stderr-error-log.php file:
       """
       <?php
@@ -1258,10 +1258,10 @@ Feature: Regenerate WordPress attachments
   @require-wp-4.7.3 @require-extension-imagick
   Scenario: Regenerating melange with batch results: regenerated (and not needing regeneration), skipped, failed
     Given download:
-      | path                                     | url                                                              |
-      | {CACHE_DIR}/canola.jpg                   | http://wp-cli.org/behat-data/canola.jpg                          |
-      | {CACHE_DIR}/minimal-us-letter.pdf        | http://wp-cli.org/behat-data/minimal-us-letter.pdf               |
-      | {CACHE_DIR}/video-400x300-with-cover.mp4 | http://gitlostbonger.com/behat-data/video-400x300-with-cover.mp4 |
+      | path                                     | url                                                       |
+      | {CACHE_DIR}/canola.jpg                   | http://wp-cli.org/behat-data/canola.jpg                   |
+      | {CACHE_DIR}/minimal-us-letter.pdf        | http://wp-cli.org/behat-data/minimal-us-letter.pdf        |
+      | {CACHE_DIR}/video-400x300-with-cover.mp4 | http://wp-cli.org/behat-data/video-400x300-with-cover.mp4 |
     And an svg.svg file:
       """
       <svg xmlns="http://www.w3.org/2000/svg"/>

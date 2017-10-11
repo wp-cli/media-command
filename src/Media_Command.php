@@ -141,7 +141,7 @@ class Media_Command extends WP_CLI_Command {
 			$this->remove_image_size_filters( $image_size_filters );
 		}
 
-		self::report_batch_operation_results( 'image', 'regenerate', $count, $successes, $errors, $skips );
+		Utils\report_batch_operation_results( 'image', 'regenerate', $count, $successes, $errors, $skips );
 	}
 
 	/**
@@ -523,7 +523,7 @@ class Media_Command extends WP_CLI_Command {
 			return;
 		}
 
-		// Note it's possible for no metadata to generated for PDFs if restricted to a specific image size.
+		// Note it's possible for no metadata to be generated for PDFs if restricted to a specific image size.
 		if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
 			WP_CLI::warning( "$progress Couldn't regenerate thumbnails for $att_desc." );
 			$errors++;
@@ -805,41 +805,6 @@ class Media_Command extends WP_CLI_Command {
 			// Treat removing unused metadata as no change.
 		}
 		return false;
-	}
-
-	/**
-	 * Report the results of the same operation against multiple resources.
-	 *
-	 * @access public
-	 * @category Input
-	 *
-	 * @param string  $noun      Resource being affected (e.g. plugin)
-	 * @param string  $verb      Type of action happening to the noun (e.g. activate)
-	 * @param integer $total     Total number of resource being affected.
-	 * @param integer $successes Number of successful operations.
-	 * @param integer $failures  Number of failures.
-	 * @param integer $skips     Number of skipped operations.
-	 */
-	private function report_batch_operation_results( $noun, $verb, $total, $successes, $failures, $skips = 0 ) {
-		$plural_noun = $noun . 's';
-		$past_tense_verb = Utils\past_tense_verb( $verb );
-		$past_tense_verb_upper = ucfirst( $past_tense_verb );
-		if ( $failures ) {
-			$failed_skipped_message =  " ({$failures} failed" . ( $skips ? ", {$skips} skipped" : '' ) . ')';
-			if ( $successes ) {
-				WP_CLI::error( "Only {$past_tense_verb} {$successes} of {$total} {$plural_noun}{$failed_skipped_message}." );
-			} else {
-				WP_CLI::error( "No {$plural_noun} {$past_tense_verb}{$failed_skipped_message}." );
-			}
-		} else {
-			$skipped_message = $skips ? " ({$skips} skipped)" : '';
-			if ( $successes || $skips ) {
-				WP_CLI::success( "{$past_tense_verb_upper} {$successes} of {$total} {$plural_noun}{$skipped_message}." );
-			} else {
-				$message = $total > 1 ? ucfirst( $plural_noun ) : ucfirst( $noun );
-				WP_CLI::success( "{$message} already {$past_tense_verb}." );
-			}
-		}
 	}
 
 }
