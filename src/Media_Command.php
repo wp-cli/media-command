@@ -387,22 +387,21 @@ class Media_Command extends WP_CLI_Command {
 	 * * width
 	 * * height
 	 * * crop
-	 * * hard crop
 	 *
 	 * ## EXAMPLES
 	 *
 	 *     # List all registered image sizes
 	 *     $ wp media image-size
-	 *     +---------------------------+-------+--------+-------+------------+
-	 *     | name                      | width | height | crop  | hard crop  |
-	 *     +---------------------------+-------+--------+-------+------------+
-	 *     | full                      |       |        | false | false      |
-	 *     | twentyfourteen-full-width | 1038  | 576    | true  | true       |
-	 *     | large                     | 1024  | 1024   | true  | false      |
-	 *     | medium_large              | 768   | 0      | true  | false      |
-	 *     | medium                    | 300   | 300    | true  | false      |
-	 *     | thumbnail                 | 150   | 150    | true  | true       |
-	 *     +---------------------------+-------+--------+-------+------------+
+	 *     +---------------------------+-------+--------+-------+
+	 *     | name                      | width | height | crop  |
+	 *     +---------------------------+-------+--------+-------+
+	 *     | full                      |       |        | N/A   |
+	 *     | twentyfourteen-full-width | 1038  | 576    | hard  |
+	 *     | large                     | 1024  | 1024   | soft  |
+	 *     | medium_large              | 768   | 0      | soft  |
+	 *     | medium                    | 300   | 300    | soft  |
+	 *     | thumbnail                 | 150   | 150    | hard  |
+	 *     +---------------------------+-------+--------+-------+
 	 *
 	 * @subcommand image-size
 	 */
@@ -410,7 +409,7 @@ class Media_Command extends WP_CLI_Command {
 		global $_wp_additional_image_sizes;
 
 		$assoc_args = array_merge( array(
-			'fields'      => 'name,width,height,crop,hard crop'
+			'fields'      => 'name,width,height,crop'
 		), $assoc_args );
 
 		$sizes = array(
@@ -418,29 +417,25 @@ class Media_Command extends WP_CLI_Command {
 				'name'      => 'large',
 				'width'     => intval( get_option( 'large_size_w' ) ),
 				'height'    => intval( get_option( 'large_size_h' ) ),
-				'crop'      => 'true',
-				'hard crop' => false !== get_option( 'large_crop' ) ? 'true' : 'false',
+				'crop'      => false !== get_option( 'large_crop' ) ? 'hard' : 'soft',
 			),
 			array(
 				'name'      => 'medium_large',
 				'width'     => intval( get_option( 'medium_large_size_w' ) ),
 				'height'    => intval( get_option( 'medium_large_size_h' ) ),
-				'crop'      => 'true',
-				'hard crop' => false !== get_option( 'medium_large_crop' ) ? 'true' : 'false',
+				'crop'      => false !== get_option( 'medium_large_crop' ) ? 'hard' : 'soft',
 			),
 			array(
 				'name'      => 'medium',
 				'width'     => intval( get_option( 'medium_size_w' ) ),
 				'height'    => intval( get_option( 'medium_size_h' ) ),
-				'crop'      => 'true',
-				'hard crop' => false !== get_option( 'medium_crop' ) ? 'true' : 'false',
+				'crop'      => false !== get_option( 'medium_crop' ) ? 'hard' : 'soft',
 			),
 			array(
 				'name'      => 'thumbnail',
 				'width'     => intval( get_option( 'thumbnail_size_w' ) ),
 				'height'    => intval( get_option( 'thumbnail_size_h' ) ),
-				'crop'      => 'true',
-				'hard crop' => false !== get_option( 'thumbnail_crop' ) ? 'true' : 'false',
+				'crop'      => false !== get_option( 'thumbnail_crop' ) ? 'hard' : 'soft',
 			),
 		);
 		if ( is_array( $_wp_additional_image_sizes ) ) {
@@ -450,8 +445,7 @@ class Media_Command extends WP_CLI_Command {
 					'name'      => $size,
 					'width'     => $size_args['width'],
 					'height'    => $size_args['height'],
-					'crop'      => 'true',
-					'hard crop' => empty( $crop ) || is_array( $size_args['crop'] ) ? 'false' : 'true',
+					'crop'      => empty( $crop ) || is_array( $size_args['crop'] ) ? 'soft' : 'hard',
 				);
 			}
 		}
@@ -465,8 +459,7 @@ class Media_Command extends WP_CLI_Command {
 				'name'      => 'full',
 				'width'     => '',
 				'height'    => '',
-				'crop'      => 'false',
-				'hard crop' => 'false',
+				'crop'      => 'N/A',
 		) );
 		WP_CLI\Utils\format_items( $assoc_args['format'], $sizes, explode( ',', $assoc_args['fields'] ) );
 	}
