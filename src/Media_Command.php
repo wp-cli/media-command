@@ -172,6 +172,10 @@ class Media_Command extends WP_CLI_Command {
 	 * [--skip-copy]
 	 * : If set, media files (local only) are imported to the library but not moved on disk.
 	 *
+	 * [--preserve-filetime]
+	 * : Use the file modified time as the post published & modified dates.
+	 * Remote files will always use the current time.
+	 *
 	 * [--featured_image]
 	 * : If set, set the imported image as the Featured Image of the post its attached to.
 	 *
@@ -215,6 +219,9 @@ class Media_Command extends WP_CLI_Command {
 		// Assume the most generic term
 		$noun = 'item';
 
+		// Current site's timezone offset.
+		$gmt_offset = get_option( 'gmt_offset' );
+
 		// Use the noun `image` when sure the media file is an image
 		if ( Utils\get_flag_value( $assoc_args, 'featured_image' ) || $assoc_args['alt'] ) {
 			$noun = 'image';
@@ -233,6 +240,7 @@ class Media_Command extends WP_CLI_Command {
 		foreach ( $args as $file ) {
 			$is_file_remote = parse_url( $file, PHP_URL_HOST );
 			$orig_filename = $file;
+			$file_time = '';
 
 			if ( empty( $is_file_remote ) ) {
 				if ( !file_exists( $file ) ) {
@@ -246,6 +254,10 @@ class Media_Command extends WP_CLI_Command {
 					$tempfile = $this->make_copy( $file );
 				}
 				$name = Utils\basename( $file );
+
+				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
+					$file_time = @filemtime( $file );
+				}
 			} else {
 				$tempfile = download_url( $file );
 				if ( is_wp_error( $tempfile ) ) {
@@ -264,11 +276,19 @@ class Media_Command extends WP_CLI_Command {
 				'name' => $name,
 			);
 
-			$post_array= array(
+			$post_array = array(
 				'post_title' => $assoc_args['title'],
 				'post_excerpt' => $assoc_args['caption'],
-				'post_content' => $assoc_args['desc']
+				'post_content' => $assoc_args['desc'],
 			);
+
+			if ( ! empty( $file_time ) ) {
+				$post_array['post_date'] = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) );
+				$post_array['post_date_gmt'] = gmdate( 'Y-m-d H:i:s', $file_time );
+				$post_array['post_modified'] = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) );
+				$post_array['post_modified_gmt'] = gmdate( 'Y-m-d H:i:s', $file_time );
+			}
+
 			$post_array = wp_slash( $post_array );
 
 			// use image exif/iptc data for title and caption defaults if possible
