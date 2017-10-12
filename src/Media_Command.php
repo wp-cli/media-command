@@ -172,15 +172,15 @@ class Media_Command extends WP_CLI_Command {
 	 * [--skip-copy]
 	 * : If set, media files (local only) are imported to the library but not moved on disk.
 	 *
+	 * [--preserve-filetime]
+	 * : Use the file modified time as the post published & modified dates.
+	 * Remote files will always use the current time.
+	 *
 	 * [--featured_image]
 	 * : If set, set the imported image as the Featured Image of the post its attached to.
 	 *
 	 * [--porcelain]
 	 * : Output just the new attachment ID.
-	 *
-	 * [--filetime]
-	 * : Use the file modified time as the post published & modified dates.
-	 *     Remote files will always use the current time.
 	 *
 	 * ## EXAMPLES
 	 *
@@ -255,7 +255,7 @@ class Media_Command extends WP_CLI_Command {
 				}
 				$name = Utils\basename( $file );
 
-				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'filetime' ) ) {
+				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
 					$file_time = @filemtime( $file );
 				}
 			} else {
