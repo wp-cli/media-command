@@ -16,7 +16,7 @@ This package implements the following commands:
 Create attachments from local files or URLs.
 
 ~~~
-wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--featured_image] [--porcelain]
+wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--preserve-filetime] [--featured_image] [--porcelain]
 ~~~
 
 **OPTIONS**
@@ -43,6 +43,10 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 
 	[--skip-copy]
 		If set, media files (local only) are imported to the library but not moved on disk.
+
+	[--preserve-filetime]
+		Use the file modified time as the post published & modified dates.
+		Remote files will always use the current time.
 
 	[--featured_image]
 		If set, set the imported image as the Featured Image of the post its attached to.
@@ -181,12 +185,12 @@ These fields will be displayed by default for each image size:
     +---------------------------+-------+--------+-------+
     | name                      | width | height | crop  |
     +---------------------------+-------+--------+-------+
-    | full                      |       |        | false |
-    | twentyfourteen-full-width | 1038  | 576    | true  |
-    | large                     | 1024  | 1024   | true  |
-    | post-thumbnail            | 672   | 372    | true  |
-    | medium                    | 300   | 300    | true  |
-    | thumbnail                 | 150   | 150    | true  |
+    | full                      |       |        | N/A   |
+    | twentyfourteen-full-width | 1038  | 576    | hard  |
+    | large                     | 1024  | 1024   | soft  |
+    | medium_large              | 768   | 0      | soft  |
+    | medium                    | 300   | 300    | soft  |
+    | thumbnail                 | 150   | 150    | hard  |
     +---------------------------+-------+--------+-------+
 
 ## Installing
