@@ -9,6 +9,7 @@ Feature: Regenerate WordPress attachments
       """
       No images found.
       """
+	And the return code should be 0
 
   Scenario: Regenerate all images default behavior
     Given download:
@@ -276,6 +277,7 @@ Feature: Regenerate WordPress attachments
       Warning: Can't find "My imported attachment" (ID {ATTACHMENT_ID}).
       Error: No images regenerated (1 failed).
       """
+	And the return code should be 1
 
   Scenario: Only regenerate images which are missing sizes
     Given download:
@@ -854,6 +856,7 @@ Feature: Regenerate WordPress attachments
       """
       Error: Unknown image size "test1".
       """
+	And the return code should be 1
 
   Scenario: Regenerating SVGs should be marked as skipped and not produce PHP notices
     Given an svg.svg file:
@@ -867,13 +870,6 @@ Feature: Regenerate WordPress attachments
         add_filter( 'upload_mimes', function ( $mimes ) { $mimes['svg'] = 'image/svg+xml'; return $mimes; } );
       } );
       """
-    And a stderr-error-log.php file:
-      """
-      <?php
-      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
-        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
-      }
-      """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {RUN_DIR}/svg.svg --title="My imported SVG attachment" --porcelain`
@@ -881,7 +877,7 @@ Feature: Regenerate WordPress attachments
     Then the wp-content/uploads/svg.svg file should exist
     And STDERR should be empty
 
-    When I run `wp --require=stderr-error-log.php media regenerate --yes`
+    When I run `wp media regenerate --yes`
     Then STDOUT should contain:
       """
       Found 1 image to regenerate.
@@ -901,7 +897,7 @@ Feature: Regenerate WordPress attachments
     And STDERR should be empty
 
     # Behavior should be the same if --only-missing.
-    When I run `wp --require=stderr-error-log.php media regenerate --yes --only-missing`
+    When I run `wp media regenerate --yes --only-missing`
     Then STDOUT should contain:
       """
       Found 1 image to regenerate.
@@ -938,13 +934,6 @@ Feature: Regenerate WordPress attachments
           return $image_editors;
       } );
       """
-    And a stderr-error-log.php file:
-      """
-      <?php
-      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
-        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
-      }
-      """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/minimal-us-letter.pdf --title="My imported PDF attachment" --porcelain`
@@ -955,7 +944,7 @@ Feature: Regenerate WordPress attachments
     Then save STDOUT as {JPG_ATTACHMENT_ID}
     Then the wp-content/uploads/canola-300x225.jpg file should exist
 
-    When I run `wp --require=stderr-error-log.php media regenerate --yes`
+    When I run `wp media regenerate --yes`
     Then STDOUT should contain:
       """
       Found 2 images to regenerate.
@@ -979,7 +968,7 @@ Feature: Regenerate WordPress attachments
     And STDERR should be empty
 
     # Behavior should be the same if --only-missing.
-    When I run `wp --require=stderr-error-log.php media regenerate --yes --only-missing`
+    When I run `wp media regenerate --yes --only-missing`
     Then STDOUT should contain:
       """
       Found 2 images to regenerate.
@@ -1019,13 +1008,6 @@ Feature: Regenerate WordPress attachments
           return $image_editors;
       } );
       """
-    And a stderr-error-log.php file:
-      """
-      <?php
-      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
-        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
-      }
-      """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     # Enable PDF thumbnails on import.
@@ -1035,7 +1017,7 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/minimal-us-letter-pdf-116x150.jpg file should exist
 
     # Disable PDF thumbnails on regeneration.
-    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=0 wp --require=stderr-error-log.php media regenerate --yes`
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=0 wp media regenerate --yes`
     Then STDOUT should contain:
       """
       Found 1 image to regenerate.
@@ -1055,7 +1037,7 @@ Feature: Regenerate WordPress attachments
     And STDERR should be empty
 
     # Re-enable PDF thumbnails on regeneration.
-    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp --require=stderr-error-log.php media regenerate --yes`
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp media regenerate --yes`
     Then STDOUT should contain:
       """
       Found 1 image to regenerate.
@@ -1091,13 +1073,6 @@ Feature: Regenerate WordPress attachments
           return $image_editors;
       } );
       """
-    And a stderr-error-log.php file:
-      """
-      <?php
-      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
-        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
-      }
-      """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     # Disable PDF thumbnails on import.
@@ -1107,7 +1082,7 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/minimal-us-letter-pdf-116x150.jpg file should not exist
 
     # Enable PDF thumbnails on regeneration.
-    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp --require=stderr-error-log.php media regenerate --yes`
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp media regenerate --yes`
     Then STDOUT should contain:
       """
       Found 1 image to regenerate.
@@ -1127,7 +1102,7 @@ Feature: Regenerate WordPress attachments
     And STDERR should be empty
 
     # Re-disable PDF thumbnails on regeneration.
-    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=0 wp --require=stderr-error-log.php media regenerate --yes`
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_PDF=0 wp media regenerate --yes`
     Then STDOUT should contain:
       """
       Found 1 image to regenerate.
@@ -1150,7 +1125,9 @@ Feature: Regenerate WordPress attachments
   # Test on PHP 5.6 latest only, and iterate over various WP versions.
   @require-wp-latest @require-php-5.6 @less-than-php-7.0
   Scenario Outline: Regenerating audio with thumbnail
-	Given I run `wp core download --version=<version> --force`
+	# If version is trunk/latest then can get warning about checksums not being available, so STDERR may or may not be empty
+	Given I try `wp core download --version=<version> --force`
+	Then the return code should be 0
 	And I run `wp core update-db`
     And download:
       | path                                     | url                                                       |
@@ -1159,12 +1136,6 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php add_post_type_support( 'attachment:audio', 'thumbnail' );
-      """
-    And a stderr-error-log.php file:
-      """
-      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
-        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
-      }
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1219,13 +1190,6 @@ Feature: Regenerate WordPress attachments
       | path                                        | url                                                          |
       | {CACHE_DIR}/video-400x300-with-cover.mp4    | http://wp-cli.org/behat-data/video-400x300-with-cover.mp4    |
       | {CACHE_DIR}/video-400x300-with-no-cover.mp4 | http://wp-cli.org/behat-data/video-400x300-with-no-cover.mp4 |
-    And a stderr-error-log.php file:
-      """
-      <?php
-      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
-        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
-      }
-      """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/video-400x300-with-cover.mp4 --title="My imported video with cover attachment" --porcelain`
@@ -1290,13 +1254,6 @@ Feature: Regenerate WordPress attachments
           }
           return $image_editors;
       } );
-      """
-    And a stderr-error-log.php file:
-      """
-      <?php
-      if ( version_compare( getenv( 'WP_VERSION' ), '4.3', '<' ) ) { // Avoid PHP deprecated notices.
-        define( 'WP_DEBUG', false ); define( 'WP_DEBUG_DISPLAY', null ); define( 'WP_DEBUG_LOG', false ); ini_set( 'error_log', null ); ini_set( 'display_errors', 'stderr' );
-      }
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
