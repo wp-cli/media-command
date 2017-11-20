@@ -9,7 +9,7 @@ Feature: Regenerate WordPress attachments
       """
       No images found.
       """
-	And the return code should be 1
+	And the return code should be 0
 
   Scenario: Regenerate all images default behavior
     Given download:
