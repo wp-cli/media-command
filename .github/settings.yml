@@ -1,0 +1,20 @@
+# Used by Probot Settings: https://probot.github.io/apps/settings/
+repository:
+  description: Import new attachments or regenerate existing ones.
+  labels:
+    - name: scope:documentation
+      color: 0e8a16
+    - name: scope:testing
+      color: 5319e7
+    - name: good-first-issue
+      color: eb6420
+    - name: state:unconfirmed
+      color: bfe5bf
+    - name: state:unsupported
+      color: bfe5bf
+    - name: command:media-import
+      color: c5def5
+    - name: command:media-regenerate
+      color: c5def5
+    - name: command:media-image-size
+      color: c5def5
