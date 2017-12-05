@@ -24,7 +24,7 @@ use WP_CLI\Utils;
 class Media_Command extends WP_CLI_Command {
 
 	/**
-	 * Regenerate thumbnails for one or more attachments.
+	 * Regenerates thumbnails for one or more attachments.
 	 *
 	 * ## OPTIONS
 	 *
@@ -145,7 +145,7 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * Create attachments from local files or URLs.
+	 * Creates attachments from local files or URLs.
 	 *
 	 * ## OPTIONS
 	 *
@@ -376,7 +376,7 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * List image sizes registered with WordPress.
+	 * Lists image sizes registered with WordPress.
 	 *
 	 * ## OPTIONS
 	 *
