@@ -1,6 +1,6 @@
 {
     "name": "wp-cli/media-command",
-    "description": "Import new attachments or regenerate existing ones.",
+    "description": "Imports files as attachments, regenerates thumbnails, or lists registered image sizes.",
     "type": "wp-cli-package",
     "homepage": "https://github.com/wp-cli/media-command",
     "support": {
@@ -35,6 +35,7 @@
             "dev-master": "1.x-dev"
         },
         "commands": [
+            "media",
             "media import",
             "media regenerate",
             "media image-size"
