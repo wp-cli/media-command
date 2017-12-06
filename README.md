@@ -1,7 +1,7 @@
 wp-cli/media-command
 ====================
 
-Import new attachments or regenerate existing ones.
+Imports files as attachments, regenerates thumbnails, or lists registered image sizes.
 
 [![Build Status](https://travis-ci.org/wp-cli/media-command.svg?branch=master)](https://travis-ci.org/wp-cli/media-command)
 
@@ -11,9 +11,46 @@ Quick links: [Using](#using) | [Installing](#installing) | [Contributing](#contr
 
 This package implements the following commands:
 
+### wp media
+
+Imports files as attachments, regenerates thumbnails, or lists registered image sizes.
+
+~~~
+wp media
+~~~
+
+**EXAMPLES**
+
+    # Re-generate all thumbnails, without confirmation.
+    $ wp media regenerate --yes
+    Found 3 images to regenerate.
+    1/3 Regenerated thumbnails for "Sydney Harbor Bridge" (ID 760).
+    2/3 Regenerated thumbnails for "Boardwalk" (ID 757).
+    3/3 Regenerated thumbnails for "Sunburst Over River" (ID 756).
+    Success: Regenerated 3 of 3 images.
+
+    # Import a local image and set it to be the featured image for a post.
+    $ wp media import ~/Downloads/image.png --post_id=123 --title="A downloaded picture" --featured_image
+    Success: Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as featured image.
+
+    # List all registered image sizes
+    $ wp media image-size
+    +---------------------------+-------+--------+-------+
+    | name                      | width | height | crop  |
+    +---------------------------+-------+--------+-------+
+    | full                      |       |        | N/A   |
+    | twentyfourteen-full-width | 1038  | 576    | hard  |
+    | large                     | 1024  | 1024   | soft  |
+    | medium_large              | 768   | 0      | soft  |
+    | medium                    | 300   | 300    | soft  |
+    | thumbnail                 | 150   | 150    | hard  |
+    +---------------------------+-------+--------+-------+
+
+
+
 ### wp media import
 
-Create attachments from local files or URLs.
+Creates attachments from local files or URLs.
 
 ~~~
 wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--preserve-filetime] [--featured_image] [--porcelain]
@@ -84,7 +121,7 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 
 ### wp media regenerate
 
-Regenerate thumbnails for one or more attachments.
+Regenerates thumbnails for one or more attachments.
 
 ~~~
 wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-delete] [--only-missing] [--yes]
@@ -147,7 +184,7 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-del
 
 ### wp media image-size
 
-List image sizes registered with WordPress.
+Lists image sizes registered with WordPress.
 
 ~~~
 wp media image-size [--fields=<fields>] [--format=<format>]
