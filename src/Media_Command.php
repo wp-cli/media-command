@@ -503,26 +503,28 @@ class Media_Command extends WP_CLI_Command {
 
 	private function get_ratio( $width, $height ) {
 		if ( $height == 0 ) {
-			$image_ratio 	= "0:{$width}";
-		} elseif ( $width == 0 ) {
-			$image_ratio 	= "{$height}:0";
-		} else {
-	    $gcd          = $this->gcd( $width, $height );
-			$width_ratio  = $width / $gcd;
-			$height_ratio = $height / $gcd;
-			$image_ratio  = "{$width_ratio}:{$height_ratio}";
+			return "0:{$width}";
 		}
-		return $image_ratio;
+
+		if ( $width == 0 ) {
+			return "{$height}:0";
+		}
+
+		$gcd          = $this->gcd( $width, $height );
+		$width_ratio  = $width / $gcd;
+		$height_ratio = $height / $gcd;
+
+		return "{$width_ratio}:{$height_ratio}";
 	}
 
 	private function gcd($num1,$num2) {
-    while (0 !== $num2) {
-			$t 		= $num1 % $num2;
+		while (0 !== $num2) {
+			$t    = $num1 % $num2;
 			$num1 = $num2;
 			$num2 = $t;
-    }
-    return $num1;
-  }
+		}
+		return $num1;
+	}
 
 	// wp_tempnam() inexplicably forces a .tmp extension, which spoils MIME type detection
 	private function make_copy( $path ) {
