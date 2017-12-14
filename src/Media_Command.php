@@ -415,21 +415,22 @@ class Media_Command extends WP_CLI_Command {
 	 * * width
 	 * * height
 	 * * crop
+	 * * ratio
 	 *
 	 * ## EXAMPLES
 	 *
 	 *     # List all registered image sizes
 	 *     $ wp media image-size
-	 *     +---------------------------+-------+--------+-------+
-	 *     | name                      | width | height | crop  |
-	 *     +---------------------------+-------+--------+-------+
-	 *     | full                      |       |        | N/A   |
-	 *     | twentyfourteen-full-width | 1038  | 576    | hard  |
-	 *     | large                     | 1024  | 1024   | soft  |
-	 *     | medium_large              | 768   | 0      | soft  |
-	 *     | medium                    | 300   | 300    | soft  |
-	 *     | thumbnail                 | 150   | 150    | hard  |
-	 *     +---------------------------+-------+--------+-------+
+	 *     +---------------------------+-------+--------+-------+-------+
+	 *     | name                      | width | height | crop  | ratio |
+	 *     +---------------------------+-------+--------+-------+-------+
+	 *     | full                      |       |        | N/A   | N/A   |
+	 *     | twentyfourteen-full-width | 1038  | 576    | hard  | 173:96|
+	 *     | large                     | 1024  | 1024   | soft  | N/A   |
+	 *     | medium_large              | 768   | 0      | soft  | N/A   |
+	 *     | medium                    | 300   | 300    | soft  | N/A   |
+	 *     | thumbnail                 | 150   | 150    | hard  | 1:1   |
+	 *     +---------------------------+-------+--------+-------+-------+
 	 *
 	 * @subcommand image-size
 	 */
@@ -437,7 +438,7 @@ class Media_Command extends WP_CLI_Command {
 		global $_wp_additional_image_sizes;
 
 		$assoc_args = array_merge( array(
-			'fields'      => 'name,width,height,crop'
+			'fields'      => 'name,width,height,crop,ratio'
 		), $assoc_args );
 
 		$sizes = array(
@@ -446,24 +447,28 @@ class Media_Command extends WP_CLI_Command {
 				'width'     => intval( get_option( 'large_size_w' ) ),
 				'height'    => intval( get_option( 'large_size_h' ) ),
 				'crop'      => false !== get_option( 'large_crop' ) ? 'hard' : 'soft',
+				'ratio'			=> false !== get_option( 'large_crop' ) ? $this->get_ratio( intval( get_option( 'large_size_w' ) ), intval( get_option( 'large_size_h' ) ) ) : 'N/A',
 			),
 			array(
 				'name'      => 'medium_large',
 				'width'     => intval( get_option( 'medium_large_size_w' ) ),
 				'height'    => intval( get_option( 'medium_large_size_h' ) ),
 				'crop'      => false !== get_option( 'medium_large_crop' ) ? 'hard' : 'soft',
+				'ratio'			=> false !== get_option( 'medium_large_crop' ) ? $this->get_ratio( intval( get_option( 'medium_large_size_w' ) ), intval( get_option( 'medium_large_size_h' ) ) ) : 'N/A',
 			),
 			array(
 				'name'      => 'medium',
 				'width'     => intval( get_option( 'medium_size_w' ) ),
 				'height'    => intval( get_option( 'medium_size_h' ) ),
 				'crop'      => false !== get_option( 'medium_crop' ) ? 'hard' : 'soft',
+				'ratio'			=> false !== get_option( 'medium_crop' ) ? $this->get_ratio( intval( get_option( 'medium_size_w' ) ), intval( get_option( 'medium_size_h' ) ) ) : 'N/A',
 			),
 			array(
 				'name'      => 'thumbnail',
 				'width'     => intval( get_option( 'thumbnail_size_w' ) ),
 				'height'    => intval( get_option( 'thumbnail_size_h' ) ),
 				'crop'      => false !== get_option( 'thumbnail_crop' ) ? 'hard' : 'soft',
+				'ratio'			=> false !== get_option( 'thumbnail_crop' ) ? $this->get_ratio( intval( get_option( 'thumbnail_size_w' ) ), intval( get_option( 'thumbnail_size_h' ) ) ) : 'N/A',
 			),
 		);
 		if ( is_array( $_wp_additional_image_sizes ) ) {
@@ -474,6 +479,7 @@ class Media_Command extends WP_CLI_Command {
 					'width'     => $size_args['width'],
 					'height'    => $size_args['height'],
 					'crop'      => empty( $crop ) || is_array( $size_args['crop'] ) ? 'soft' : 'hard',
+					'ratio'			=> empty( $crop ) || is_array( $size_args['crop'] ) ? 'N/A' : $this->get_ratio( $size_args['width'], $size_args['height'] ),
 				);
 			}
 		}
@@ -488,9 +494,33 @@ class Media_Command extends WP_CLI_Command {
 				'width'     => '',
 				'height'    => '',
 				'crop'      => 'N/A',
+				'ratio' 		=> 'N/A',
 		) );
 		WP_CLI\Utils\format_items( $assoc_args['format'], $sizes, explode( ',', $assoc_args['fields'] ) );
 	}
+
+	private function get_ratio( $width, $height ) {
+		if ( $height == 0 ) {
+			$image_ratio 	= "0:{$width}";
+		} elseif ( $width == 0 ) {
+			$image_ratio 	= "{$height}:0";
+		} else {
+	    $gcd          = $this->gcd( $width, $height );
+			$width_ratio  = $width / $gcd;
+			$height_ratio = $height / $gcd;
+			$image_ratio  = "{$width_ratio}:{$height_ratio}";
+		}
+		return $image_ratio;
+	}
+
+	private function gcd($num1,$num2) {
+    while (0 !== $num2) {
+			$t 		= $num1 % $num2;
+			$num1 = $num2;
+			$num2 = $t;
+    }
+    return $num1;
+  }
 
 	// wp_tempnam() inexplicably forces a .tmp extension, which spoils MIME type detection
 	private function make_copy( $path ) {
