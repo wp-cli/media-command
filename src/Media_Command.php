@@ -437,6 +437,8 @@ class Media_Command extends WP_CLI_Command {
 	public function image_size( $args, $assoc_args ) {
 		global $_wp_additional_image_sizes;
 
+		$soft_ratio_text = 'N/A';
+
 		$assoc_args = array_merge( array(
 			'fields'      => 'name,width,height,crop,ratio'
 		), $assoc_args );
@@ -447,28 +449,28 @@ class Media_Command extends WP_CLI_Command {
 				'width'     => intval( get_option( 'large_size_w' ) ),
 				'height'    => intval( get_option( 'large_size_h' ) ),
 				'crop'      => false !== get_option( 'large_crop' ) ? 'hard' : 'soft',
-				'ratio'			=> false !== get_option( 'large_crop' ) ? $this->get_ratio( intval( get_option( 'large_size_w' ) ), intval( get_option( 'large_size_h' ) ) ) : 'N/A',
+				'ratio'     => false !== get_option( 'large_crop' ) ? $this->get_ratio( intval( get_option( 'large_size_w' ) ), intval( get_option( 'large_size_h' ) ) ) : $soft_ratio_text,
 			),
 			array(
 				'name'      => 'medium_large',
 				'width'     => intval( get_option( 'medium_large_size_w' ) ),
 				'height'    => intval( get_option( 'medium_large_size_h' ) ),
 				'crop'      => false !== get_option( 'medium_large_crop' ) ? 'hard' : 'soft',
-				'ratio'			=> false !== get_option( 'medium_large_crop' ) ? $this->get_ratio( intval( get_option( 'medium_large_size_w' ) ), intval( get_option( 'medium_large_size_h' ) ) ) : 'N/A',
+				'ratio'     => false !== get_option( 'medium_large_crop' ) ? $this->get_ratio( intval( get_option( 'medium_large_size_w' ) ), intval( get_option( 'medium_large_size_h' ) ) ) : $soft_ratio_text,
 			),
 			array(
 				'name'      => 'medium',
 				'width'     => intval( get_option( 'medium_size_w' ) ),
 				'height'    => intval( get_option( 'medium_size_h' ) ),
 				'crop'      => false !== get_option( 'medium_crop' ) ? 'hard' : 'soft',
-				'ratio'			=> false !== get_option( 'medium_crop' ) ? $this->get_ratio( intval( get_option( 'medium_size_w' ) ), intval( get_option( 'medium_size_h' ) ) ) : 'N/A',
+				'ratio'     => false !== get_option( 'medium_crop' ) ? $this->get_ratio( intval( get_option( 'medium_size_w' ) ), intval( get_option( 'medium_size_h' ) ) ) : $soft_ratio_text,
 			),
 			array(
 				'name'      => 'thumbnail',
 				'width'     => intval( get_option( 'thumbnail_size_w' ) ),
 				'height'    => intval( get_option( 'thumbnail_size_h' ) ),
 				'crop'      => false !== get_option( 'thumbnail_crop' ) ? 'hard' : 'soft',
-				'ratio'			=> false !== get_option( 'thumbnail_crop' ) ? $this->get_ratio( intval( get_option( 'thumbnail_size_w' ) ), intval( get_option( 'thumbnail_size_h' ) ) ) : 'N/A',
+				'ratio'     => false !== get_option( 'thumbnail_crop' ) ? $this->get_ratio( intval( get_option( 'thumbnail_size_w' ) ), intval( get_option( 'thumbnail_size_h' ) ) ) : $soft_ratio_text,
 			),
 		);
 		if ( is_array( $_wp_additional_image_sizes ) ) {
@@ -479,7 +481,7 @@ class Media_Command extends WP_CLI_Command {
 					'width'     => $size_args['width'],
 					'height'    => $size_args['height'],
 					'crop'      => empty( $crop ) || is_array( $size_args['crop'] ) ? 'soft' : 'hard',
-					'ratio'			=> empty( $crop ) || is_array( $size_args['crop'] ) ? 'N/A' : $this->get_ratio( $size_args['width'], $size_args['height'] ),
+					'ratio'     => empty( $crop ) || is_array( $size_args['crop'] ) ? $soft_ratio_text : $this->get_ratio( $size_args['width'], $size_args['height'] ),
 				);
 			}
 		}
@@ -494,7 +496,7 @@ class Media_Command extends WP_CLI_Command {
 				'width'     => '',
 				'height'    => '',
 				'crop'      => 'N/A',
-				'ratio' 		=> 'N/A',
+				'ratio'     => $soft_ratio_text,
 		) );
 		WP_CLI\Utils\format_items( $assoc_args['format'], $sizes, explode( ',', $assoc_args['fields'] ) );
 	}
