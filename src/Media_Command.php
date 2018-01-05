@@ -586,14 +586,16 @@ class Media_Command extends WP_CLI_Command {
 
 		$metadata = wp_generate_attachment_metadata( $id, $fullsizepath );
 		if ( is_wp_error( $metadata ) ) {
-			WP_CLI::warning( $metadata->get_error_message() );
+			WP_CLI::warning( sprintf( '%s (ID %d)', $metadata->get_error_message(), $id ) );
+			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
 			$errors++;
 			return;
 		}
 
 		// Note it's possible for no metadata to be generated for PDFs if restricted to a specific image size.
 		if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
-			WP_CLI::warning( "$progress Couldn't regenerate thumbnails for $att_desc." );
+			WP_CLI::warning( sprintf( 'No metadata. (ID %d)', $id ) );
+			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
 			$errors++;
 			return;
 		}
@@ -673,13 +675,16 @@ class Media_Command extends WP_CLI_Command {
 		// Check whether there's new sizes or they've changed.
 		$image_sizes = $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata );
 		if ( is_wp_error( $image_sizes ) ) {
-			if ( $is_pdf && 'image_no_editor' === $image_sizes->get_error_code() ) {
-				// No PDF thumbnail generation available, so skip.
+			if ( 'image_no_editor' === $image_sizes->get_error_code() ) {
+				// Warn unless PDF.
+				if ( ! $is_pdf ) {
+					WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
+				}
 				$skip_it = true;
 				return false;
 			}
 			// Warn but assume it may be possible to regenerate and allow processing to continue and possibly fail.
-			WP_CLI::warning( $image_sizes->get_error_message() );
+			WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
 			return true;
 		}
 
@@ -691,6 +696,11 @@ class Media_Command extends WP_CLI_Command {
 				return true;
 			}
 			$metadata['sizes'] = array( $image_size => $metadata['sizes'][ $image_size ] );
+		}
+
+		// In certain situations, eg if file uploaded when applicable image editor such as Imagick unavailable, the sizes metadata may not exist.
+		if ( ! isset( $metadata['sizes'] ) || ! is_array( $metadata['sizes'] ) ) {
+			$metadata['sizes'] = array();
 		}
 
 		if ( $this->image_sizes_differ( $image_sizes, $metadata['sizes'] ) ) {
