@@ -9,7 +9,7 @@ Feature: Regenerate WordPress attachments
       """
       No images found.
       """
-	And the return code should be 0
+    And the return code should be 0
 
   Scenario: Regenerate all images default behavior
     Given download:
@@ -277,7 +277,7 @@ Feature: Regenerate WordPress attachments
       Warning: Can't find "My imported attachment" (ID {ATTACHMENT_ID}).
       Error: No images regenerated (1 failed).
       """
-	And the return code should be 1
+    And the return code should be 1
 
   Scenario: Only regenerate images which are missing sizes
     Given download:
@@ -856,7 +856,7 @@ Feature: Regenerate WordPress attachments
       """
       Error: Unknown image size "test1".
       """
-	And the return code should be 1
+    And the return code should be 1
 
   Scenario: Regenerating SVGs should be marked as skipped and not produce PHP notices
     Given an svg.svg file:
@@ -1125,10 +1125,10 @@ Feature: Regenerate WordPress attachments
   # Test on PHP 5.6 latest only, and iterate over various WP versions.
   @require-wp-latest @require-php-5.6 @less-than-php-7.0
   Scenario Outline: Regenerating audio with thumbnail
-	# If version is trunk/latest then can get warning about checksums not being available, so STDERR may or may not be empty
-	Given I try `wp core download --version=<version> --force`
-	Then the return code should be 0
-	And I run `wp core update-db`
+    # If version is trunk/latest then can get warning about checksums not being available, so STDERR may or may not be empty
+    Given I try `wp core download --version=<version> --force`
+    Then the return code should be 0
+    And I run `wp core update-db`
     And download:
       | path                                     | url                                                       |
       | {CACHE_DIR}/audio-with-400x300-cover.mp3 | http://wp-cli.org/behat-data/audio-with-400x300-cover.mp3 |
@@ -1228,6 +1228,66 @@ Feature: Regenerate WordPress attachments
       Success: Regenerated 1 of 1 images.
       """
     And STDERR should be empty
+
+  @require-extension-imagick
+  Scenario: Regenerate image uploaded with no sizes metadata
+    Given download:
+      | path                             | url                                               |
+      | {CACHE_DIR}/white-200-square.bmp | http://wp-cli.org/behat-data/white-200-square.bmp |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      // Disable Imagick.
+      add_filter( 'wp_image_editors', function ( $image_editors ) {
+          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+            unset( $image_editors[ $idx ] );
+            $image_editors = array_values( $image_editors );
+          }
+          return $image_editors;
+      } );
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/white-160-square.bmp --title="My imported BMP attachment" --porcelain`
+    Then save STDOUT as {BMP_ATTACHMENT_ID}
+    And the wp-content/uploads/white-160-square-150x150.bmp file should not exist
+
+    # Regenerate with Imagick disabled.
+    When I try `WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK=0 wp media regenerate --yes`
+    Then the return code should be 0
+    And STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Skipped thumbnail regeneration for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 0 of 1 images (1 skipped).
+      """
+    And STDERR should contain:
+      """
+      Warning: No editor could be selected. (ID {BMP_ATTACHMENT_ID})
+      """
+    And the wp-content/uploads/white-160-square-150x150.bmp file should not exist
+
+    # Regenerate with Imagick enabled.
+    When I run `WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK=1 wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Regenerated thumbnails for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And the wp-content/uploads/white-160-square-150x150.bmp file should exist
 
   @require-wp-4.7.3 @require-extension-imagick
   Scenario: Regenerating melange with batch results: regenerated (and not needing regeneration), skipped, failed
@@ -1378,6 +1438,10 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
+      /4 Couldn't regenerate thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
       /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
       """
     And STDOUT should contain:
@@ -1390,11 +1454,11 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should contain:
       """
-      /4 Couldn't regenerate thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID}).
+      Warning:
       """
     And STDERR should contain:
       """
-      Warning:
+      (ID {JPG_ATTACHMENT_ID})
       """
     And STDERR should contain:
       """
@@ -1419,7 +1483,15 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
+      /4 Couldn't regenerate thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
       /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      /4 Couldn't regenerate thumbnails for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
       """
     And STDOUT should contain:
       """
@@ -1427,15 +1499,15 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should contain:
       """
-      /4 Couldn't regenerate thumbnails for "My imported JPG attachment" (ID {JPG_ATTACHMENT_ID}).
-      """
-    And STDERR should contain:
-      """
-      /4 Couldn't regenerate thumbnails for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
-      """
-    And STDERR should contain:
-      """
       Warning:
+      """
+    And STDERR should contain:
+      """
+      (ID {JPG_ATTACHMENT_ID})
+      """
+    And STDERR should contain:
+      """
+      (ID {PDF_ATTACHMENT_ID})
       """
     And STDERR should contain:
       """
