@@ -699,11 +699,11 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		// In certain situations, eg if file uploaded when applicable image editor such as Imagick unavailable, the sizes metadata may not exist.
-		if ( ! isset( $metadata['sizes'] ) || ! is_array( $metadata['sizes'] ) ) {
+		if ( ! isset( $metadata['sizes'] ) ) {
 			$metadata['sizes'] = array();
 		}
 
-		if ( $this->image_sizes_differ( $image_sizes, $metadata['sizes'] ) ) {
+		if ( $this->image_sizes_differ( $image_sizes, (array) $metadata['sizes'] ) ) {
 			return true;
 		}
 

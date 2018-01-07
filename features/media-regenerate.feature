@@ -9,7 +9,7 @@ Feature: Regenerate WordPress attachments
       """
       No images found.
       """
-	And the return code should be 0
+    And the return code should be 0
 
   Scenario: Regenerate all images default behavior
     Given download:
@@ -277,7 +277,7 @@ Feature: Regenerate WordPress attachments
       Warning: Can't find "My imported attachment" (ID {ATTACHMENT_ID}).
       Error: No images regenerated (1 failed).
       """
-	And the return code should be 1
+    And the return code should be 1
 
   Scenario: Only regenerate images which are missing sizes
     Given download:
@@ -856,7 +856,7 @@ Feature: Regenerate WordPress attachments
       """
       Error: Unknown image size "test1".
       """
-	And the return code should be 1
+    And the return code should be 1
 
   Scenario: Regenerating SVGs should be marked as skipped and not produce PHP notices
     Given an svg.svg file:
@@ -1125,10 +1125,10 @@ Feature: Regenerate WordPress attachments
   # Test on PHP 5.6 latest only, and iterate over various WP versions.
   @require-wp-latest @require-php-5.6 @less-than-php-7.0
   Scenario Outline: Regenerating audio with thumbnail
-	# If version is trunk/latest then can get warning about checksums not being available, so STDERR may or may not be empty
-	Given I try `wp core download --version=<version> --force`
-	Then the return code should be 0
-	And I run `wp core update-db`
+    # If version is trunk/latest then can get warning about checksums not being available, so STDERR may or may not be empty
+    Given I try `wp core download --version=<version> --force`
+    Then the return code should be 0
+    And I run `wp core update-db`
     And download:
       | path                                     | url                                                       |
       | {CACHE_DIR}/audio-with-400x300-cover.mp3 | http://wp-cli.org/behat-data/audio-with-400x300-cover.mp3 |
@@ -1254,7 +1254,7 @@ Feature: Regenerate WordPress attachments
 
     # Regenerate with Imagick disabled.
     When I try `WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK=0 wp media regenerate --yes`
-	Then the return code should be 0
+    Then the return code should be 0
     And STDOUT should contain:
       """
       Found 1 image to regenerate.
