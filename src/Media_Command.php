@@ -35,6 +35,7 @@ use WP_CLI\Utils;
  * @package wp-cli
  */
 class Media_Command extends WP_CLI_Command {
+	const WP_CLEAR_OBJECT_CACHE_INTERVAL = 500; // Clear the WP object cache after this many regenerations/imports.
 
 	/**
 	 * Regenerates thumbnails for one or more attachments.
@@ -145,9 +146,13 @@ class Media_Command extends WP_CLI_Command {
 			$image_size_filters = $this->add_image_size_filters( $image_size );
 		}
 
-		$successes = $errors = $skips = 0;
-		foreach ( $images->posts as $number => $id ) {
-			$this->process_regeneration( $id, $skip_delete, $only_missing, $image_size, ( $number + 1 ) . '/' . $count, $successes, $errors, $skips );
+		$number = $successes = $errors = $skips = 0;
+		foreach ( $images->posts as $id ) {
+			$number++;
+			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				Utils\wp_clear_object_cache();
+			}
+			$this->process_regeneration( $id, $skip_delete, $only_missing, $image_size, $number . '/' . $count, $successes, $errors, $skips );
 		}
 
 		if ( $image_size ) {
@@ -249,8 +254,12 @@ class Media_Command extends WP_CLI_Command {
 			$assoc_args['post_id'] = false;
 		}
 
-		$successes = $errors = 0;
+		$number = $successes = $errors = 0;
 		foreach ( $args as $file ) {
+			$number++;
+			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				Utils\wp_clear_object_cache();
+			}
 			$is_file_remote = parse_url( $file, PHP_URL_HOST );
 			$orig_filename = $file;
 			$file_time = '';
