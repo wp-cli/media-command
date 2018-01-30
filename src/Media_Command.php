@@ -115,8 +115,6 @@ class Media_Command extends WP_CLI_Command {
 
 		$skip_delete = \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-delete' );
 		$only_missing = \WP_CLI\Utils\get_flag_value( $assoc_args, 'only-missing' );
-
-
 		if ( $only_missing ) {
 			$skip_delete = true;
 		}
