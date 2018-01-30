@@ -56,6 +56,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--yes]
 	 * : Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
 	 *
+	 * [--force]
+	 * : Always regenerate the thumbs bypassing checks.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     # Regenerate thumbnails for given attachment IDs.
@@ -112,6 +115,8 @@ class Media_Command extends WP_CLI_Command {
 
 		$skip_delete = \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-delete' );
 		$only_missing = \WP_CLI\Utils\get_flag_value( $assoc_args, 'only-missing' );
+
+
 		if ( $only_missing ) {
 			$skip_delete = true;
 		}
@@ -570,7 +575,11 @@ class Media_Command extends WP_CLI_Command {
 
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
-		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_it );
+		if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'force' ) ) {
+			$needs_regeneration = true;
+		} else {
+			$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_it );
+		}
 
 		if ( $skip_it ) {
 			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc." );
