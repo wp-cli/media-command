@@ -220,6 +220,10 @@ class Media_Command extends WP_CLI_Command {
 	 *     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --title='The WordPress logo' --alt="Semantic personal publishing"
 	 *     Imported file 'http://s.wordpress.org/style/images/wp-header-logo.png' as attachment ID 1755.
 	 *     Success: Imported 1 of 1 images.
+	 *
+	 *     # Get the URL for an attachment after import.
+	 *     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --porcelain | xargs -I {} wp post list --post__in={} --field=url --post_type=attachment
+	 *     http://wordpress-develop.dev/wp-header-logo/
 	 */
 	function import( $args, $assoc_args = array() ) {
 		$assoc_args = wp_parse_args( $assoc_args, array(
