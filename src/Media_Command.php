@@ -56,6 +56,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--yes]
 	 * : Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
 	 *
+	 * [--force]
+	 * : Always regenerate the thumbs bypassing checks.
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     # Regenerate thumbnails for given attachment IDs.
@@ -145,9 +148,15 @@ class Media_Command extends WP_CLI_Command {
 			$image_size_filters = $this->add_image_size_filters( $image_size );
 		}
 
+	 	if( \WP_CLI\Utils\get_flag_value( $assoc_args, 'force' ) ) {
+			$is_forced = true;
+		} else {
+			$is_forced = false;
+		}
+
 		$successes = $errors = $skips = 0;
 		foreach ( $images->posts as $number => $id ) {
-			$this->process_regeneration( $id, $skip_delete, $only_missing, $image_size, ( $number + 1 ) . '/' . $count, $successes, $errors, $skips );
+			$this->process_regeneration( $id, $skip_delete, $only_missing, $image_size, $is_forced, ( $number + 1 ) . '/' . $count, $successes, $errors, $skips );
 		}
 
 		if ( $image_size ) {
@@ -544,7 +553,7 @@ class Media_Command extends WP_CLI_Command {
 		return $filename;
 	}
 
-	private function process_regeneration( $id, $skip_delete, $only_missing, $image_size, $progress, &$successes, &$errors, &$skips ) {
+	private function process_regeneration( $id, $skip_delete, $only_missing, $image_size, $is_forced, $progress, &$successes, &$errors, &$skips ) {
 
 		$title = get_the_title( $id );
 		if ( '' === $title ) {
@@ -574,7 +583,11 @@ class Media_Command extends WP_CLI_Command {
 
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
-		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_it );
+		if ( $is_forced ) {
+			$needs_regeneration = true;
+		} else {
+			$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_it );
+		}
 
 		if ( $skip_it ) {
 			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc." );
