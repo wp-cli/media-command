@@ -150,6 +150,8 @@ class Media_Command extends WP_CLI_Command {
 
 	 	if( \WP_CLI\Utils\get_flag_value( $assoc_args, 'force' ) ) {
 			$is_forced = true;
+		} else {
+			$is_forced = false;
 		}
 
 		$successes = $errors = $skips = 0;
