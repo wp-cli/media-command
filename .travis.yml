@@ -47,8 +47,6 @@ before_install:
     else
       echo "xdebug.ini does not exist"
     fi
-  - bash bin/install-ghostscript.sh
-  - gs -v
   - bash bin/install-imagick.sh
   - php -m
 
@@ -62,3 +60,8 @@ before_script:
 
 script:
   - bash bin/test.sh
+
+addons:
+  apt:
+    packages:
+    - ghostscript
