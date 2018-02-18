@@ -654,34 +654,15 @@ class Media_Command extends WP_CLI_Command {
 		// Assume not skipping.
 		$skip_it = false;
 
+		// Note: zero-length string returned if no metadata, for instance if PDF or non-standard image (eg an SVG).
 		$metadata = wp_get_attachment_metadata($att_id);
 
-		if ( ! is_array( $metadata ) ) {
-			if ( $is_pdf ) {
-				$editor = wp_get_image_editor( $fullsizepath );
-				$no_pdf_editor = is_wp_error( $editor );
-				unset( $editor );
-				if ( $no_pdf_editor ) {
-					// No PDF thumbnail generation available, so skip.
-					$skip_it = true;
-					return false;
-				}
-				// Assume it may be possible to regenerate the PDF thumbnails and allow processing to continue and possibly fail.
-				return true;
-			}
-			// Assume it's not a standard image (eg an SVG) and skip.
-			$skip_it = true;
-			return false;
-		}
-
-		// Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
-
-		// Check whether there's new sizes or they've changed.
+		// Check whether there's new sizes or they've changed. Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
 		$image_sizes = $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata );
 		if ( is_wp_error( $image_sizes ) ) {
 			if ( 'image_no_editor' === $image_sizes->get_error_code() ) {
-				// Warn unless PDF.
-				if ( ! $is_pdf ) {
+				// Warn unless PDF or non-standard image.
+				if ( ! $is_pdf && is_array( $metadata ) && ! empty( $metadata['sizes'] ) ) {
 					WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
 				}
 				$skip_it = true;
@@ -690,6 +671,14 @@ class Media_Command extends WP_CLI_Command {
 			// Warn but assume it may be possible to regenerate and allow processing to continue and possibly fail.
 			WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
 			return true;
+		}
+
+		// If uploaded when applicable image editor such as Imagick unavailable, the metadata or sizes metadata may not exist.
+		if ( ! is_array( $metadata ) ) {
+			$metadata = array();
+		}
+		if ( ! isset( $metadata['sizes'] ) || ! is_array( $metadata['sizes'] ) ) {
+			$metadata['sizes'] = array();
 		}
 
 		if ( $image_size ) {
@@ -702,12 +691,7 @@ class Media_Command extends WP_CLI_Command {
 			$metadata['sizes'] = array( $image_size => $metadata['sizes'][ $image_size ] );
 		}
 
-		// In certain situations, eg if file uploaded when applicable image editor such as Imagick unavailable, the sizes metadata may not exist.
-		if ( ! isset( $metadata['sizes'] ) ) {
-			$metadata['sizes'] = array();
-		}
-
-		if ( $this->image_sizes_differ( $image_sizes, (array) $metadata['sizes'] ) ) {
+		if ( $this->image_sizes_differ( $image_sizes, $metadata['sizes'] ) ) {
 			return true;
 		}
 
@@ -822,7 +806,7 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
-		if ( ! $is_pdf ) {
+		if ( ! $is_pdf && is_array( $metadata ) ) {
 			$sizes = apply_filters( 'intermediate_image_sizes_advanced', $sizes, $metadata );
 		}
 
