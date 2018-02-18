@@ -1,0 +1,4 @@
+  - bash bin/install-ghostscript.sh
+  - gs -v
+  - bash bin/install-imagick.sh
+  - php -m

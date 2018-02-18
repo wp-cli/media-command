@@ -47,6 +47,10 @@ before_install:
     else
       echo "xdebug.ini does not exist"
     fi
+  - bash bin/install-ghostscript.sh
+  - gs -v
+  - bash bin/install-imagick.sh
+  - php -m
 
 install:
   - composer require wp-cli/wp-cli:dev-master
