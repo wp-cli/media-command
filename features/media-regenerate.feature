@@ -1248,9 +1248,9 @@ Feature: Regenerate WordPress attachments
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
-    When I run `wp media import {CACHE_DIR}/white-160-square.bmp --title="My imported BMP attachment" --porcelain`
+    When I run `wp media import {CACHE_DIR}/white-200-square.bmp --title="My imported BMP attachment" --porcelain`
     Then save STDOUT as {BMP_ATTACHMENT_ID}
-    And the wp-content/uploads/white-160-square-150x150.bmp file should not exist
+    And the wp-content/uploads/white-200-square-150x150.bmp file should not exist
 
     # Regenerate with Imagick disabled.
     When I try `WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK=0 wp media regenerate --yes`
@@ -1271,7 +1271,7 @@ Feature: Regenerate WordPress attachments
       """
       Warning: No editor could be selected. (ID {BMP_ATTACHMENT_ID})
       """
-    And the wp-content/uploads/white-160-square-150x150.bmp file should not exist
+    And the wp-content/uploads/white-200-square-150x150.bmp file should not exist
 
     # Regenerate with Imagick enabled.
     When I run `WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK=1 wp media regenerate --yes`
@@ -1287,7 +1287,7 @@ Feature: Regenerate WordPress attachments
       """
       Success: Regenerated 1 of 1 images.
       """
-    And the wp-content/uploads/white-160-square-150x150.bmp file should exist
+    And the wp-content/uploads/white-200-square-150x150.bmp file should exist
 
   @require-wp-4.7.3 @require-extension-imagick
   Scenario: Regenerating melange with batch results: regenerated (and not needing regeneration), skipped, failed
