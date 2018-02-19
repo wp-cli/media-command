@@ -1122,14 +1122,10 @@ Feature: Regenerate WordPress attachments
     And STDERR should be empty
 
   # Audio/video `_cover_hash` meta, used to determine if sub attachment, added in WP 3.9
-  # Test on PHP 5.6 latest only, and iterate over various WP versions.
-  @require-wp-latest @require-php-5.6 @less-than-php-7.0
-  Scenario Outline: Regenerating audio with thumbnail
+  @require-wp-3.9
+  Scenario: Regenerating audio with thumbnail
     # If version is trunk/latest then can get warning about checksums not being available, so STDERR may or may not be empty
-    Given I try `wp core download --version=<version> --force`
-    Then the return code should be 0
-    And I run `wp core update-db`
-    And download:
+    Given download:
       | path                                     | url                                                       |
       | {CACHE_DIR}/audio-with-400x300-cover.mp3 | http://wp-cli.org/behat-data/audio-with-400x300-cover.mp3 |
       | {CACHE_DIR}/audio-with-no-cover.mp3      | http://wp-cli.org/behat-data/audio-with-no-cover.mp3      |
@@ -1175,13 +1171,6 @@ Feature: Regenerate WordPress attachments
       Success: Regenerated 1 of 1 images.
       """
     And STDERR should be empty
-
-    Examples:
-      | version |
-      | latest  |
-      | trunk   |
-      | 4.2     |
-      | 3.9     |
 
   # Video cover support requires ID3 library 1.9.9, updated WP 4.3 https://core.trac.wordpress.org/ticket/32806
   @require-wp-4.3
@@ -1292,6 +1281,63 @@ Feature: Regenerate WordPress attachments
       Success: Regenerated 1 of 1 images.
       """
     And the wp-content/uploads/white-160-square-150x150.bmp file should exist
+
+    # Now disable BMP support.
+    Given a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      // Disable Imagick.
+      add_filter( 'wp_image_editors', function ( $image_editors ) {
+          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+            unset( $image_editors[ $idx ] );
+            $image_editors = array_values( $image_editors );
+          }
+          return $image_editors;
+      } );
+      // Disable BMP as displayable image.
+      add_filter( 'file_is_displayable_image', function ( $result, $path ) {
+          return $result ? false === strpos( $path, '.bmp' ) : $result;
+      }, 10, 2 );
+      """
+
+    # Try with no image editor available and get warning about no editor.
+    When I try `WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK=0 wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Skipped thumbnail regeneration for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 0 of 1 images (1 skipped).
+      """
+    And STDERR should be:
+      """
+      Warning: No editor could be selected. (ID {BMP_ATTACHMENT_ID})
+      """
+    # Note in this case regenerate is not destructive.
+    And the wp-content/uploads/white-160-square-150x150.bmp file should exist
+
+    # Try with image editor available and get warning about no metadata.
+    When I try `WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK=1 wp media regenerate --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Couldn't regenerate thumbnails for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}).
+      """
+    And STDERR should be:
+      """
+      Warning: No metadata. (ID {BMP_ATTACHMENT_ID})
+      Error: No images regenerated (1 failed).
+      """
+    # Note in this case regenerate is destructive.
+    And the wp-content/uploads/white-160-square-150x150.bmp file should not exist
 
   @require-wp-4.7.3 @require-extension-imagick
   Scenario: Regenerating melange with batch results: regenerated (and not needing regeneration), skipped, failed
