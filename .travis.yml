@@ -15,6 +15,7 @@ branches:
 cache:
   directories:
     - $HOME/.composer/cache
+    - $HOME/opt/$WP_VERSION/$TRAVIS_PHP_VERSION
 
 env:
   global:
