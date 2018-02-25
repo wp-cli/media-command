@@ -1233,7 +1233,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate image uploaded with no sizes metadata
     Given download:
       | path                             | url                                               |
-      | {CACHE_DIR}/white-200-square.bmp | http://wp-cli.org/behat-data/white-200-square.bmp |
+      | {CACHE_DIR}/white-160-square.bmp | http://wp-cli.org/behat-data/white-160-square.bmp |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -1245,6 +1245,10 @@ Feature: Regenerate WordPress attachments
           }
           return $image_editors;
       } );
+      // Enable BMP as displayable image (for WP < 4.0).
+      add_filter( 'file_is_displayable_image', function ( $result, $path ) {
+          return $result ? $result : false !== strpos( $path, '.bmp' );
+      }, 10, 2 );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1267,9 +1271,9 @@ Feature: Regenerate WordPress attachments
       """
       Success: Regenerated 0 of 1 images (1 skipped).
       """
-    And STDERR should contain:
+    And STDERR should not contain:
       """
-      Warning: No editor could be selected. (ID {BMP_ATTACHMENT_ID})
+      Warning: No editor could be selected.
       """
     And the wp-content/uploads/white-160-square-150x150.bmp file should not exist
 
@@ -1288,6 +1292,65 @@ Feature: Regenerate WordPress attachments
       Success: Regenerated 1 of 1 images.
       """
     And the wp-content/uploads/white-160-square-150x150.bmp file should exist
+
+    # Now disable BMP support.
+    Given a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      // Disable Imagick.
+      add_filter( 'wp_image_editors', function ( $image_editors ) {
+          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+            unset( $image_editors[ $idx ] );
+            $image_editors = array_values( $image_editors );
+          }
+          return $image_editors;
+      } );
+      // Disable BMP as displayable image.
+      add_filter( 'file_is_displayable_image', function ( $result, $path ) {
+          return $result ? false === strpos( $path, '.bmp' ) : $result;
+      }, 10, 2 );
+      """
+
+    # Try with no image editor available and get warning about no editor.
+    When I try `WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK=0 wp media regenerate --yes`
+    Then the return code should be 0
+    And STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Skipped thumbnail regeneration for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}).
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 0 of 1 images (1 skipped).
+      """
+    And STDERR should be:
+      """
+      Warning: No editor could be selected. (ID {BMP_ATTACHMENT_ID})
+      """
+    # Note in this case regenerate is not destructive.
+    And the wp-content/uploads/white-160-square-150x150.bmp file should exist
+
+    # Try with image editor available and get warning about no metadata.
+    When I try `WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK=1 wp media regenerate --yes`
+    Then the return code should be 1
+    And STDOUT should contain:
+      """
+      Found 1 image to regenerate.
+      """
+    And STDOUT should contain:
+      """
+      1/1 Couldn't regenerate thumbnails for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}).
+      """
+    And STDERR should be:
+      """
+      Warning: No metadata. (ID {BMP_ATTACHMENT_ID})
+      Error: No images regenerated (1 failed).
+      """
+    # Note in this case regenerate is destructive.
+    And the wp-content/uploads/white-160-square-150x150.bmp file should not exist
 
   @require-wp-4.7.3 @require-extension-imagick
   Scenario: Regenerating melange with batch results: regenerated (and not needing regeneration), skipped, failed
@@ -1464,6 +1527,10 @@ Feature: Regenerate WordPress attachments
       """
       Error: Only regenerated 2 of 4 images (1 failed, 1 skipped).
       """
+    And STDERR should not contain:
+      """
+      Warning: No editor could be selected.
+      """
     And the return code should be 1
 
     # Make minimal pdf fail.
@@ -1512,5 +1579,9 @@ Feature: Regenerate WordPress attachments
     And STDERR should contain:
       """
       Error: Only regenerated 1 of 4 images (2 failed, 1 skipped).
+      """
+    And STDERR should not contain:
+      """
+      Warning: No editor could be selected.
       """
     And the return code should be 1
