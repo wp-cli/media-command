@@ -20,26 +20,23 @@
         "psr-4": {
             "": "src/"
         },
-        "files": [
-            "media-command.php"
-        ]
+        "files": [ "media-command.php" ]
     },
-    "require": {
-        "wp-cli/wp-cli": "*"
-    },
+    "require": {},
     "require-dev": {
-        "behat/behat": "~2.5"
+        "behat/behat": "~2.5",
+        "wp-cli/wp-cli": "^1.5"
     },
     "extra": {
         "branch-alias": {
             "dev-master": "1.x-dev"
         },
+        "bundled": true,
         "commands": [
             "media",
             "media import",
             "media regenerate",
             "media image-size"
-        ],
-        "bundled": true
+        ]
     }
 }
