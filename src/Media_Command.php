@@ -35,7 +35,13 @@ use WP_CLI\Utils;
  * @package wp-cli
  */
 class Media_Command extends WP_CLI_Command {
-	const WP_CLEAR_OBJECT_CACHE_INTERVAL = 500; // Clear the WP object cache after this many regenerations/imports.
+
+	/**
+	 * Clear the WP object cache after this many regenerations/imports.
+	 *
+	 * @var integer
+	 */
+	const WP_CLEAR_OBJECT_CACHE_INTERVAL = 500;
 
 	/**
 	 * Regenerates thumbnails for one or more attachments.
