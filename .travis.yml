@@ -15,6 +15,7 @@ branches:
 cache:
   directories:
     - $HOME/.composer/cache
+    - $HOME/opt/$WP_VERSION/$TRAVIS_PHP_VERSION
 
 env:
   global:
@@ -47,6 +48,8 @@ before_install:
     else
       echo "xdebug.ini does not exist"
     fi
+  - bash bin/install-imagick.sh
+  - php -m
 
 install:
   - composer require wp-cli/wp-cli:dev-master
@@ -58,3 +61,8 @@ before_script:
 
 script:
   - bash bin/test.sh
+
+addons:
+  apt:
+    packages:
+    - ghostscript

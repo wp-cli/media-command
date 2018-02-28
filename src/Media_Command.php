@@ -231,6 +231,10 @@ class Media_Command extends WP_CLI_Command {
 	 *     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --title='The WordPress logo' --alt="Semantic personal publishing"
 	 *     Imported file 'http://s.wordpress.org/style/images/wp-header-logo.png' as attachment ID 1755.
 	 *     Success: Imported 1 of 1 images.
+	 *
+	 *     # Get the URL for an attachment after import.
+	 *     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --porcelain | xargs -I {} wp post list --post__in={} --field=url --post_type=attachment
+	 *     http://wordpress-develop.dev/wp-header-logo/
 	 */
 	function import( $args, $assoc_args = array() ) {
 		$assoc_args = wp_parse_args( $assoc_args, array(
@@ -579,13 +583,9 @@ class Media_Command extends WP_CLI_Command {
 			return;
 		}
 
-		if ( ! $skip_delete ) {
-			$this->remove_old_images( $id, $fullsizepath, $image_size );
-		}
-
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
-		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_it );
+		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_delete, $skip_it );
 
 		if ( $skip_it ) {
 			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc." );
@@ -629,12 +629,7 @@ class Media_Command extends WP_CLI_Command {
 		$successes++;
 	}
 
-	private function remove_old_images( $att_id, $fullsizepath, $image_size ) {
-		$metadata = wp_get_attachment_metadata( $att_id );
-
-		if ( ! is_array( $metadata ) ) {
-			return;
-		}
+	private function remove_old_images( $metadata, $fullsizepath, $image_size ) {
 
 		if ( empty( $metadata['sizes'] ) ) {
 			return;
@@ -660,48 +655,48 @@ class Media_Command extends WP_CLI_Command {
 		}
 	}
 
-	private function needs_regeneration( $att_id, $fullsizepath, $is_pdf, $image_size, &$skip_it ) {
+	private function needs_regeneration( $att_id, $fullsizepath, $is_pdf, $image_size, $skip_delete, &$skip_it ) {
 
 		// Assume not skipping.
 		$skip_it = false;
 
+		// Note: zero-length string returned if no metadata, for instance if PDF or non-standard image (eg an SVG).
 		$metadata = wp_get_attachment_metadata($att_id);
 
-		if ( ! is_array( $metadata ) ) {
-			if ( $is_pdf ) {
-				$editor = wp_get_image_editor( $fullsizepath );
-				$no_pdf_editor = is_wp_error( $editor );
-				unset( $editor );
-				if ( $no_pdf_editor ) {
-					// No PDF thumbnail generation available, so skip.
-					$skip_it = true;
-					return false;
-				}
-				// Assume it may be possible to regenerate the PDF thumbnails and allow processing to continue and possibly fail.
-				return true;
+		$image_sizes = $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata );
+
+		// First check if no applicable editor currently available (non-destructive - ie old thumbnails not removed).
+		if ( is_wp_error( $image_sizes ) && 'image_no_editor' === $image_sizes->get_error_code() ) {
+			// Warn unless PDF or non-standard image.
+			if ( ! $is_pdf && is_array( $metadata ) && ! empty( $metadata['sizes'] ) ) {
+				WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
 			}
-			// Assume it's not a standard image (eg an SVG) and skip.
 			$skip_it = true;
 			return false;
 		}
 
-		// Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
+		// If uploaded when applicable image editor such as Imagick unavailable, the metadata or sizes metadata may not exist.
+		if ( ! is_array( $metadata ) ) {
+			$metadata = array();
+		}
+		// If set `$metadata['sizes']` should be array but explicitly check as following code depends on it.
+		if ( ! isset( $metadata['sizes'] ) || ! is_array( $metadata['sizes'] ) ) {
+			$metadata['sizes'] = array();
+		}
 
-		// Check whether there's new sizes or they've changed.
-		$image_sizes = $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata );
+		// Remove any old thumbnails (so now destructive).
+		if ( ! $skip_delete ) {
+			$this->remove_old_images( $metadata, $fullsizepath, $image_size );
+		}
+
+		// Check for any other error (such as load error) apart from no editor available.
 		if ( is_wp_error( $image_sizes ) ) {
-			if ( 'image_no_editor' === $image_sizes->get_error_code() ) {
-				// Warn unless PDF.
-				if ( ! $is_pdf ) {
-					WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
-				}
-				$skip_it = true;
-				return false;
-			}
 			// Warn but assume it may be possible to regenerate and allow processing to continue and possibly fail.
 			WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
 			return true;
 		}
+
+		// Have sizes - check whether there're new ones or they've changed. Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
 
 		if ( $image_size ) {
 			if ( empty( $image_sizes[ $image_size ] ) ) {
@@ -713,12 +708,7 @@ class Media_Command extends WP_CLI_Command {
 			$metadata['sizes'] = array( $image_size => $metadata['sizes'][ $image_size ] );
 		}
 
-		// In certain situations, eg if file uploaded when applicable image editor such as Imagick unavailable, the sizes metadata may not exist.
-		if ( ! isset( $metadata['sizes'] ) ) {
-			$metadata['sizes'] = array();
-		}
-
-		if ( $this->image_sizes_differ( $image_sizes, (array) $metadata['sizes'] ) ) {
+		if ( $this->image_sizes_differ( $image_sizes, $metadata['sizes'] ) ) {
 			return true;
 		}
 
@@ -833,7 +823,8 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
-		if ( ! $is_pdf ) {
+		// Check here that not PDF (as filter not applied in core if is) and `$metadata` is array (as may not be and filter only applied in core when is).
+		if ( ! $is_pdf && is_array( $metadata ) ) {
 			$sizes = apply_filters( 'intermediate_image_sizes_advanced', $sizes, $metadata );
 		}
 
