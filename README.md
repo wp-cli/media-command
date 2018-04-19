@@ -117,10 +117,6 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
     Imported file 'http://s.wordpress.org/style/images/wp-header-logo.png' as attachment ID 1755.
     Success: Imported 1 of 1 images.
 
-    # Get the URL for an attachment after import.
-    $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --porcelain | xargs -I {} wp post list --post__in={} --field=url --post_type=attachment
-    http://wordpress-develop.dev/wp-header-logo/
-
 
 
 ### wp media regenerate
