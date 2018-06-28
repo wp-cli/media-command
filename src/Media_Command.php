@@ -94,9 +94,9 @@ class Media_Command extends WP_CLI_Command {
 	 *     $ wp media regenerate --image_size=large
 	 *     Do you really want to regenerate the "large" image size for all images? [y/n] y
 	 *     Found 3 images to regenerate.
-	 *     1/3 Regenerated "large" thumbnail for "Yoogest Image Ever, Really" (ID 9999).
-	 *     2/3 No "large" thumbnail regeneration needed for "Snowflake" (ID 9998).
-	 *     3/3 Regenerated "large" thumbnail for "Even Yooger than the Yoogest Image Ever, Really" (ID 9997).
+	 *     1/3 Regenerated "large" thumbnail for "Sydney Harbor Bridge" (ID 760).
+	 *     2/3 No "large" thumbnail regeneration needed for "Boardwalk" (ID 757).
+	 *     3/3 Regenerated "large" thumbnail for "Sunburst Over River" (ID 756).
 	 *     Success: Regenerated 3 of 3 images.
 	 */
 	function regenerate( $args, $assoc_args = array() ) {
@@ -210,8 +210,8 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 *     # Import all jpgs in the current user's "Pictures" directory, not attached to any post.
 	 *     $ wp media import ~/Pictures/**\/*.jpg
-	 *     Imported file '/home/person/Pictures/beautiful-youg-girl-in-ivy.jpg' as attachment ID 1751.
-	 *     Imported file '/home/person/Pictures/fashion-girl.jpg' as attachment ID 1752.
+	 *     Imported file '/home/person/Pictures/landscape-photo.jpg' as attachment ID 1751.
+	 *     Imported file '/home/person/Pictures/fashion-icon.jpg' as attachment ID 1752.
 	 *     Success: Imported 2 of 2 items.
 	 *
 	 *     # Import a local image and set it to be the post thumbnail for a post.
