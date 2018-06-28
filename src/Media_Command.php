@@ -210,8 +210,8 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 *     # Import all jpgs in the current user's "Pictures" directory, not attached to any post.
 	 *     $ wp media import ~/Pictures/**\/*.jpg
-	 *     Imported file '/home/person/Pictures/beautiful-youg-girl-in-ivy.jpg' as attachment ID 1751.
-	 *     Imported file '/home/person/Pictures/fashion-girl.jpg' as attachment ID 1752.
+	 *     Imported file '/home/person/Pictures/landscape-photo.jpg' as attachment ID 1751.
+	 *     Imported file '/home/person/Pictures/fashion-icon.jpg' as attachment ID 1752.
 	 *     Success: Imported 2 of 2 items.
 	 *
 	 *     # Import a local image and set it to be the post thumbnail for a post.
