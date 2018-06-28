@@ -94,9 +94,9 @@ class Media_Command extends WP_CLI_Command {
 	 *     $ wp media regenerate --image_size=large
 	 *     Do you really want to regenerate the "large" image size for all images? [y/n] y
 	 *     Found 3 images to regenerate.
-	 *     1/3 Regenerated "large" thumbnail for "Yoogest Image Ever, Really" (ID 9999).
-	 *     2/3 No "large" thumbnail regeneration needed for "Snowflake" (ID 9998).
-	 *     3/3 Regenerated "large" thumbnail for "Even Yooger than the Yoogest Image Ever, Really" (ID 9997).
+	 *     1/3 Regenerated "large" thumbnail for "Sydney Harbor Bridge" (ID 760).
+	 *     2/3 No "large" thumbnail regeneration needed for "Boardwalk" (ID 757).
+	 *     3/3 Regenerated "large" thumbnail for "Sunburst Over River" (ID 756).
 	 *     Success: Regenerated 3 of 3 images.
 	 */
 	function regenerate( $args, $assoc_args = array() ) {
