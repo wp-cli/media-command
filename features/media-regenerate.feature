@@ -861,6 +861,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerating SVGs should be marked as skipped and not produce PHP notices
     Given an svg.svg file:
       """
+      <?xml version="1.0" encoding="utf-8"?>
       <svg xmlns="http://www.w3.org/2000/svg"/>
       """
     And a wp-content/mu-plugins/media-settings.php file:
