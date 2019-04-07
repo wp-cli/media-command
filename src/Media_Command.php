@@ -123,21 +123,13 @@ class Media_Command extends WP_CLI_Command {
 			$skip_delete = true;
 		}
 
-		$mime_types = array( 'image' );
+		$additional_mime_types = array();
+
 		if ( Utils\wp_version_compare( '4.7', '>=' ) ) {
-			$mime_types[] = 'application/pdf';
+			$additional_mime_types[] = 'application/pdf';
 		}
-		$query_args = array(
-			'post_type' => 'attachment',
-			'post__in' => $args,
-			'post_mime_type' => $mime_types,
-			'post_status' => 'any',
-			'posts_per_page' => -1,
-			'fields' => 'ids'
-		);
 
-		$images = new WP_Query( $query_args );
-
+		$images = $this->get_images( $args, $additional_mime_types );
 		$count = $images->post_count;
 
 		if ( !$count ) {
@@ -153,12 +145,12 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		$number = $successes = $errors = $skips = 0;
-		foreach ( $images->posts as $id ) {
+		foreach ( $images->posts as $post ) {
 			$number++;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				Utils\wp_clear_object_cache();
 			}
-			$this->process_regeneration( $id, $skip_delete, $only_missing, $image_size, $number . '/' . $count, $successes, $errors, $skips );
+			$this->process_regeneration( $post->ID, $skip_delete, $only_missing, $image_size, $number . '/' . $count, $successes, $errors, $skips );
 		}
 
 		if ( $image_size ) {
@@ -454,56 +446,12 @@ class Media_Command extends WP_CLI_Command {
 	 * @subcommand image-size
 	 */
 	public function image_size( $args, $assoc_args ) {
-		global $_wp_additional_image_sizes;
-
-		$soft_ratio_text = 'N/A';
-
 		$assoc_args = array_merge( array(
 			'fields'      => 'name,width,height,crop,ratio'
 		), $assoc_args );
 
-		$sizes = array(
-			array(
-				'name'      => 'large',
-				'width'     => intval( get_option( 'large_size_w' ) ),
-				'height'    => intval( get_option( 'large_size_h' ) ),
-				'crop'      => false !== get_option( 'large_crop' ) ? 'hard' : 'soft',
-				'ratio'     => false !== get_option( 'large_crop' ) ? $this->get_ratio( intval( get_option( 'large_size_w' ) ), intval( get_option( 'large_size_h' ) ) ) : $soft_ratio_text,
-			),
-			array(
-				'name'      => 'medium_large',
-				'width'     => intval( get_option( 'medium_large_size_w' ) ),
-				'height'    => intval( get_option( 'medium_large_size_h' ) ),
-				'crop'      => false !== get_option( 'medium_large_crop' ) ? 'hard' : 'soft',
-				'ratio'     => false !== get_option( 'medium_large_crop' ) ? $this->get_ratio( intval( get_option( 'medium_large_size_w' ) ), intval( get_option( 'medium_large_size_h' ) ) ) : $soft_ratio_text,
-			),
-			array(
-				'name'      => 'medium',
-				'width'     => intval( get_option( 'medium_size_w' ) ),
-				'height'    => intval( get_option( 'medium_size_h' ) ),
-				'crop'      => false !== get_option( 'medium_crop' ) ? 'hard' : 'soft',
-				'ratio'     => false !== get_option( 'medium_crop' ) ? $this->get_ratio( intval( get_option( 'medium_size_w' ) ), intval( get_option( 'medium_size_h' ) ) ) : $soft_ratio_text,
-			),
-			array(
-				'name'      => 'thumbnail',
-				'width'     => intval( get_option( 'thumbnail_size_w' ) ),
-				'height'    => intval( get_option( 'thumbnail_size_h' ) ),
-				'crop'      => false !== get_option( 'thumbnail_crop' ) ? 'hard' : 'soft',
-				'ratio'     => false !== get_option( 'thumbnail_crop' ) ? $this->get_ratio( intval( get_option( 'thumbnail_size_w' ) ), intval( get_option( 'thumbnail_size_h' ) ) ) : $soft_ratio_text,
-			),
-		);
-		if ( is_array( $_wp_additional_image_sizes ) ) {
-			foreach( $_wp_additional_image_sizes as $size => $size_args ) {
-				$crop = filter_var( $size_args['crop'], FILTER_VALIDATE_BOOLEAN );
-				$sizes[] = array(
-					'name'      => $size,
-					'width'     => $size_args['width'],
-					'height'    => $size_args['height'],
-					'crop'      => empty( $crop ) || is_array( $size_args['crop'] ) ? 'soft' : 'hard',
-					'ratio'     => empty( $crop ) || is_array( $size_args['crop'] ) ? $soft_ratio_text : $this->get_ratio( $size_args['width'], $size_args['height'] ),
-				);
-			}
-		}
+		$sizes = $this->get_registered_image_sizes();
+
 		usort( $sizes, function( $a, $b ){
 			if ( $a['width'] == $b['width'] ) {
 				return 0;
@@ -515,7 +463,7 @@ class Media_Command extends WP_CLI_Command {
 				'width'     => '',
 				'height'    => '',
 				'crop'      => 'N/A',
-				'ratio'     => $soft_ratio_text,
+				'ratio'     => 'N/A',
 		) );
 		WP_CLI\Utils\format_items( $assoc_args['format'], $sizes, explode( ',', $assoc_args['fields'] ) );
 	}
@@ -796,7 +744,6 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
-
 		$sizes = array();
 		foreach ( $intermediate_image_sizes as $s ) {
 			if ( isset( $_wp_additional_image_sizes[ $s ]['width'] ) ) {
@@ -889,6 +836,84 @@ class Media_Command extends WP_CLI_Command {
 			// Treat removing unused metadata as no change.
 		}
 		return false;
+	}
+
+	/**
+	 * Get images from the installation.
+	 *
+	 * @param array $args                  The query arguments to use. Optional.
+	 * @param array $additional_mime_types The additional mime types to search for. Optional.
+	 *
+	 * @return WP_Query The query result.
+	 */
+	private function get_images( $args = array(), $additional_mime_types = array() ) {
+		$mime_types = array_merge( array( 'image' ), $additional_mime_types );
+
+		$query_args = array(
+			'post_type' => 'attachment',
+			'post__in' => $args,
+			'post_mime_type' => $mime_types,
+			'post_status' => 'any',
+			'posts_per_page' => -1,
+		);
+
+		return new WP_Query( $query_args );
+	}
+
+	/**
+	 * Get the metadata for the passed intermediate image size.
+	 *
+	 * @param string $size The image size to get the metadata for.
+	 *
+	 * @return array The image size metadata.
+	 */
+	private function get_intermediate_size_metadata( $size ) {
+		$width  = intval( get_option( "{$size}_size_w" ) );
+		$height = intval( get_option( "{$size}_size_h" ) );
+		$crop 	= get_option( "{$size}_crop" );
+
+		return array(
+			'name' 		=> $size,
+			'width'		=> $width,
+			'height'	=> $height,
+			'crop'		=> false !== $crop ? 'hard' : 'soft',
+			'ratio'		=> false !== $crop ? $this->get_ratio( $width, $height ) : 'N/A',
+		);
+	}
+
+	/**
+	 * Get all the registered image sizes along with their dimensions.
+	 *
+	 * @global array $_wp_additional_image_sizes The additional image sizes to parse.
+	 *
+	 * @link https://wordpress.stackexchange.com/a/251602 Original solution.
+	 *
+	 * @return array $image_sizes The image sizes
+	 */
+	private function get_registered_image_sizes() {
+		global $_wp_additional_image_sizes;
+
+		$image_sizes = array();
+		$default_image_sizes = get_intermediate_image_sizes();
+
+		foreach ( $default_image_sizes as $size ) {
+			$image_sizes[] = $this->get_intermediate_size_metadata( $size );
+		}
+
+		if ( is_array( $_wp_additional_image_sizes ) ) {
+			foreach( $_wp_additional_image_sizes as $size => $size_args ) {
+				$crop = filter_var( $size_args['crop'], FILTER_VALIDATE_BOOLEAN );
+				$image_sizes[] = array(
+					'name'		=> $size,
+					'width'		=> $size_args['width'],
+					'height'	=> $size_args['height'],
+					'crop'		=> empty( $crop ) || is_array( $size_args['crop'] ) ? 'soft' : 'hard',
+					'ratio'		=> empty( $crop ) || is_array( $size_args['crop'] ) ? 'N/A' : $this->get_ratio( $size_args['width'], $size_args['height'] ),
+				);
+			}
+		}
+
+		return $image_sizes;
 	}
 
 }
