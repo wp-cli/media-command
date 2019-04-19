@@ -102,9 +102,7 @@ class Media_Command extends WP_CLI_Command {
 	public function regenerate( $args, $assoc_args = array() ) {
 		$assoc_args = wp_parse_args(
 			$assoc_args,
-			array(
-				'image_size' => '',
-			)
+			[ 'image_size' => '' ]
 		);
 
 		$image_size = $assoc_args['image_size'];
@@ -120,8 +118,8 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
-		$skip_delete  = \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-delete' );
-		$only_missing = \WP_CLI\Utils\get_flag_value( $assoc_args, 'only-missing' );
+		$skip_delete  = Utils\get_flag_value( $assoc_args, 'skip-delete' );
+		$only_missing = Utils\get_flag_value( $assoc_args, 'only-missing' );
 		if ( $only_missing ) {
 			$skip_delete = true;
 		}
@@ -286,7 +284,9 @@ class Media_Command extends WP_CLI_Command {
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				Utils\wp_clear_object_cache();
 			}
-			$is_file_remote = function_exists( 'wp_parse_url' ) ? wp_parse_url( $file, PHP_URL_HOST ) : parse_url( $file, PHP_URL_HOST ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- parse_url will only be used in absence of wp_parse_url.
+
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- parse_url will only be used in absence of wp_parse_url.
+			$is_file_remote = function_exists( 'wp_parse_url' ) ? wp_parse_url( $file, PHP_URL_HOST ) : parse_url( $file, PHP_URL_HOST );
 			$orig_filename  = $file;
 			$file_time      = '';
 
@@ -296,14 +296,14 @@ class Media_Command extends WP_CLI_Command {
 					$errors++;
 					continue;
 				}
-				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
+				if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
 					$tempfile = $file;
 				} else {
 					$tempfile = $this->make_copy( $file );
 				}
 				$name = Utils\basename( $file );
 
-				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
+				if ( Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
 					$file_time = @filemtime( $file );
 				}
 			} else {
@@ -362,7 +362,7 @@ class Media_Command extends WP_CLI_Command {
 				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Utils\basename( $file ) );
 			}
 
-			if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
+			if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
 				$wp_filetype                  = wp_check_filetype( $file, null );
 				$post_array['post_mime_type'] = $wp_filetype['type'];
 				$post_array['post_status']    = 'inherit';
@@ -402,19 +402,19 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			// Set as featured image, if --post_id and --featured_image are set
-			if ( $assoc_args['post_id'] && \WP_CLI\Utils\get_flag_value( $assoc_args, 'featured_image' ) ) {
+			if ( $assoc_args['post_id'] && Utils\get_flag_value( $assoc_args, 'featured_image' ) ) {
 				update_post_meta( $assoc_args['post_id'], '_thumbnail_id', $success );
 			}
 
 			$attachment_success_text = '';
 			if ( $assoc_args['post_id'] ) {
 				$attachment_success_text = " and attached to post {$assoc_args['post_id']}";
-				if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'featured_image' ) ) {
+				if ( Utils\get_flag_value( $assoc_args, 'featured_image' ) ) {
 					$attachment_success_text .= ' as featured image';
 				}
 			}
 
-			if ( \WP_CLI\Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
+			if ( Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
 				WP_CLI::line( $success );
 			} else {
 				WP_CLI::log(
@@ -823,12 +823,13 @@ class Media_Command extends WP_CLI_Command {
 	private function get_intermediate_sizes( $is_pdf, $metadata ) {
 		if ( $is_pdf ) {
 			// Copied from wp_generate_attachment_metadata() in "wp-admin/includes/image.php".
-			$fallback_sizes           = array(
+			$fallback_sizes = array(
 				'thumbnail',
 				'medium',
 				'large',
 			);
-			$intermediate_image_sizes = apply_filters( 'fallback_intermediate_image_sizes', $fallback_sizes, $metadata ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling native WordPress hook.
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling native WordPress hook.
+			$intermediate_image_sizes = apply_filters( 'fallback_intermediate_image_sizes', $fallback_sizes, $metadata );
 		} else {
 			$intermediate_image_sizes = get_intermediate_image_sizes();
 		}
@@ -841,7 +842,8 @@ class Media_Command extends WP_CLI_Command {
 			// For WP < 4.7.0.
 			global $_wp_additional_image_sizes;
 			if ( ! $_wp_additional_image_sizes ) {
-				$_wp_additional_image_sizes = array(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Used as a fallback for WordPress version less than 4.7.0 as function wp_get_additional_image_sizes didn't exist then.
+				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Used as a fallback for WordPress version less than 4.7.0 as function wp_get_additional_image_sizes didn't exist then.
+				$_wp_additional_image_sizes = array();
 			}
 		}
 
@@ -873,7 +875,8 @@ class Media_Command extends WP_CLI_Command {
 
 		// Check here that not PDF (as filter not applied in core if is) and `$metadata` is array (as may not be and filter only applied in core when is).
 		if ( ! $is_pdf && is_array( $metadata ) ) {
-			$sizes = apply_filters( 'intermediate_image_sizes_advanced', $sizes, $metadata ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling native WordPress hook.
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling native WordPress hook.
+			$sizes = apply_filters( 'intermediate_image_sizes_advanced', $sizes, $metadata );
 		}
 
 		return $sizes;
