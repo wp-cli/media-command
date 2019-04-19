@@ -14,17 +14,17 @@ if ( file_exists( $wpcli_media_autoloader ) ) {
  *
  * @throws \WP_CLI\ExitException
  */
-function wpcli_media_assert_image_editor_support() {
+$wpcli_media_assert_image_editor_support = function () {
 	if ( ! wp_image_editor_supports() ) {
 		WP_CLI::error(
 			'No support for generating images found. '
 			. 'Please install the Imagick or GD PHP extensions.'
 		);
 	}
-}
+};
 
 WP_CLI::add_command(
 	'media',
 	'Media_Command',
-	[ 'before_invoke' => 'wpcli_media_assert_image_editor_support' ]
+	[ 'before_invoke' => $wpcli_media_assert_image_editor_support ]
 );
