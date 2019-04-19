@@ -1,7 +1,7 @@
 wp-cli/media-command
 ====================
 
-Imports files as attachments, regenerates thumbnails, or lists registered image sizes.
+Imports files as attachments, regenerate thumbnails, or lists registered image sizes.
 
 [![Build Status](https://travis-ci.org/wp-cli/media-command.svg?branch=master)](https://travis-ci.org/wp-cli/media-command)
 
@@ -13,7 +13,7 @@ This package implements the following commands:
 
 ### wp media
 
-Imports files as attachments, regenerates thumbnails, or lists registered image sizes.
+Imports files as attachments, regenerate thumbnails, or lists registered image sizes.
 
 ~~~
 wp media
@@ -31,7 +31,7 @@ wp media
 
     # Import a local image and set it to be the featured image for a post.
     $ wp media import ~/Downloads/image.png --post_id=123 --title="A downloaded picture" --featured_image
-    Success: Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as featured image.
+    Success: Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as a featured image.
 
     # List all registered image sizes
     $ wp media image-size
@@ -60,7 +60,7 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 
 	<file>...
 		Path to file or files to be imported. Supports the glob(3) capabilities of the current shell.
-		    If file is recognized as a URL (for example, with a scheme of http or ftp), the file will be
+		    If the file is recognized as a URL (for example, with a scheme of http or ftp), the file will be
 		    downloaded to a temp file before being sideloaded.
 
 	[--post_id=<post_id>]
@@ -73,7 +73,7 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 		Caption for attachent (post excerpt field).
 
 	[--alt=<alt_text>]
-		Alt text for image (saved as post meta).
+		Alt text for the image (saved as post meta).
 
 	[--desc=<description>]
 		"Description" field (post content) of attachment post.
@@ -101,8 +101,8 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 
     # Import a local image and set it to be the post thumbnail for a post.
     $ wp media import ~/Downloads/image.png --post_id=123 --title="A downloaded picture" --featured_image
-    Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as featured image.
-    Success: Imported 1 of 1 images.
+    Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as a featured image.
+    Success: Imported 1 of 1 image.
 
     # Import a local image, but set it as the featured image for all posts.
     # 1. Import the image and get its attachment ID.
@@ -115,7 +115,7 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
     # Import an image from the web.
     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --title='The WordPress logo' --alt="Semantic personal publishing"
     Imported file 'http://s.wordpress.org/style/images/wp-header-logo.png' as attachment ID 1755.
-    Success: Imported 1 of 1 images.
+    Success: Imported 1 of 1 image.
 
     # Get the URL for an attachment after import.
     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --porcelain | xargs -I {} wp post list --post__in={} --field=url --post_type=attachment
@@ -143,7 +143,7 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-del
 		Skip deletion of the original thumbnails. If your thumbnails are linked from sources outside your control, it's likely best to leave them around. Defaults to false.
 
 	[--only-missing]
-		Only generate thumbnails for images missing image sizes.
+		Only generate thumbnails for images of missing image sizes.
 
 	[--yes]
 		Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
@@ -249,7 +249,7 @@ We appreciate you taking the initiative to contribute to this project.
 
 Contributing isn’t limited to just code. We encourage you to contribute in the way that best fits your abilities, by writing tutorials, giving a demo at your local meetup, helping other users with their support questions, or revising our documentation.
 
-For a more thorough introduction, [check out WP-CLI's guide to contributing](https://make.wordpress.org/cli/handbook/contributing/). This package follows those policy and guidelines.
+For a more thorough introduction, [check out WP-CLI's guide to contributing](https://make.wordpress.org/cli/handbook/contributing/). This package follows those policies and guidelines.
 
 ### Reporting a bug
 
@@ -263,7 +263,7 @@ Once you’ve done a bit of searching and discovered there isn’t an open or fi
 
 Want to contribute a new feature? Please first [open a new issue](https://github.com/wp-cli/media-command/issues/new) to discuss whether the feature is a good fit for the project.
 
-Once you've decided to commit the time to seeing your pull request through, [please follow our guidelines for creating a pull request](https://make.wordpress.org/cli/handbook/pull-requests/) to make sure it's a pleasant experience. See "[Setting up](https://make.wordpress.org/cli/handbook/pull-requests/#setting-up)" for details specific to working on this package locally.
+Once you've decided to commit the time to see your pull request through, [please follow our guidelines for creating a pull request](https://make.wordpress.org/cli/handbook/pull-requests/) to make sure it's a pleasant experience. See "[Setting up](https://make.wordpress.org/cli/handbook/pull-requests/#setting-up)" for details specific to working on this package locally.
 
 ## Support
 
