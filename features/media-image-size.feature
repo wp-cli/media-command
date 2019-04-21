@@ -1,5 +1,6 @@
 Feature: List image sizes
 
+  @require-wp-4.8
   Scenario: Basic usage
     Given a WP install
 
