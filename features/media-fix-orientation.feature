@@ -1,9 +1,10 @@
+@require-extension-exif
 Feature: Fix WordPress attachments orientation
 
   Background:
     Given a WP install
 
-  Scenario: Regenerate all images while none exists
+  Scenario: Try to fix orientation for all images while none exists
     When I try `wp media fix-orientation`
     Then STDERR should be:
       """
