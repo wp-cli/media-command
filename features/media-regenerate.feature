@@ -59,7 +59,8 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/canola-1024x768.jpg file should not exist
 
   # WP < 4.2 produced thumbnails duplicating original, https://core.trac.wordpress.org/ticket/31296
-  @require-wp-4.2
+  # WP 5.3 alpha contains a bug where duplicate resizes are being stored: https://core.trac.wordpress.org/ticket/32437
+  @require-wp-4.2 @less-than-wp-5.3
   Scenario: Regenerate all images default behavior
     Given download:
       | path                             | url                                               |
@@ -519,7 +520,8 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/minimal-us-letter-pdf-1000x1000.jpg file should exist
 
   # WP < 4.2 produced thumbnails duplicating original, https://core.trac.wordpress.org/ticket/31296
-  @require-wp-4.2
+  # WP 5.3 alpha contains a bug where duplicate resizes are being stored: https://core.trac.wordpress.org/ticket/32437
+  @require-wp-4.2 @less-than-wp-5.3
   Scenario: Only regenerate images that are missing if it has thumbnails
     Given download:
       | path                             | url                                               |
