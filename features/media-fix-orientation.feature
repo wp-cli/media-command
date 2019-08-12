@@ -44,6 +44,10 @@ Feature: Fix WordPress attachments orientation
     And STDOUT should contain:
     """
     3 "Landscape Two" (ID {LANDSCAPE_TWO}) will be affected.
+    """
+
+    And STDOUT should contain:
+    """
     Success: 3 of 3 images will be affected.
     """
 
@@ -61,6 +65,10 @@ Feature: Fix WordPress attachments orientation
     And STDOUT should contain:
     """
     3 Fixing orientation for "Landscape Two" (ID {LANDSCAPE_TWO}).
+    """
+
+    And STDOUT should contain:
+    """
     Success: Fixed 3 of 3 images.
     """
 
@@ -79,6 +87,10 @@ Feature: Fix WordPress attachments orientation
     And STDOUT should contain:
     """
     3 No orientation fix required for "Landscape Two" (ID {LANDSCAPE_TWO}).
+    """
+
+    And STDOUT should contain:
+    """
     Success: Images already fixed.
     """
 
