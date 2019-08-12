@@ -1114,9 +1114,17 @@ class Media_Command extends WP_CLI_Command {
 				$editor->flip( $operations['flip'][0], $operations['flip'][1] );
 			}
 
+			// Save the image and generate metadata.
 			$editor->save( $full_size_path );
-			$metadata = wp_generate_attachment_metadata( $id, $full_size_path );
-			return wp_update_attachment_metadata( $id, $metadata );
+			$metadata   = wp_generate_attachment_metadata( $id, $full_size_path );
+			$image_meta = empty( $metadata['image_meta'] ) ? [] : $metadata['image_meta'];
+
+			// Update attachment metadata with newly generated data.
+			wp_update_attachment_metadata( $id, $metadata );
+
+			if ( isset( $image_meta['orientation'] ) && absint( $image_meta['orientation'] ) === 0 ) {
+				return true;
+			}
 		}
 
 		return false;
