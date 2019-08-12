@@ -31,30 +31,54 @@ Feature: Fix WordPress attachments orientation
     Then save STDOUT as {PORTRAIT_FOUR}
 
     When I run `wp media fix-orientation --dry-run`
-    Then STDOUT should be:
+    Then STDOUT should contain:
     """
-    1/3 "Portrait Four" (ID {PORTRAIT_FOUR}) will be affected.
-    2/3 "Landscape Five" (ID {LANDSCAPE_FIVE}) will be affected.
-    3/3 "Landscape Two" (ID {LANDSCAPE_TWO}) will be affected.
+    3 "Portrait Four" (ID {PORTRAIT_FOUR}) will be affected.
+    """
+
+    And STDOUT should contain:
+    """
+    3 "Landscape Five" (ID {LANDSCAPE_FIVE}) will be affected.
+    """
+
+    And STDOUT should contain:
+    """
+    3 "Landscape Two" (ID {LANDSCAPE_TWO}) will be affected.
     Success: 3 of 3 images will be affected.
     """
 
     When I run `wp media fix-orientation`
-    Then STDOUT should be:
+    Then STDOUT should contain:
     """
-    1/3 Fixing orientation for "Portrait Four" (ID {PORTRAIT_FOUR}).
-    2/3 Fixing orientation for "Landscape Five" (ID {LANDSCAPE_FIVE}).
-    3/3 Fixing orientation for "Landscape Two" (ID {LANDSCAPE_TWO}).
+    3 Fixing orientation for "Portrait Four" (ID {PORTRAIT_FOUR}).
+    """
+
+    And STDOUT should contain:
+    """
+    3 Fixing orientation for "Landscape Five" (ID {LANDSCAPE_FIVE}).
+    """
+
+    And STDOUT should contain:
+    """
+    3 Fixing orientation for "Landscape Two" (ID {LANDSCAPE_TWO}).
     Success: Fixed 3 of 3 images.
     """
 
     # Verify orientation fix.
     When I run `wp media fix-orientation`
-    Then STDOUT should be:
+    Then STDOUT should contain:
     """
-    1/3 No orientation fix required for "Portrait Four" (ID {PORTRAIT_FOUR}).
-    2/3 No orientation fix required for "Landscape Five" (ID {LANDSCAPE_FIVE}).
-    3/3 No orientation fix required for "Landscape Two" (ID {LANDSCAPE_TWO}).
+    3 No orientation fix required for "Portrait Four" (ID {PORTRAIT_FOUR}).
+    """
+
+    And STDOUT should contain:
+    """
+    3 No orientation fix required for "Landscape Five" (ID {LANDSCAPE_FIVE}).
+    """
+
+    And STDOUT should contain:
+    """
+    3 No orientation fix required for "Landscape Two" (ID {LANDSCAPE_TWO}).
     Success: Images already fixed.
     """
 
