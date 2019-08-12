@@ -3,6 +3,7 @@ Feature: Fix WordPress attachments orientation
   Background:
     Given a WP install
 
+  @require-wp-4.0
   Scenario: Try to fix orientation for all images while none exists
     When I try `wp media fix-orientation`
     Then STDERR should be:
@@ -10,7 +11,7 @@ Feature: Fix WordPress attachments orientation
       Error: No images found.
       """
 
-  @require-extension-exif
+  @require-extension-exif @require-wp-4.0
   Scenario: Fix orientation for all images
     Given download:
       | path                             | url                                                                            |
@@ -57,7 +58,7 @@ Feature: Fix WordPress attachments orientation
     Success: Images already fixed.
     """
 
-  @require-extension-exif
+  @require-extension-exif @require-wp-4.0
   Scenario: Fix orientation for single image
     When I run `wp media import {CACHE_DIR}/portrait-6.jpg --title="Portrait Six" --porcelain`
     Then save STDOUT as {PORTRAIT_SIX}
@@ -77,6 +78,7 @@ Feature: Fix WordPress attachments orientation
     Success: Image already fixed.
     """
 
+  @require-wp-4.0
   Scenario: Fix orientation for non existent image
     When I try `wp media fix-orientation 9999`
     Then STDERR should be:
