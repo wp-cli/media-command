@@ -968,4 +968,218 @@ class Media_Command extends WP_CLI_Command {
 		return $image_sizes;
 	}
 
+	/**
+	 * Fix image orientation for one or more attachments.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [<attachment-id>...]
+	 * : One or more IDs of the attachments to regenerate.
+	 *
+	 * [--dry-run]
+	 * : Check images needing orientation without performing the operation.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # Fix orientation for all images.
+	 *     $ wp media fix-orientation
+	 *     1/3 Fixing orientation for "Landscape_4" (ID 62).
+	 *     2/3 Fixing orientation for "Landscape_3" (ID 61).
+	 *     3/3 Fixing orientation for "Landscape_2" (ID 60).
+	 *     Success: Fixed 3 of 3 images.
+	 *
+	 *     # Fix orientation dry run.
+	 *     $ wp media fix-orientation 63 -dry run
+	 *     1/1 "Portrait_6" (ID 63) will be affected.
+	 *     Success: 1 of 1 image will be affected.
+	 *
+	 *     # Fix orientation for specific images.
+	 *     $ wp media fix-orientation 63
+	 *     1/1 Fixing orientation for "Portrait_6" (ID 63).
+	 *     Success: Fixed 1 of 1 images.
+	 *
+	 * @subcommand fix-orientation
+	 */
+	public function fix_orientation( $args, $assoc_args ) {
+
+		// EXIF is required to read image metadata for orientation.
+		if ( ! extension_loaded( 'exif' ) ) {
+			WP_CLI::error( "'EXIF' extension is not loaded, it is required for this operation." );
+		} elseif ( ! function_exists( 'exif_read_data' ) ) {
+			WP_CLI::error( "Function 'exif_read_data' does not exist, it is required for this operation." );
+		}
+
+		$images  = $this->get_images( $args );
+		$count   = $images->post_count;
+		$dry_run = Utils\get_flag_value( $assoc_args, 'dry-run' );
+
+		if ( ! $count ) {
+			WP_CLI::error( 'No images found.' );
+		}
+
+		$number    = 0;
+		$successes = 0;
+		$errors    = 0;
+		foreach ( $images->posts as $post ) {
+			$number++;
+			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				Utils\wp_clear_object_cache();
+			}
+			$this->process_orientation_fix( $post->ID, "{$number}/{$count}", $successes, $errors, $dry_run );
+		}
+
+		if ( Utils\get_flag_value( $assoc_args, 'dry-run' ) ) {
+			WP_CLI::success( sprintf( '%s of %s %s will be affected.', $successes, $count, Utils\pluralize( 'image', $count ) ) );
+		} else {
+			Utils\report_batch_operation_results( 'image', 'fix', $count, $successes, $errors );
+		}
+	}
+
+	/**
+	 * Perform orientation fix on attachments.
+	 *
+	 * @param int    $id        Attachment Id.
+	 * @param string $progress  Current progress string.
+	 * @param int    $successes Count of success in current operation.
+	 * @param int    $errors    Count of errors in current operation.
+	 * @param bool   $dry_run   Is this a dry run?
+	 */
+	private function process_orientation_fix( $id, $progress, &$successes, &$errors, $dry_run ) {
+		$title = get_the_title( $id );
+		if ( '' === $title ) {
+			// If audio or video cover art then the id is the sub attachment id, which has no title.
+			if ( metadata_exists( 'post', $id, '_cover_hash' ) ) {
+				// Unfortunately the only way to get the attachment title would be to do a non-indexed query against the meta value of `_thumbnail_id`. So don't.
+				$att_desc = sprintf( 'cover attachment (ID %d)', $id );
+			} else {
+				$att_desc = sprintf( '"(no title)" (ID %d)', $id );
+			}
+		} else {
+			$att_desc = sprintf( '"%1$s" (ID %2$d)', $title, $id );
+		}
+
+		$full_size_path = get_attached_file( $id );
+
+		if ( false === $full_size_path || ! file_exists( $full_size_path ) ) {
+			WP_CLI::warning( "Can't find {$att_desc}." );
+			$errors++;
+			return;
+		}
+
+		// Get current metadata of the attachment.
+		$metadata   = wp_generate_attachment_metadata( $id, $full_size_path );
+		$image_meta = ! empty( $metadata['image_meta'] ) ? $metadata['image_meta'] : [];
+
+		if ( isset( $image_meta['orientation'] ) && absint( $image_meta['orientation'] ) > 1 ) {
+			if ( ! $dry_run ) {
+				WP_CLI::log( "{$progress} Fixing orientation for {$att_desc}." );
+				if ( false !== $this->flip_rotate_image( $id, $metadata, $image_meta, $full_size_path ) ) {
+					$successes++;
+				} else {
+					$errors++;
+					WP_CLI::log( "Couldn't fix orientation for {$att_desc}." );
+				}
+			} else {
+				WP_CLI::log( "{$progress} {$att_desc} will be affected." );
+				$successes++;
+			}
+		} else {
+			WP_CLI::log( "{$progress} No orientation fix required for {$att_desc}." );
+		}
+	}
+
+	/**
+	 * Perform image rotate operations on the image.
+	 *
+	 * @param int    $id             Attachment Id.
+	 * @param array  $metadata       Attachment Metadata.
+	 * @param array  $image_meta     `image_meta` information for the attachment.
+	 * @param string $full_size_path Path to original image.
+	 *
+	 * @return bool Whether the image rotation operation succeeded.
+	 */
+	private function flip_rotate_image( $id, $metadata, $image_meta, $full_size_path ) {
+		$editor = wp_get_image_editor( $full_size_path );
+
+		if ( ! is_wp_error( $editor ) ) {
+			$operations = $this->calculate_transformation( (int) $image_meta['orientation'] );
+
+			// Rotate image if required.
+			if ( true === $operations['rotate'] ) {
+				$editor->rotate( $operations['degree'] );
+			}
+
+			// Flip image if required.
+			if ( false !== $operations['flip'] ) {
+				$editor->flip( $operations['flip'][0], $operations['flip'][1] );
+			}
+
+			// Save the image and generate metadata.
+			$editor->save( $full_size_path );
+			$metadata   = wp_generate_attachment_metadata( $id, $full_size_path );
+			$image_meta = empty( $metadata['image_meta'] ) ? [] : $metadata['image_meta'];
+
+			// Update attachment metadata with newly generated data.
+			wp_update_attachment_metadata( $id, $metadata );
+
+			if ( isset( $image_meta['orientation'] ) && absint( $image_meta['orientation'] ) === 0 ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Return array of operations to be done for provided orientation value.
+	 *
+	 * @param int $orientation EXIF orientation value.
+	 *
+	 * @return array
+	 */
+	private function calculate_transformation( $orientation ) {
+		$rotate = false;
+		$flip   = false;
+		$degree = 0;
+		switch ( $orientation ) {
+			case 2:
+				$flip = [ false, true ]; // $flip image along given axis [ horizontal, vertical ]
+				break;
+			case 3:
+				$flip = [ true, true ];
+				break;
+			case 4:
+				$flip = [ true, false ];
+				break;
+			case 5:
+				$degree = -90;
+				$rotate = true;
+				$flip   = [ false, true ];
+				break;
+			case 6:
+				$degree = -90;
+				$rotate = true;
+				break;
+			case 7:
+				$degree = 90;
+				$rotate = true;
+				$flip   = [ false, true ];
+				break;
+			case 8:
+				$degree = 90;
+				$rotate = true;
+				break;
+			default:
+				$degree = 0;
+				$rotate = true;
+				break;
+		}
+
+		return [
+			'flip'   => $flip,
+			'degree' => $degree,
+			'rotate' => $rotate,
+		];
+	}
+
 }
