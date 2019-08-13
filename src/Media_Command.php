@@ -1096,7 +1096,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param array  $image_meta     `image_meta` information for the attachment.
 	 * @param string $full_size_path Path to original image.
 	 *
-	 * @return bool|int
+	 * @return bool Whether the image rotation operation succeeded.
 	 */
 	private function flip_rotate_image( $id, $metadata, $image_meta, $full_size_path ) {
 		$editor = wp_get_image_editor( $full_size_path );
