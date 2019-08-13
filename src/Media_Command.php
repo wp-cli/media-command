@@ -196,7 +196,7 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * [--skip-copy]
 	 * : If set, media files (local only) are imported to the library but not moved on disk.
-	* File names will not be run through wp_unique_filename() with this set.
+	 * File names will not be run through wp_unique_filename() with this set.
 	 *
 	 * [--preserve-filetime]
 	 * : Use the file modified time as the post published & modified dates.
