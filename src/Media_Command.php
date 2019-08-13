@@ -1146,8 +1146,7 @@ class Media_Command extends WP_CLI_Command {
 				$flip = [ false, true ]; // $flip image along given axis [ horizontal, vertical ]
 				break;
 			case 3:
-				$degree = -180;
-				$rotate = true;
+				$flip = [ true, true ];
 				break;
 			case 4:
 				$flip = [ true, false ];
@@ -1162,12 +1161,12 @@ class Media_Command extends WP_CLI_Command {
 				$rotate = true;
 				break;
 			case 7:
-				$degree = -270;
+				$degree = 90;
 				$rotate = true;
 				$flip   = [ false, true ];
 				break;
 			case 8:
-				$degree = -270;
+				$degree = 90;
 				$rotate = true;
 				break;
 			default:
