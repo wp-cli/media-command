@@ -11,7 +11,7 @@ Feature: Fix WordPress attachments orientation
       Error: No images found.
       """
 
-  @require-extension-exif @require-wp-4.0
+  @require-extension-exif @require-wp-4.0 @less-than-wp-5.3
   Scenario: Fix orientation for all images
     Given download:
       | path                             | url                                                                            |
@@ -94,7 +94,7 @@ Feature: Fix WordPress attachments orientation
     Success: Images already fixed.
     """
 
-  @require-extension-exif @require-wp-4.0
+  @require-extension-exif @require-wp-4.0 @less-than-wp-5.3
   Scenario: Fix orientation for single image
     When I run `wp media import {CACHE_DIR}/portrait-6.jpg --title="Portrait Six" --porcelain`
     Then save STDOUT as {PORTRAIT_SIX}
