@@ -3,11 +3,14 @@ Feature: List image sizes
   @require-wp-4.8
   Scenario: Basic usage
     Given a WP install
+    # Differing themes can have differing default image sizes. Let's stick to one.
+    And I try `wp theme install twentynineteen --activate`
 
     When I run `wp media image-size`
     Then STDOUT should be a table containing rows:
       | name           | width     | height    | crop   | ratio |
       | full           |           |           | N/A    | N/A   |
+      | 2048x2048      | 2048      | 2048      | soft   | N/A   |
       | post-thumbnail | 1568      | 9999      | soft   | N/A   |
       | large          | 1024      | 1024      | soft   | N/A   |
       | medium_large   | 768       | 0         | soft   | N/A   |
