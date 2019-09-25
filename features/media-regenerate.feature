@@ -80,8 +80,12 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
     And the wp-content/uploads/white-150-square-1024x1024.jpg file should not exist
 
+  # Behavior changed with WordPress 5.3+, so we're adding separate tests for previous versions.
+  # Changes that impact this:
+  # https://core.trac.wordpress.org/ticket/43524
+  # https://core.trac.wordpress.org/ticket/47873
   @less-than-wp-5.3
-  Scenario: Regenerate all images default behavior
+  Scenario: Regenerate all images default behavior (pre-WP-5.3)
     Given download:
       | path                             | url                                               |
       | {CACHE_DIR}/large-image.jpg      | http://wp-cli.org/behat-data/large-image.jpg      |
