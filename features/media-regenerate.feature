@@ -12,11 +12,13 @@ Feature: Regenerate WordPress attachments
       """
     And the return code should be 0
 
+  @require-wp-5.3
   Scenario: Regenerate all images default behavior
     Given download:
       | path                             | url                                               |
       | {CACHE_DIR}/large-image.jpg      | http://wp-cli.org/behat-data/large-image.jpg      |
       | {CACHE_DIR}/canola.jpg           | http://wp-cli.org/behat-data/canola.jpg           |
+      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
@@ -35,22 +37,33 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/canola-300x225.jpg file should exist
     And the wp-content/uploads/canola-1024x768.jpg file should not exist
 
+    When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported small attachment" --porcelain`
+    Then save STDOUT as {SMALL_ATTACHMENT_ID}
+    And the wp-content/uploads/white-150-square.jpg file should exist
+    And the wp-content/uploads/white-150-square-150x150.jpg file should not exist
+    And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
+    And the wp-content/uploads/white-150-square-1024x1024.jpg file should not exist
+
     When I run `wp media regenerate --yes`
     Then STDOUT should contain:
       """
-      Found 2 images to regenerate.
+      Found 3 images to regenerate.
       """
     And STDOUT should contain:
       """
-      /2 Regenerated thumbnails for "My imported large attachment" (ID {LARGE_ATTACHMENT_ID})
+      /3 Regenerated thumbnails for "My imported large attachment" (ID {LARGE_ATTACHMENT_ID})
       """
     And STDOUT should contain:
       """
-      /2 Regenerated thumbnails for "My imported medium attachment" (ID {MEDIUM_ATTACHMENT_ID})
+      /3 Regenerated thumbnails for "My imported medium attachment" (ID {MEDIUM_ATTACHMENT_ID})
       """
     And STDOUT should contain:
       """
-      Success: Regenerated 2 of 2 images.
+      /3 Regenerated thumbnails for "My imported small attachment" (ID {SMALL_ATTACHMENT_ID})
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 3 of 3 images.
       """
     And the wp-content/uploads/large-image.jpg file should exist
     And the wp-content/uploads/large-image-2560.jpg file should exist
@@ -62,15 +75,33 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/canola-150x150.jpg file should exist
     And the wp-content/uploads/canola-300x225.jpg file should exist
     And the wp-content/uploads/canola-1024x768.jpg file should not exist
+    And the wp-content/uploads/white-150-square.jpg file should exist
+    And the wp-content/uploads/white-150-square-150x150.jpg file should not exist
+    And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
+    And the wp-content/uploads/white-150-square-1024x1024.jpg file should not exist
 
-  # WP < 4.2 produced thumbnails duplicating original, https://core.trac.wordpress.org/ticket/31296
-  # WP 5.3 alpha contains a bug where duplicate resizes are being stored: https://core.trac.wordpress.org/ticket/32437
-  @require-wp-4.2 @less-than-wp-5.3
+  @less-than-wp-5.3
   Scenario: Regenerate all images default behavior
     Given download:
       | path                             | url                                               |
+      | {CACHE_DIR}/large-image.jpg      | http://wp-cli.org/behat-data/large-image.jpg      |
+      | {CACHE_DIR}/canola.jpg           | http://wp-cli.org/behat-data/canola.jpg           |
       | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
+    Then save STDOUT as {LARGE_ATTACHMENT_ID}
+    And the wp-content/uploads/large-image.jpg file should exist
+    And the wp-content/uploads/large-image-150x150.jpg file should exist
+    And the wp-content/uploads/large-image-300x225.jpg file should exist
+    And the wp-content/uploads/large-image-1024x768.jpg file should exist
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported medium attachment" --porcelain`
+    Then save STDOUT as {MEDIUM_ATTACHMENT_ID}
+    And the wp-content/uploads/canola.jpg file should exist
+    And the wp-content/uploads/canola-150x150.jpg file should exist
+    And the wp-content/uploads/canola-300x225.jpg file should exist
+    And the wp-content/uploads/canola-1024x768.jpg file should not exist
 
     When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported small attachment" --porcelain`
     Then save STDOUT as {SMALL_ATTACHMENT_ID}
@@ -82,16 +113,32 @@ Feature: Regenerate WordPress attachments
     When I run `wp media regenerate --yes`
     Then STDOUT should contain:
       """
-      Found 1 image to regenerate.
+      Found 3 images to regenerate.
       """
     And STDOUT should contain:
       """
-      1/1 Regenerated thumbnails for "My imported small attachment" (ID {SMALL_ATTACHMENT_ID})
+      /3 Regenerated thumbnails for "My imported large attachment" (ID {LARGE_ATTACHMENT_ID})
       """
     And STDOUT should contain:
       """
-      Success: Regenerated 1 of 1 images.
+      /3 Regenerated thumbnails for "My imported medium attachment" (ID {MEDIUM_ATTACHMENT_ID})
       """
+    And STDOUT should contain:
+      """
+      /3 Regenerated thumbnails for "My imported small attachment" (ID {SMALL_ATTACHMENT_ID})
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 3 of 3 images.
+      """
+    And the wp-content/uploads/large-image.jpg file should exist
+    And the wp-content/uploads/large-image-150x150.jpg file should exist
+    And the wp-content/uploads/large-image-300x225.jpg file should exist
+    And the wp-content/uploads/large-image-1024x768.jpg file should exist
+    And the wp-content/uploads/canola.jpg file should exist
+    And the wp-content/uploads/canola-150x150.jpg file should exist
+    And the wp-content/uploads/canola-300x225.jpg file should exist
+    And the wp-content/uploads/canola-1024x768.jpg file should not exist
     And the wp-content/uploads/white-150-square.jpg file should exist
     And the wp-content/uploads/white-150-square-150x150.jpg file should not exist
     And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
