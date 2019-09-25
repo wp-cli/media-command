@@ -565,7 +565,7 @@ class Media_Command extends WP_CLI_Command {
 		}
 		$thumbnail_desc = $image_size ? sprintf( '"%s" thumbnail', $image_size ) : 'thumbnail';
 
-		$fullsizepath = get_attached_file( $id );
+		$fullsizepath = $this->get_attached_file( $id );
 
 		if ( false === $fullsizepath || ! file_exists( $fullsizepath ) ) {
 			WP_CLI::warning( "Can't find $att_desc." );
@@ -1059,7 +1059,7 @@ class Media_Command extends WP_CLI_Command {
 			$att_desc = sprintf( '"%1$s" (ID %2$d)', $title, $id );
 		}
 
-		$full_size_path = get_attached_file( $id );
+		$fullsizepath = $this->get_attached_file( $id );
 
 		if ( false === $full_size_path || ! file_exists( $full_size_path ) ) {
 			WP_CLI::warning( "Can't find {$att_desc}." );
@@ -1183,4 +1183,26 @@ class Media_Command extends WP_CLI_Command {
 		];
 	}
 
+	/**
+	 * Add compatibility indirection to get_attached_file().
+	 *
+	 * In WordPress 5.3, behavior changed to account for automatic resizing of
+	 * big image files.
+	 *
+	 * @see https://core.trac.wordpress.org/ticket/47873
+	 *
+	 * @param int $attachment_id ID of the attachment to get the filepath for.
+	 * @return string|false Filepath of the attachment, or false if not found.
+	 */
+	private function get_attached_file( $attachment_id ) {
+		if ( function_exists( 'wp_get_original_image_path' ) ) {
+			$filepath = wp_get_original_image_path( $attachment_id );
+
+			if ( false !== $filepath ) {
+				return $filepath;
+			}
+		}
+
+		return get_attached_file( $attachment_id );
+	}
 }
