@@ -1059,7 +1059,7 @@ class Media_Command extends WP_CLI_Command {
 			$att_desc = sprintf( '"%1$s" (ID %2$d)', $title, $id );
 		}
 
-		$fullsizepath = $this->get_attached_file( $id );
+		$full_size_path = $this->get_attached_file( $id );
 
 		if ( false === $full_size_path || ! file_exists( $full_size_path ) ) {
 			WP_CLI::warning( "Can't find {$att_desc}." );
