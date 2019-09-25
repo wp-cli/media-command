@@ -2,6 +2,7 @@ Feature: Regenerate WordPress attachments
 
   Background:
     Given a WP install
+    And I try `wp theme install twentynineteen --activate`
 
   Scenario: Regenerate all images while none exists
     When I try `wp media regenerate --yes`
@@ -21,9 +22,11 @@ Feature: Regenerate WordPress attachments
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
     Then save STDOUT as {LARGE_ATTACHMENT_ID}
     And the wp-content/uploads/large-image.jpg file should exist
+    And the wp-content/uploads/large-image-2560.jpg file should exist
     And the wp-content/uploads/large-image-150x150.jpg file should exist
     And the wp-content/uploads/large-image-300x225.jpg file should exist
     And the wp-content/uploads/large-image-1024x768.jpg file should exist
+    And the wp-content/uploads/large-image-2048x1536.jpg file should exist
 
     When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported medium attachment" --porcelain`
     Then save STDOUT as {MEDIUM_ATTACHMENT_ID}
@@ -50,9 +53,11 @@ Feature: Regenerate WordPress attachments
       Success: Regenerated 2 of 2 images.
       """
     And the wp-content/uploads/large-image.jpg file should exist
+    And the wp-content/uploads/large-image-2560.jpg file should exist
     And the wp-content/uploads/large-image-150x150.jpg file should exist
     And the wp-content/uploads/large-image-300x225.jpg file should exist
     And the wp-content/uploads/large-image-1024x768.jpg file should exist
+    And the wp-content/uploads/large-image-2048x1536.jpg file should exist
     And the wp-content/uploads/canola.jpg file should exist
     And the wp-content/uploads/canola-150x150.jpg file should exist
     And the wp-content/uploads/canola-300x225.jpg file should exist
