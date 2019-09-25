@@ -31,7 +31,7 @@ Feature: List image sizes
   # Behavior changed with WordPress 5.3+, so we're adding separate tests for previous versions.
   # Change that impacts this:
   # https://core.trac.wordpress.org/ticket/43524
-  @less-than-wp-5.3
+  @require-wp-4.8 @less-than-wp-5.3
   Scenario: Basic usage (pre-WP-5.3)
     Given a WP install
     # Differing themes can have differing default image sizes. Let's stick to one.
