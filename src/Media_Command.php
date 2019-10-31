@@ -921,11 +921,17 @@ class Media_Command extends WP_CLI_Command {
 	 * @return array The image size metadata.
 	 */
 	private function get_intermediate_size_metadata( $size ) {
-		$width  = intval( get_option( "{$size}_size_w" ) );
-		$height = intval( get_option( "{$size}_size_h" ) );
-		$crop   = get_option( "{$size}_crop" );
-
-		return array(
+		global $_wp_additional_image_sizes;
+		if ( in_array( $size, array( 'thumbnail', 'medium', 'large' ) ) ) {
+			$width  = get_option( "{$size}_size_w" );
+			$height = get_option( "{$size}_size_h" );
+			$crop   = (bool) get_option( "{$size}_crop" );
+		} elseif ( isset( $_wp_additional_image_sizes[ $size ] ) ) {
+			$width  = $_wp_additional_image_sizes[ $size ]['width'];
+			$height = $_wp_additional_image_sizes[ $size ]['height'];
+			$crop   = $_wp_additional_image_sizes[ $size ]['crop'];
+		}
+		return array( 
 			'name'   => $size,
 			'width'  => $width,
 			'height' => $height,
@@ -944,26 +950,11 @@ class Media_Command extends WP_CLI_Command {
 	 * @return array $image_sizes The image sizes
 	 */
 	private function get_registered_image_sizes() {
-		global $_wp_additional_image_sizes;
-
 		$image_sizes         = array();
 		$default_image_sizes = get_intermediate_image_sizes();
 
 		foreach ( $default_image_sizes as $size ) {
 			$image_sizes[] = $this->get_intermediate_size_metadata( $size );
-		}
-
-		if ( is_array( $_wp_additional_image_sizes ) ) {
-			foreach ( $_wp_additional_image_sizes as $size => $size_args ) {
-				$crop          = filter_var( $size_args['crop'], FILTER_VALIDATE_BOOLEAN );
-				$image_sizes[] = array(
-					'name'   => $size,
-					'width'  => $size_args['width'],
-					'height' => $size_args['height'],
-					'crop'   => empty( $crop ) || is_array( $size_args['crop'] ) ? 'soft' : 'hard',
-					'ratio'  => empty( $crop ) || is_array( $size_args['crop'] ) ? 'N/A' : $this->get_ratio( $size_args['width'], $size_args['height'] ),
-				);
-			}
 		}
 
 		return $image_sizes;
