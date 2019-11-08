@@ -24,7 +24,7 @@ Feature: Regenerate WordPress attachments
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
     Then save STDOUT as {LARGE_ATTACHMENT_ID}
     And the wp-content/uploads/large-image.jpg file should exist
-    And the wp-content/uploads/large-image-2560.jpg file should exist
+    And the wp-content/uploads/large-image-scaled.jpg file should exist
     And the wp-content/uploads/large-image-150x150.jpg file should exist
     And the wp-content/uploads/large-image-300x225.jpg file should exist
     And the wp-content/uploads/large-image-1024x768.jpg file should exist
@@ -66,7 +66,7 @@ Feature: Regenerate WordPress attachments
       Success: Regenerated 3 of 3 images.
       """
     And the wp-content/uploads/large-image.jpg file should exist
-    And the wp-content/uploads/large-image-2560.jpg file should exist
+    And the wp-content/uploads/large-image-scaled.jpg file should exist
     And the wp-content/uploads/large-image-150x150.jpg file should exist
     And the wp-content/uploads/large-image-300x225.jpg file should exist
     And the wp-content/uploads/large-image-1024x768.jpg file should exist
