@@ -485,7 +485,6 @@ class Media_Command extends WP_CLI_Command {
 		);
 
 		$sizes = $this->get_registered_image_sizes();
-
 		usort(
 			$sizes,
 			function( $a, $b ) {
@@ -947,7 +946,7 @@ class Media_Command extends WP_CLI_Command {
 		global $_wp_additional_image_sizes;
 
 		$image_sizes         = array();
-		$default_image_sizes = get_intermediate_image_sizes();
+		$default_image_sizes = array( 'thumbnail', 'medium', 'medium_large', 'large' );
 
 		foreach ( $default_image_sizes as $size ) {
 			$image_sizes[] = $this->get_intermediate_size_metadata( $size );
