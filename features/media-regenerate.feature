@@ -1244,7 +1244,7 @@ Feature: Regenerate WordPress attachments
 
   # Video cover support requires ID3 library 1.9.9, updated WP 4.3 https://core.trac.wordpress.org/ticket/32806
   # Currently throwing notice on PHP 7.4+: https://core.trac.wordpress.org/ticket/49945
-  @require-wp-4.3 @less-than-php-7.4
+  @require-wp-4.3 @less-than-php-7.4 @less-than-wp-5.5
   Scenario: Regenerating video with thumbnail
     Given download:
       | path                                        | url                                                          |
