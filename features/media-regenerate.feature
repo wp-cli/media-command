@@ -1297,6 +1297,10 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
+      // Ensure BMPs are allowed.
+      add_action( 'after_setup_theme', function () {
+        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['bmp'] = 'image/bmp'; return $mimes; } );
+      } );
       // Disable Imagick.
       add_filter( 'wp_image_editors', function ( $image_editors ) {
           if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
@@ -1357,6 +1361,10 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
+      // Ensure BMPs are allowed.
+      add_action( 'after_setup_theme', function () {
+        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['bmp'] = 'image/bmp'; return $mimes; } );
+      } );
       // Disable Imagick.
       add_filter( 'wp_image_editors', function ( $image_editors ) {
           if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
