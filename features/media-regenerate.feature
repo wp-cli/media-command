@@ -922,7 +922,7 @@ Feature: Regenerate WordPress attachments
       <?xml version="1.0" encoding="utf-8"?>
       <svg xmlns="http://www.w3.org/2000/svg"/>
       """
-    And I run `wp config set ALLOW_UNFILTERED_UPLOADS --add --raw true`
+    And I run `wp config set --type=constant ALLOW_UNFILTERED_UPLOADS --add --raw true`
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {RUN_DIR}/svg.svg --title="My imported SVG attachment" --porcelain`
@@ -1288,7 +1288,7 @@ Feature: Regenerate WordPress attachments
     Given download:
       | path                             | url                                               |
       | {CACHE_DIR}/white-160-square.bmp | http://wp-cli.org/behat-data/white-160-square.bmp |
-    And I run `wp config set ALLOW_UNFILTERED_UPLOADS --add --raw true`
+    And I run `wp config set --type=constant ALLOW_UNFILTERED_UPLOADS --add --raw true`
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -1419,7 +1419,7 @@ Feature: Regenerate WordPress attachments
       <?xml version="1.0" encoding="utf-8"?>
       <svg xmlns="http://www.w3.org/2000/svg"/>
       """
-    And I run `wp config set ALLOW_UNFILTERED_UPLOADS --add --raw true`
+    And I run `wp config set --type=constant ALLOW_UNFILTERED_UPLOADS --add --raw true`
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
