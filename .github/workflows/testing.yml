@@ -104,7 +104,7 @@ jobs:
           php-version: '${{ matrix.php }}'
           extensions: mysql, zip, imagick, gd
           coverage: none
-          tools: composer
+          tools: composer, pecl
 
       - name: Get Composer cache Directory
         if: steps.check_files.outputs.files_exists == 'true'
