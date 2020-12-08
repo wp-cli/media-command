@@ -102,7 +102,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '${{ matrix.php }}'
-          extensions: mysql, zip, imagick
+          extensions: mysql, zip, imagick, gd
           coverage: none
           tools: composer
 
