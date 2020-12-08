@@ -1421,6 +1421,7 @@ Feature: Regenerate WordPress attachments
       | {CACHE_DIR}/video-400x300-with-cover.mp4 | http://wp-cli.org/behat-data/video-400x300-with-cover.mp4 |
     And an svg.svg file:
       """
+      <?xml version="1.0" encoding="utf-8"?>
       <svg xmlns="http://www.w3.org/2000/svg"/>
       """
     And a wp-content/mu-plugins/media-settings.php file:
