@@ -109,6 +109,12 @@ jobs:
         with:
           files: "composer.json, behat.yml"
 
+      - name: Install Ghostscript
+        if: steps.check_files.outputs.files_exists == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install ghostscript -y
+
       - name: Set up PHP envirnoment
         if: steps.check_files.outputs.files_exists == 'true'
         uses: shivammathur/setup-php@v2
