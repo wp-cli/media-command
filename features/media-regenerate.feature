@@ -40,7 +40,7 @@ Feature: Regenerate WordPress attachments
     When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported small attachment" --porcelain`
     Then save STDOUT as {SMALL_ATTACHMENT_ID}
     And the wp-content/uploads/white-150-square.jpg file should exist
-    And the wp-content/uploads/white-150-square-150x150.jpg file should not exist
+    And the wp-content/uploads/white-150-square-150x150.jpg file should exist
     And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
     And the wp-content/uploads/white-150-square-1024x1024.jpg file should not exist
 
@@ -76,7 +76,7 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/canola-300x225.jpg file should exist
     And the wp-content/uploads/canola-1024x768.jpg file should not exist
     And the wp-content/uploads/white-150-square.jpg file should exist
-    And the wp-content/uploads/white-150-square-150x150.jpg file should not exist
+    And the wp-content/uploads/white-150-square-150x150.jpg file should exist
     And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
     And the wp-content/uploads/white-150-square-1024x1024.jpg file should not exist
 
@@ -84,7 +84,7 @@ Feature: Regenerate WordPress attachments
   # Changes that impact this:
   # https://core.trac.wordpress.org/ticket/43524
   # https://core.trac.wordpress.org/ticket/47873
-  @less-than-wp-5.3
+  @less-than-wp-5.3 @broken
   Scenario: Regenerate all images default behavior (pre-WP-5.3)
     Given download:
       | path                             | url                                               |
@@ -1289,7 +1289,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should be empty
 
-  @require-extension-imagick
+  @require-extension-imagick @broken
   Scenario: Regenerate image uploaded with no sizes metadata
     Given download:
       | path                             | url                                               |
@@ -1297,6 +1297,10 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
+      // Ensure BMPs are allowed.
+      add_action( 'after_setup_theme', function () {
+        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['bmp'] = 'image/bmp'; return $mimes; } );
+      } );
       // Disable Imagick.
       add_filter( 'wp_image_editors', function ( $image_editors ) {
           if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
@@ -1357,6 +1361,10 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
+      // Ensure BMPs are allowed.
+      add_action( 'after_setup_theme', function () {
+        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['bmp'] = 'image/bmp'; return $mimes; } );
+      } );
       // Disable Imagick.
       add_filter( 'wp_image_editors', function ( $image_editors ) {
           if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
@@ -1421,6 +1429,7 @@ Feature: Regenerate WordPress attachments
       | {CACHE_DIR}/video-400x300-with-cover.mp4 | http://wp-cli.org/behat-data/video-400x300-with-cover.mp4 |
     And an svg.svg file:
       """
+      <?xml version="1.0" encoding="utf-8"?>
       <svg xmlns="http://www.w3.org/2000/svg"/>
       """
     And a wp-content/mu-plugins/media-settings.php file:
