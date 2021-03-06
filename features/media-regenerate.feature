@@ -84,7 +84,7 @@ Feature: Regenerate WordPress attachments
   # Changes that impact this:
   # https://core.trac.wordpress.org/ticket/43524
   # https://core.trac.wordpress.org/ticket/47873
-  @less-than-wp-5.3
+  @less-than-wp-5.3 @broken
   Scenario: Regenerate all images default behavior (pre-WP-5.3)
     Given download:
       | path                             | url                                               |
