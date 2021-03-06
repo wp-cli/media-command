@@ -1289,7 +1289,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should be empty
 
-  @require-extension-imagick
+  @require-extension-imagick @broken
   Scenario: Regenerate image uploaded with no sizes metadata
     Given download:
       | path                             | url                                               |
