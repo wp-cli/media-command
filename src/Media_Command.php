@@ -575,7 +575,7 @@ class Media_Command extends WP_CLI_Command {
 
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
-		$original_meta = get_post_meta($id, '_wp_attachment_metadata', true);
+		$original_meta = get_post_meta( $id, '_wp_attachment_metadata', true );
 
 		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_delete, $skip_it );
 
