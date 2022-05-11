@@ -30,6 +30,25 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/large-image-1024x768.jpg file should exist
     And the wp-content/uploads/large-image-2048x1536.jpg file should exist
 
+    When I run `wp option update medium_size_w 256`
+    And I run `wp option update medium_size_h 256`
+    And I run `wp media regenerate {LARGE_ATTACHMENT_ID} --image_size=medium --skip-delete --only-missing`
+    And I run `wp post meta get {LARGE_ATTACHMENT_ID} _wp_attachment_metadata`
+    Then STDOUT should contain:
+    """
+    'medium'
+    """
+    And STDOUT should contain:
+    """
+    'large'
+    """
+    And STDOUT should contain:
+    """
+    'thumbnail'
+    """
+    And I run `wp option update medium_size_w 300`
+    And I run `wp option update medium_size_h 300`
+
     When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported medium attachment" --porcelain`
     Then save STDOUT as {MEDIUM_ATTACHMENT_ID}
     And the wp-content/uploads/canola.jpg file should exist
