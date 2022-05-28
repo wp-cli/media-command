@@ -70,7 +70,7 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 		Attachment title (post title field).
 
 	[--caption=<caption>]
-		Caption for attachent (post excerpt field).
+		Caption for attachment (post excerpt field).
 
 	[--alt=<alt_text>]
 		Alt text for image (saved as post meta).
