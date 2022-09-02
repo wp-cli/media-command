@@ -605,6 +605,14 @@ class Media_Command extends WP_CLI_Command {
 			return;
 		}
 
+		// On read error, we might only get the filesize returned and nothing else.
+		if ( 1 === count( $metadata ) && array_key_exists( 'filesize', $metadata ) && ! ( $is_pdf && $image_size ) ) {
+			WP_CLI::warning( sprintf( 'Read error while retrieving metadata. (ID %d)', $id ) );
+			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
+			$errors++;
+			return;
+		}
+
 		if ( $image_size ) {
 			if ( $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_size ) ) {
 				WP_CLI::log( "$progress Regenerated $thumbnail_desc for $att_desc." );
