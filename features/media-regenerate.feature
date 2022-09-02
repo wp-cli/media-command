@@ -1561,6 +1561,7 @@ Feature: Regenerate WordPress attachments
     # Make canola.jpg fail.
     Given a wp-content/uploads/canola.jpg file:
       """
+      We need to have some bytes at least to avoid a PHP notice in exif_imagetype().
       """
 
     When I try `WP_CLI_TEST_MEDIA_REGENERATE_PDF=1 wp media regenerate --yes`
