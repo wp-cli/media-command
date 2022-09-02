@@ -597,17 +597,17 @@ class Media_Command extends WP_CLI_Command {
 			return;
 		}
 
-		// On read error, we might only get the filesize returned and nothing else.
-		if ( 1 === count( $metadata ) && array_key_exists( 'filesize', $metadata ) ) {
-			WP_CLI::warning( sprintf( 'Read error while retrieving metadata. (ID %d)', $id ) );
+		// Note it's possible for no metadata to be generated for PDFs if restricted to a specific image size.
+		if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
+			WP_CLI::warning( sprintf( 'No metadata. (ID %d)', $id ) );
 			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
 			$errors++;
 			return;
 		}
 
-		// Note it's possible for no metadata to be generated for PDFs if restricted to a specific image size.
-		if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
-			WP_CLI::warning( sprintf( 'No metadata. (ID %d)', $id ) );
+		// On read error, we might only get the filesize returned and nothing else.
+		if ( 1 === count( $metadata ) && array_key_exists( 'filesize', $metadata ) && ! ( $is_pdf && $image_size ) ) {
+			WP_CLI::warning( sprintf( 'Read error while retrieving metadata. (ID %d)', $id ) );
 			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
 			$errors++;
 			return;
