@@ -87,7 +87,7 @@ Feature: Manage WordPress attachments
       | path                        | url                                              |
       | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
 
-    When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported attachment" --caption="My fabulous caption" --porcelain`
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported attachment" --caption="My fabulous caption" --post_name="My post name" --porcelain`
     Then save STDOUT as {ATTACHMENT_ID}
 
     When I run `wp post get {ATTACHMENT_ID} --field=title`
@@ -100,6 +100,12 @@ Feature: Manage WordPress attachments
     Then STDOUT should be:
       """
       My fabulous caption
+      """
+
+    When I run `wp post get {ATTACHMENT_ID} --field=post_name`
+    Then STDOUT should be:
+      """
+      my-post-name
       """
 
   Scenario: Import a file as attachment from a local image and leave it in it's current location
