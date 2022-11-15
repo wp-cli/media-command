@@ -181,7 +181,7 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * [--post_id=<post_id>]
 	 * : ID of the post to attach the imported files to.
-	 * 
+	 *
 	 * [--post_name=<post_name>]
 	 * : Name of the post to attach the imported files to.
 	 *
@@ -245,11 +245,11 @@ class Media_Command extends WP_CLI_Command {
 		$assoc_args = wp_parse_args(
 			$assoc_args,
 			array(
-				'title'        => '',
-				'caption'      => '',
-				'alt'          => '',
-				'desc'    	   => '',
-				'post_name'    => '',
+				'title'     => '',
+				'caption'   => '',
+				'alt'       => '',
+				'desc'      => '',
+				'post_name' => '',
 			)
 		);
 
@@ -328,7 +328,7 @@ class Media_Command extends WP_CLI_Command {
 				'post_title'   => $assoc_args['title'],
 				'post_excerpt' => $assoc_args['caption'],
 				'post_content' => $assoc_args['desc'],
-				'post_name'    => $assoc_args['post_name']
+				'post_name'    => $assoc_args['post_name'],
 			);
 
 			if ( ! empty( $file_time ) ) {
