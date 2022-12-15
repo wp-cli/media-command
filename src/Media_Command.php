@@ -580,6 +580,8 @@ class Media_Command extends WP_CLI_Command {
 
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
+		$original_meta = wp_get_attachment_metadata( $id );
+
 		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_delete, $skip_it );
 
 		if ( $skip_it ) {
@@ -619,7 +621,7 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		if ( $image_size ) {
-			if ( $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_size ) ) {
+			if ( $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_size, $original_meta ) ) {
 				WP_CLI::log( "$progress Regenerated $thumbnail_desc for $att_desc." );
 			} else {
 				WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
@@ -886,8 +888,7 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	// Update attachment sizes metadata just for a particular intermediate image size.
-	private function update_attachment_metadata_for_image_size( $id, $new_metadata, $image_size ) {
-		$metadata = wp_get_attachment_metadata( $id );
+	private function update_attachment_metadata_for_image_size( $id, $new_metadata, $image_size, $metadata ) {
 
 		if ( ! is_array( $metadata ) ) {
 			return false;
