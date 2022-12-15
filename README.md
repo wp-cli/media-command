@@ -3,7 +3,7 @@ wp-cli/media-command
 
 Imports files as attachments, regenerates thumbnails, or lists registered image sizes.
 
-[![Testing](https://github.com/wp-cli/media-command/actions/workflows/testing.yml/badge.svg)](https://github.com/wp-cli/media-command/actions/workflows/testing.yml) [![Build Status](https://travis-ci.org/wp-cli/media-command.svg?branch=master)](https://travis-ci.org/wp-cli/media-command)
+[![Testing](https://github.com/wp-cli/media-command/actions/workflows/testing.yml/badge.svg)](https://github.com/wp-cli/media-command/actions/workflows/testing.yml)
 
 Quick links: [Using](#using) | [Installing](#installing) | [Contributing](#contributing) | [Support](#support)
 
