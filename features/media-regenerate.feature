@@ -30,25 +30,6 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/large-image-1024x768.jpg file should exist
     And the wp-content/uploads/large-image-2048x1536.jpg file should exist
 
-    When I run `wp option update medium_size_w 256`
-    And I run `wp option update medium_size_h 256`
-    And I run `wp media regenerate {LARGE_ATTACHMENT_ID} --image_size=medium --skip-delete --only-missing`
-    And I run `wp post meta get {LARGE_ATTACHMENT_ID} _wp_attachment_metadata`
-    Then STDOUT should contain:
-    """
-    'medium'
-    """
-    And STDOUT should contain:
-    """
-    'large'
-    """
-    And STDOUT should contain:
-    """
-    'thumbnail'
-    """
-    And I run `wp option update medium_size_w 300`
-    And I run `wp option update medium_size_h 300`
-
     When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported medium attachment" --porcelain`
     Then save STDOUT as {MEDIUM_ATTACHMENT_ID}
     And the wp-content/uploads/canola.jpg file should exist
@@ -695,6 +676,17 @@ Feature: Regenerate WordPress attachments
       "file":"canola-400x400.jpg"
       """
 
+    # Check remaining metadata is present
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_metadata`
+    Then STDOUT should contain:
+      """
+      'medium'
+      """
+    And STDOUT should contain:
+      """
+      'thumbnail'
+      """
+
     # Regenerate "medium" image size removed above - should be regenerated.
     When I run `wp media regenerate --image_size=medium --only-missing --yes`
     Then STDOUT should contain:
@@ -718,6 +710,17 @@ Feature: Regenerate WordPress attachments
       "file":"canola-300x225.jpg"
       """
 
+    # Check remaining metadata is present
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_metadata`
+    Then STDOUT should contain:
+      """
+      'medium'
+      """
+    And STDOUT should contain:
+      """
+      'thumbnail'
+      """
+
     # Regenerate "medium" image size whether missing or not - should be regenerated.
     When I run `wp media regenerate --image_size=medium --yes`
     Then STDOUT should contain:
@@ -733,6 +736,17 @@ Feature: Regenerate WordPress attachments
       Success: Regenerated 1 of 1 images.
       """
     And the wp-content/uploads/canola-300x225.jpg file should exist
+
+    # Check remaining metadata is present
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_metadata`
+    Then STDOUT should contain:
+      """
+      'medium'
+      """
+    And STDOUT should contain:
+      """
+      'thumbnail'
+      """
 
     # Change "test1" image size.
     Given a wp-content/mu-plugins/media-settings.php file:
