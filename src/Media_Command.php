@@ -206,7 +206,7 @@ class Media_Command extends WP_CLI_Command {
 	 * Remote files will always use the current time.
 	 *
 	 * [--featured_image]
-	 * : If set, set the imported image as the Featured Image of the post its attached to.
+	 * : If set, set the imported image as the Featured Image of the post it is attached to.
 	 *
 	 * [--porcelain]
 	 * : Output just the new attachment ID.
