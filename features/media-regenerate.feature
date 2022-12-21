@@ -12,6 +12,29 @@ Feature: Regenerate WordPress attachments
       """
     And the return code should be 0
 
+  @daniel
+  Scenario: Debug square image size part two
+    Given download:
+      | path                             | url                                               |
+      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `file {CACHE_DIR}/white-150-square.jpg`
+    Then STDOUT should be empty
+
+  @daniel
+  Scenario: Debug square image size part two
+    Given download:
+      | path                             | url                                               |
+      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported small attachment" --porcelain`
+    Then save STDOUT as {SMALL_ATTACHMENT_ID}
+
+    When I run `wp post meta get {SMALL_ATTACHMENT_ID} _wp_attachment_metadata`
+    Then STDOUT should be empty
+
   @require-wp-5.3
   Scenario: Regenerate all images default behavior
     Given download:
