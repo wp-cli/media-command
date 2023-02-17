@@ -40,9 +40,9 @@
         ]
     },
     "autoload": {
-        "psr-4": {
-            "": "src/"
-        },
+        "classmap": [
+            "src/"
+        ],
         "files": [
             "media-command.php"
         ]
