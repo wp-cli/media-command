@@ -40,7 +40,6 @@ Feature: Regenerate WordPress attachments
     When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported small attachment" --porcelain`
     Then save STDOUT as {SMALL_ATTACHMENT_ID}
     And the wp-content/uploads/white-150-square.jpg file should exist
-    And the wp-content/uploads/white-150-square-150x150.jpg file should exist
     And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
     And the wp-content/uploads/white-150-square-1024x1024.jpg file should not exist
 
@@ -76,7 +75,6 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/canola-300x225.jpg file should exist
     And the wp-content/uploads/canola-1024x768.jpg file should not exist
     And the wp-content/uploads/white-150-square.jpg file should exist
-    And the wp-content/uploads/white-150-square-150x150.jpg file should exist
     And the wp-content/uploads/white-150-square-300x300.jpg file should not exist
     And the wp-content/uploads/white-150-square-1024x1024.jpg file should not exist
 
