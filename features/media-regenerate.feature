@@ -1269,7 +1269,6 @@ Feature: Regenerate WordPress attachments
     Examples:
       | version |
       | latest  |
-      | trunk   |
       | 4.2     |
       | 3.9     |
 
