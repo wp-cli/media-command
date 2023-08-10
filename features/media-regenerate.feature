@@ -1213,7 +1213,7 @@ Feature: Regenerate WordPress attachments
 
   # Audio/video `_cover_hash` meta, used to determine if sub attachment, added in WP 3.9
   # Test on PHP 5.6 latest only, and iterate over various WP versions.
-  @require-wp-latest @require-php-5.6 @less-than-php-7.0
+  @require-php-5.6 @less-than-php-7.0
   Scenario Outline: Regenerating audio with thumbnail
     # If version is trunk/latest then can get warning about checksums not being available, so STDERR may or may not be empty
     Given I try `wp core download --version=<version> --force`
@@ -1268,7 +1268,7 @@ Feature: Regenerate WordPress attachments
 
     Examples:
       | version |
-      | latest  |
+      | 6.2     |
       | 4.2     |
       | 3.9     |
 
