@@ -215,7 +215,6 @@ Feature: Manage WordPress attachments
       """
     And the return code should be 1
 
-  @justin
   Scenario: Return upload URL after importing a single valid file
     Given download:
       | path                        | url                                              |
@@ -227,7 +226,6 @@ Feature: Manage WordPress attachments
       /large-image.jpg
       """
 
-  @justin
   Scenario: Return upload URL after importing a multiple valid files
     Given download:
       | path                        | url                                              |
