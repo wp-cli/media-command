@@ -214,3 +214,32 @@ Feature: Manage WordPress attachments
       Warning: Unable to import file 'gobbledygook.png'. Reason: File doesn't exist.
       """
     And the return code should be 1
+
+  @justin
+  Scenario: Return upload URL after importing a single valid file
+    Given download:
+      | path                        | url                                              |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain_url`
+    Then STDOUT should contain:
+      """
+      /large-image.jpg
+      """
+
+  @justin
+  Scenario: Return upload URL after importing a multiple valid files
+    Given download:
+      | path                        | url                                              |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+
+    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg --porcelain_url`
+    Then STDOUT should contain:
+      """
+      /large-image.jpg
+      """
+
+    And STDOUT should contain:
+      """
+      /codeispoetry.png
+      """

@@ -211,6 +211,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--porcelain]
 	 * : Output just the new attachment ID.
 	 *
+	 * [--porcelain_url]
+	 * : If set, the URL of the file will be output on a second line of output instead of attachment ID
+	 *
 	 * ## EXAMPLES
 	 *
 	 *     # Import all jpgs in the current user's "Pictures" directory, not attached to any post.
@@ -414,6 +417,9 @@ class Media_Command extends WP_CLI_Command {
 
 			if ( Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
 				WP_CLI::line( $success );
+			} elseif ( Utils\get_flag_value( $assoc_args, 'porcelain_url') ) {
+				$file_location = wp_get_original_image_url( $success );
+				WP_CLI::line( $file_location );
 			} else {
 				WP_CLI::log(
 					sprintf(
@@ -428,7 +434,7 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		// Report the result of the operation
-		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
+		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) && ! Utils\get_flag_value( $assoc_args, 'porcelain_url' ) ) {
 			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors );
 		} elseif ( $errors ) {
 			WP_CLI::halt( 1 );
