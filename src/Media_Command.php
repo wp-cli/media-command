@@ -417,7 +417,7 @@ class Media_Command extends WP_CLI_Command {
 
 			if ( Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
 				WP_CLI::line( $success );
-			} elseif ( Utils\get_flag_value( $assoc_args, 'porcelain_url') ) {
+			} elseif ( Utils\get_flag_value( $assoc_args, 'porcelain_url' ) ) {
 				$file_location = wp_get_original_image_url( $success );
 				WP_CLI::line( $file_location );
 			} else {
