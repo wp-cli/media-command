@@ -223,15 +223,26 @@ Feature: Manage WordPress attachments
     When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain_url`
     Then STDOUT should contain:
       """
+      https://example.com/wp-content/uploads/
+      """
+
+    And STDOUT should contain:
+      """
       /large-image.jpg
       """
 
   Scenario: Return upload URL after importing a multiple valid files
     Given download:
-      | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | path                                | url                                                  |
+      | {CACHE_DIR}/large-image.jpg         | http://wp-cli.org/behat-data/large-image.jpg         |
+      | {CACHE_DIR}/audio-with-no-cover.mp3 | http://wp-cli.org/behat-data/audio-with-no-cover.mp3 |
 
-    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg --porcelain_url`
+    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg {CACHE_DIR}/audio-with-no-cover.mp3 --porcelain_url`
+    Then STDOUT should contain:
+      """
+      https://example.com/wp-content/uploads/
+      """
+
     Then STDOUT should contain:
       """
       /large-image.jpg
@@ -240,4 +251,14 @@ Feature: Manage WordPress attachments
     And STDOUT should contain:
       """
       /codeispoetry.png
+      """
+
+    And STDOUT should contain:
+      """
+      /audio-with-no-cover.mp3
+      """
+
+    And STDOUT should not contain:
+      """
+      Success:
       """

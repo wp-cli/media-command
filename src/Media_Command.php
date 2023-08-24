@@ -418,7 +418,7 @@ class Media_Command extends WP_CLI_Command {
 			if ( Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
 				WP_CLI::line( $success );
 			} elseif ( Utils\get_flag_value( $assoc_args, 'porcelain_url' ) ) {
-				$file_location = wp_get_original_image_url( $success );
+				$file_location = $this->get_real_attachment_url( $success );
 				WP_CLI::line( $file_location );
 			} else {
 				WP_CLI::log(
@@ -1229,5 +1229,28 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		return get_attached_file( $attachment_id );
+	}
+
+	/**
+	 * Image-friendly alternative to wp_get_attachment_url(). Will return the full size URL of an image instead of the `-scaled` version.
+	 *
+	 * In WordPress 5.3, behavior changed to account for automatic resizing of
+	 * big image files.
+	 *
+	 * @see https://core.trac.wordpress.org/ticket/47873
+	 *
+	 * @param int $attachment_id ID of the attachment to get the URL for.
+	 * @return string|false URL of the attachment, or false if not found.
+	 */
+	private function get_real_attachment_url( $attachment_id ) {
+		if ( function_exists( 'wp_get_original_image_url' ) ) {
+			$url = wp_get_original_image_url( $attachment_id );
+
+			if ( false !== $url ) {
+				return $url;
+			}
+		}
+
+		return wp_get_attachment_url( $attachment_id );
 	}
 }
