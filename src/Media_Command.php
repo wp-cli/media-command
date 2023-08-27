@@ -418,8 +418,10 @@ class Media_Command extends WP_CLI_Command {
 				}
 			}
 
-			if ( $field = Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
-				if ( 'url' === strtolower( $field ) ) {
+			$porcelain = Utils\get_flag_value( $assoc_args, 'porcelain' );
+
+			if ( $porcelain ) {
+				if ( 'url' === strtolower( $porcelain ) ) {
 					$file_location = $this->get_real_attachment_url( $success );
 					WP_CLI::line( $file_location );
 				} else {
