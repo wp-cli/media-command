@@ -220,7 +220,7 @@ Feature: Manage WordPress attachments
       | path                        | url                                              |
       | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
 
-    When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain_url`
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain=url`
     Then STDOUT should contain:
       """
       https://example.com/wp-content/uploads/
@@ -237,7 +237,7 @@ Feature: Manage WordPress attachments
       | {CACHE_DIR}/large-image.jpg         | http://wp-cli.org/behat-data/large-image.jpg         |
       | {CACHE_DIR}/audio-with-no-cover.mp3 | http://wp-cli.org/behat-data/audio-with-no-cover.mp3 |
 
-    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg {CACHE_DIR}/audio-with-no-cover.mp3 --porcelain_url`
+    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg {CACHE_DIR}/audio-with-no-cover.mp3 --porcelain=url`
     Then STDOUT should contain:
       """
       https://example.com/wp-content/uploads/

@@ -208,11 +208,14 @@ class Media_Command extends WP_CLI_Command {
 	 * [--featured_image]
 	 * : If set, set the imported image as the Featured Image of the post it is attached to.
 	 *
-	 * [--porcelain]
-	 * : Output just the new attachment ID.
-	 *
-	 * [--porcelain_url]
-	 * : If set, the URL of the file will be output on a second line of output instead of attachment ID
+	 * [--porcelain[=<field>]]
+	 * : Output just the selected field. Defaults to attachment ID.
+	 * ---
+	 * default: ID
+	 * options:
+	 *   - ID
+	 *   - url
+	 * ---
 	 *
 	 * ## EXAMPLES
 	 *
@@ -415,11 +418,13 @@ class Media_Command extends WP_CLI_Command {
 				}
 			}
 
-			if ( Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
-				WP_CLI::line( $success );
-			} elseif ( Utils\get_flag_value( $assoc_args, 'porcelain_url' ) ) {
-				$file_location = $this->get_real_attachment_url( $success );
-				WP_CLI::line( $file_location );
+			if ( $field = Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
+				if ( 'url' === strtolower( $field ) ) {
+					$file_location = $this->get_real_attachment_url( $success );
+					WP_CLI::line( $file_location );
+				} else {
+					WP_CLI::line( $success );
+				}
 			} else {
 				WP_CLI::log(
 					sprintf(
@@ -434,7 +439,7 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		// Report the result of the operation
-		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) && ! Utils\get_flag_value( $assoc_args, 'porcelain_url' ) ) {
+		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
 			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors );
 		} elseif ( $errors ) {
 			WP_CLI::halt( 1 );
