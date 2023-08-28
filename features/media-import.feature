@@ -214,3 +214,58 @@ Feature: Manage WordPress attachments
       Warning: Unable to import file 'gobbledygook.png'. Reason: File doesn't exist.
       """
     And the return code should be 1
+
+  Scenario: Return upload URL after importing a single valid file
+    Given download:
+      | path                        | url                                              |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain=url`
+    Then STDOUT should contain:
+      """
+      https://example.com/wp-content/uploads/
+      """
+
+    And STDOUT should contain:
+      """
+      /large-image.jpg
+      """
+
+  Scenario: Return upload URL after importing a multiple valid files
+    Given download:
+      | path                                | url                                                  |
+      | {CACHE_DIR}/large-image.jpg         | http://wp-cli.org/behat-data/large-image.jpg         |
+      | {CACHE_DIR}/audio-with-no-cover.mp3 | http://wp-cli.org/behat-data/audio-with-no-cover.mp3 |
+
+    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg {CACHE_DIR}/audio-with-no-cover.mp3 --porcelain=url`
+    Then STDOUT should contain:
+      """
+      https://example.com/wp-content/uploads/
+      """
+
+    Then STDOUT should contain:
+      """
+      /large-image.jpg
+      """
+
+    And STDOUT should contain:
+      """
+      /codeispoetry.png
+      """
+
+    And STDOUT should contain:
+      """
+      /audio-with-no-cover.mp3
+      """
+
+    And STDOUT should not contain:
+      """
+      Success:
+      """
+
+  Scenario: Errors when invalid --porcelain flag is applied.
+    When I try `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --porcelain=invalid`
+    Then STDERR should be:
+      """
+      Error: Invalid value for <porcelain>: invalid. Expected flag or 'url'.
+      """
