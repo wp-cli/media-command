@@ -262,3 +262,10 @@ Feature: Manage WordPress attachments
       """
       Success:
       """
+
+  Scenario: Errors when invalid --porcelain flag is applied.
+    When I try `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --porcelain=invalid`
+    Then STDERR should be:
+      """
+      Error: Invalid value for <porcelain>: invalid. Expected flag or 'url'.
+      """

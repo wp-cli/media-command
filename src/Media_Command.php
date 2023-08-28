@@ -209,11 +209,9 @@ class Media_Command extends WP_CLI_Command {
 	 * : If set, set the imported image as the Featured Image of the post it is attached to.
 	 *
 	 * [--porcelain[=<field>]]
-	 * : Output just the selected field. Defaults to attachment ID.
+	 * : Output a single field for each imported image. Defaults to attachment ID when used as flag.
 	 * ---
-	 * default: ID
 	 * options:
-	 *   - ID
 	 *   - url
 	 * ---
 	 *
@@ -268,6 +266,11 @@ class Media_Command extends WP_CLI_Command {
 		// Use the noun `image` when sure the media file is an image
 		if ( Utils\get_flag_value( $assoc_args, 'featured_image' ) || $assoc_args['alt'] ) {
 			$noun = 'image';
+		}
+
+		$porcelain = Utils\get_flag_value( $assoc_args, 'porcelain' );
+		if ( is_string( $porcelain ) && ! in_array( $porcelain, array( 'url' ), true ) ) {
+			WP_CLI::error( sprintf( 'Invalid value for <porcelain>: %s. Expected flag or \'url\'.', $porcelain ) );
 		}
 
 		if ( isset( $assoc_args['post_id'] ) ) {
@@ -417,8 +420,6 @@ class Media_Command extends WP_CLI_Command {
 					$attachment_success_text .= ' as featured image';
 				}
 			}
-
-			$porcelain = Utils\get_flag_value( $assoc_args, 'porcelain' );
 
 			if ( $porcelain ) {
 				if ( 'url' === strtolower( $porcelain ) ) {
