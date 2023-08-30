@@ -15,10 +15,10 @@ Feature: Manage WordPress attachments
       """
 
   Scenario: Import media from remote URL with query string
-    When I run `wp media import 'https://dummyimage.com/350x150/ffffff/000000?text=Foo'`
+    When I run `wp media import 'https://dummyimage.com/350x150.jpg?text=Foo'`
     Then STDOUT should contain:
       """
-      Imported file 'https://dummyimage.com/350x150/ffffff/000000?text=Foo' as attachment ID
+      Imported file 'https://dummyimage.com/350x150.jpg?text=Foo' as attachment ID
       """
     And STDOUT should contain:
       """
