@@ -155,7 +155,7 @@ class Media_Command extends WP_CLI_Command {
 		$errors    = 0;
 		$skips     = 0;
 		foreach ( $images->posts as $post ) {
-			$number++;
+			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				Utils\wp_clear_object_cache();
 			}
@@ -286,7 +286,7 @@ class Media_Command extends WP_CLI_Command {
 		$successes = 0;
 		$errors    = 0;
 		foreach ( $args as $file ) {
-			$number++;
+			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				Utils\wp_clear_object_cache();
 			}
@@ -299,7 +299,7 @@ class Media_Command extends WP_CLI_Command {
 			if ( empty( $is_file_remote ) ) {
 				if ( ! file_exists( $file ) ) {
 					WP_CLI::warning( "Unable to import file '$file'. Reason: File doesn't exist." );
-					$errors++;
+					++$errors;
 					continue;
 				}
 				if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
@@ -322,7 +322,7 @@ class Media_Command extends WP_CLI_Command {
 							implode( ', ', $tempfile->get_error_messages() )
 						)
 					);
-					$errors++;
+					++$errors;
 					continue;
 				}
 				$name = strtok( Utils\basename( $file ), '?' );
@@ -383,7 +383,7 @@ class Media_Command extends WP_CLI_Command {
 							implode( ', ', $success->get_error_messages() )
 						)
 					);
-					$errors++;
+					++$errors;
 					continue;
 				}
 				wp_update_attachment_metadata( $success, wp_generate_attachment_metadata( $success, $file ) );
@@ -398,7 +398,7 @@ class Media_Command extends WP_CLI_Command {
 							implode( ', ', $success->get_error_messages() )
 						)
 					);
-					$errors++;
+					++$errors;
 					continue;
 				}
 			}
@@ -438,7 +438,7 @@ class Media_Command extends WP_CLI_Command {
 					)
 				);
 			}
-			$successes++;
+			++$successes;
 		}
 
 		// Report the result of the operation
@@ -507,7 +507,7 @@ class Media_Command extends WP_CLI_Command {
 
 		usort(
 			$sizes,
-			function( $a, $b ) {
+			function ( $a, $b ) {
 				if ( $a['width'] === $b['width'] ) {
 					return 0;
 				}
@@ -588,7 +588,7 @@ class Media_Command extends WP_CLI_Command {
 
 		if ( false === $fullsizepath || ! file_exists( $fullsizepath ) ) {
 			WP_CLI::warning( "Can't find $att_desc." );
-			$errors++;
+			++$errors;
 			return;
 		}
 
@@ -600,13 +600,13 @@ class Media_Command extends WP_CLI_Command {
 
 		if ( $skip_it ) {
 			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc." );
-			$skips++;
+			++$skips;
 			return;
 		}
 
 		if ( $only_missing && ! $needs_regeneration ) {
 			WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
-			$successes++;
+			++$successes;
 			return;
 		}
 
@@ -614,7 +614,7 @@ class Media_Command extends WP_CLI_Command {
 		if ( is_wp_error( $metadata ) ) {
 			WP_CLI::warning( sprintf( '%s (ID %d)', $metadata->get_error_message(), $id ) );
 			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
-			$errors++;
+			++$errors;
 			return;
 		}
 
@@ -622,7 +622,7 @@ class Media_Command extends WP_CLI_Command {
 		if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
 			WP_CLI::warning( sprintf( 'No metadata. (ID %d)', $id ) );
 			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
-			$errors++;
+			++$errors;
 			return;
 		}
 
@@ -630,7 +630,7 @@ class Media_Command extends WP_CLI_Command {
 		if ( 1 === count( $metadata ) && array_key_exists( 'filesize', $metadata ) && ! ( $is_pdf && $image_size ) ) {
 			WP_CLI::warning( sprintf( 'Read error while retrieving metadata. (ID %d)', $id ) );
 			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
-			$errors++;
+			++$errors;
 			return;
 		}
 
@@ -645,7 +645,7 @@ class Media_Command extends WP_CLI_Command {
 
 			WP_CLI::log( "$progress Regenerated thumbnails for $att_desc." );
 		}
-		$successes++;
+		++$successes;
 	}
 
 	private function remove_old_images( $metadata, $fullsizepath, $image_size ) {
@@ -841,13 +841,11 @@ class Media_Command extends WP_CLI_Command {
 
 			if ( isset( $_wp_additional_image_sizes[ $s ]['crop'] ) ) {
 				$sizes[ $s ]['crop'] = (bool) $_wp_additional_image_sizes[ $s ]['crop'];
-			} else {
 				// Force PDF thumbnails to be soft crops.
-				if ( $is_pdf && 'thumbnail' === $s ) {
-					$sizes[ $s ]['crop'] = false;
-				} else {
-					$sizes[ $s ]['crop'] = (bool) get_option( "{$s}_crop" );
-				}
+			} elseif ( $is_pdf && 'thumbnail' === $s ) {
+				$sizes[ $s ]['crop'] = false;
+			} else {
+				$sizes[ $s ]['crop'] = (bool) get_option( "{$s}_crop" );
 			}
 		}
 
@@ -1055,7 +1053,7 @@ class Media_Command extends WP_CLI_Command {
 		$successes = 0;
 		$errors    = 0;
 		foreach ( $images->posts as $post ) {
-			$number++;
+			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				Utils\wp_clear_object_cache();
 			}
@@ -1096,7 +1094,7 @@ class Media_Command extends WP_CLI_Command {
 
 		if ( false === $full_size_path || ! file_exists( $full_size_path ) ) {
 			WP_CLI::warning( "Can't find {$att_desc}." );
-			$errors++;
+			++$errors;
 			return;
 		}
 
@@ -1108,14 +1106,14 @@ class Media_Command extends WP_CLI_Command {
 			if ( ! $dry_run ) {
 				WP_CLI::log( "{$progress} Fixing orientation for {$att_desc}." );
 				if ( false !== $this->flip_rotate_image( $id, $metadata, $image_meta, $full_size_path ) ) {
-					$successes++;
+					++$successes;
 				} else {
-					$errors++;
+					++$errors;
 					WP_CLI::log( "Couldn't fix orientation for {$att_desc}." );
 				}
 			} else {
 				WP_CLI::log( "{$progress} {$att_desc} will be affected." );
-				$successes++;
+				++$successes;
 			}
 		} else {
 			WP_CLI::log( "{$progress} No orientation fix required for {$att_desc}." );
