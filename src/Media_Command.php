@@ -841,13 +841,11 @@ class Media_Command extends WP_CLI_Command {
 
 			if ( isset( $_wp_additional_image_sizes[ $s ]['crop'] ) ) {
 				$sizes[ $s ]['crop'] = (bool) $_wp_additional_image_sizes[ $s ]['crop'];
-			} else {
 				// Force PDF thumbnails to be soft crops.
-				if ( $is_pdf && 'thumbnail' === $s ) {
-					$sizes[ $s ]['crop'] = false;
-				} else {
-					$sizes[ $s ]['crop'] = (bool) get_option( "{$s}_crop" );
-				}
+			} elseif ( $is_pdf && 'thumbnail' === $s ) {
+				$sizes[ $s ]['crop'] = false;
+			} else {
+				$sizes[ $s ]['crop'] = (bool) get_option( "{$s}_crop" );
 			}
 		}
 
