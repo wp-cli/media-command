@@ -185,8 +185,8 @@ class Media_Command extends WP_CLI_Command {
 	 * [--post_name=<post_name>]
 	 * : Name of the post to attach the imported files to.
 	 *
-	 * [--slug=<slug>]
-	 * : Attachment slug (post_name field).
+	 * [--file_name=<name>]
+	 * : Attachment name (post_name field).
 	 *
 	 * [--title=<title>]
 	 * : Attachment title (post title field).
@@ -252,7 +252,7 @@ class Media_Command extends WP_CLI_Command {
 		$assoc_args = wp_parse_args(
 			$assoc_args,
 			array(
-				'slug'      => '',
+				'file_name' => '',
 				'title'     => '',
 				'caption'   => '',
 				'alt'       => '',
@@ -332,9 +332,9 @@ class Media_Command extends WP_CLI_Command {
 				$name = strtok( Utils\basename( $file ), '?' );
 			}
 
-			if ( ! empty( $assoc_args['slug'] ) ) {
-				$image_slug = $this->get_image_slug( $name, $assoc_args['slug'] );
-				$name       = ! empty( $image_slug ) ? $image_slug : $name;
+			if ( ! empty( $assoc_args['file_name'] ) ) {
+				$image_name = $this->get_image_name( $name, $assoc_args['file_name'] );
+				$name       = ! empty( $image_name ) ? $image_name : $name;
 			}
 
 			$file_array = array(
@@ -1278,7 +1278,7 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * @return string Image slug with extension.
 	 */
-	private function get_image_slug( $basename, $slug ) {
+	private function get_image_name( $basename, $slug ) {
 
 		$extension = pathinfo( $basename, PATHINFO_EXTENSION );
 
