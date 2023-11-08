@@ -185,6 +185,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--post_name=<post_name>]
 	 * : Name of the post to attach the imported files to.
 	 *
+	 * [--slug=<slug>]
+	 * : Attachment slug (post_name field).
+	 *
 	 * [--title=<title>]
 	 * : Attachment title (post title field).
 	 *
@@ -249,6 +252,7 @@ class Media_Command extends WP_CLI_Command {
 		$assoc_args = wp_parse_args(
 			$assoc_args,
 			array(
+				'slug'      => '',
 				'title'     => '',
 				'caption'   => '',
 				'alt'       => '',
@@ -326,6 +330,11 @@ class Media_Command extends WP_CLI_Command {
 					continue;
 				}
 				$name = strtok( Utils\basename( $file ), '?' );
+			}
+
+			if ( ! empty( $assoc_args['slug'] ) ) {
+				$image_slug = $this->get_image_slug( $name, $assoc_args['slug'] );
+				$name       = ! empty( $image_slug ) ? $image_slug : $name;
 			}
 
 			$file_array = array(
@@ -1258,5 +1267,21 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		return wp_get_attachment_url( $attachment_id );
+	}
+
+	/**
+	 * Create image slug based on user input slug.
+	 * Add basename extension to slug.
+	 *
+	 * @param string $basename Default slu of image.
+	 * @param string $slug User input slug.
+	 *
+	 * @return string Image slug with extension.
+	 */
+	private function get_image_slug( $basename, $slug ) {
+
+		$extension = pathinfo( $basename, PATHINFO_EXTENSION );
+
+		return $slug . '.' . $extension;
 	}
 }
