@@ -423,6 +423,10 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			$attachment_success_text = '';
+			if ( $assoc_args['file_name'] ) {
+				$attachment_success_text .= ", file name {$name}";
+			}
+
 			if ( $assoc_args['post_id'] ) {
 				$attachment_success_text = " and attached to post {$assoc_args['post_id']}";
 				if ( Utils\get_flag_value( $assoc_args, 'featured_image' ) ) {

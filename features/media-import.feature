@@ -25,6 +25,17 @@ Feature: Manage WordPress attachments
       Success: Imported 1 of 1 items.
       """
 
+  Scenario: Import media from remote URL and use input file as attachment name
+    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --file_name=abc`
+    Then STDOUT should contain:
+      """
+      file name abc.png
+      """
+    And STDOUT should contain:
+      """
+      Success: Imported 1 of 1 items.
+      """
+
   Scenario: Fail to import missing image
     When I try `wp media import gobbledygook.png`
     Then STDERR should be:
