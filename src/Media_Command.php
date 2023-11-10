@@ -185,6 +185,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--post_name=<post_name>]
 	 * : Name of the post to attach the imported files to.
 	 *
+	 * [--file_name=<name>]
+	 * : Attachment name (post_name field).
+	 *
 	 * [--title=<title>]
 	 * : Attachment title (post title field).
 	 *
@@ -249,6 +252,7 @@ class Media_Command extends WP_CLI_Command {
 		$assoc_args = wp_parse_args(
 			$assoc_args,
 			array(
+				'file_name' => '',
 				'title'     => '',
 				'caption'   => '',
 				'alt'       => '',
@@ -326,6 +330,11 @@ class Media_Command extends WP_CLI_Command {
 					continue;
 				}
 				$name = strtok( Utils\basename( $file ), '?' );
+			}
+
+			if ( ! empty( $assoc_args['file_name'] ) ) {
+				$image_name = $this->get_image_name( $name, $assoc_args['file_name'] );
+				$name       = ! empty( $image_name ) ? $image_name : $name;
 			}
 
 			$file_array = array(
@@ -414,6 +423,10 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			$attachment_success_text = '';
+			if ( $assoc_args['file_name'] ) {
+				$attachment_success_text .= " with file name {$name}";
+			}
+
 			if ( $assoc_args['post_id'] ) {
 				$attachment_success_text = " and attached to post {$assoc_args['post_id']}";
 				if ( Utils\get_flag_value( $assoc_args, 'featured_image' ) ) {
@@ -1258,5 +1271,21 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		return wp_get_attachment_url( $attachment_id );
+	}
+
+	/**
+	 * Create image slug based on user input slug.
+	 * Add basename extension to slug.
+	 *
+	 * @param string $basename Default slu of image.
+	 * @param string $slug User input slug.
+	 *
+	 * @return string Image slug with extension.
+	 */
+	private function get_image_name( $basename, $slug ) {
+
+		$extension = pathinfo( $basename, PATHINFO_EXTENSION );
+
+		return $slug . '.' . $extension;
 	}
 }
