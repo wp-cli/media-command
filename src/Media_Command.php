@@ -424,7 +424,7 @@ class Media_Command extends WP_CLI_Command {
 
 			$attachment_success_text = '';
 			if ( $assoc_args['file_name'] ) {
-				$attachment_success_text .= ", file name {$name}";
+				$attachment_success_text .= " with file name {$name}";
 			}
 
 			if ( $assoc_args['post_id'] ) {
