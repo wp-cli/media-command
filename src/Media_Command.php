@@ -154,12 +154,12 @@ class Media_Command extends WP_CLI_Command {
 		$successes = 0;
 		$errors    = 0;
 		$skips     = 0;
-		foreach ( $images->posts as $post ) {
+		foreach ( $images->posts as $post_id ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				Utils\wp_clear_object_cache();
 			}
-			$this->process_regeneration( $post->ID, $skip_delete, $only_missing, $image_size, $number . '/' . $count, $successes, $errors, $skips );
+			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $image_size, $number . '/' . $count, $successes, $errors, $skips );
 		}
 
 		if ( $image_size ) {
@@ -947,11 +947,14 @@ class Media_Command extends WP_CLI_Command {
 		$mime_types = array_merge( array( 'image' ), $additional_mime_types );
 
 		$query_args = array(
-			'post_type'      => 'attachment',
-			'post__in'       => $args,
-			'post_mime_type' => $mime_types,
-			'post_status'    => 'any',
-			'posts_per_page' => -1,
+			'post_type'              => 'attachment',
+			'post__in'               => $args,
+			'post_mime_type'         => $mime_types,
+			'post_status'            => 'any',
+			'posts_per_page'         => -1,
+			'fields'                 => 'ids',
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
 		);
 
 		return new WP_Query( $query_args );
@@ -1065,12 +1068,12 @@ class Media_Command extends WP_CLI_Command {
 		$number    = 0;
 		$successes = 0;
 		$errors    = 0;
-		foreach ( $images->posts as $post ) {
+		foreach ( $images->posts as $post_id ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				Utils\wp_clear_object_cache();
 			}
-			$this->process_orientation_fix( $post->ID, "{$number}/{$count}", $successes, $errors, $dry_run );
+			$this->process_orientation_fix( $post_id, "{$number}/{$count}", $successes, $errors, $dry_run );
 		}
 
 		if ( Utils\get_flag_value( $assoc_args, 'dry-run' ) ) {
