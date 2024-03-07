@@ -630,12 +630,6 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		$metadata = wp_generate_attachment_metadata( $id, $fullsizepath );
-		if ( is_wp_error( $metadata ) ) {
-			WP_CLI::warning( sprintf( '%s (ID %d)', $metadata->get_error_message(), $id ) );
-			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
-			++$errors;
-			return;
-		}
 
 		// Note it's possible for no metadata to be generated for PDFs if restricted to a specific image size.
 		if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
