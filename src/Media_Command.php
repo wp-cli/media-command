@@ -961,59 +961,91 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * Get the metadata for the passed intermediate image size.
-	 *
-	 * @param string $size The image size to get the metadata for.
-	 *
-	 * @return array The image size metadata.
-	 */
-	private function get_intermediate_size_metadata( $size ) {
-		$width  = intval( get_option( "{$size}_size_w" ) );
-		$height = intval( get_option( "{$size}_size_h" ) );
-		$crop   = get_option( "{$size}_crop" );
-
-		return array(
-			'name'   => $size,
-			'width'  => $width,
-			'height' => $height,
-			'crop'   => false !== $crop ? 'hard' : 'soft',
-			'ratio'  => false !== $crop ? $this->get_ratio( $width, $height ) : 'N/A',
-		);
-	}
-
-	/**
 	 * Get all the registered image sizes along with their dimensions.
-	 *
-	 * @global array $_wp_additional_image_sizes The additional image sizes to parse.
-	 *
-	 * @link https://wordpress.stackexchange.com/a/251602 Original solution.
 	 *
 	 * @return array $image_sizes The image sizes
 	 */
 	private function get_registered_image_sizes() {
-		global $_wp_additional_image_sizes;
+		$image_sizes = array();
 
-		$image_sizes         = array();
-		$default_image_sizes = get_intermediate_image_sizes();
+		$all_sizes = $this->wp_get_registered_image_subsizes();
 
-		foreach ( $default_image_sizes as $size ) {
-			$image_sizes[] = $this->get_intermediate_size_metadata( $size );
-		}
+		foreach ( $all_sizes as $size => $size_args ) {
+			$crop = filter_var( $size_args['crop'], FILTER_VALIDATE_BOOLEAN );
 
-		if ( is_array( $_wp_additional_image_sizes ) ) {
-			foreach ( $_wp_additional_image_sizes as $size => $size_args ) {
-				$crop          = filter_var( $size_args['crop'], FILTER_VALIDATE_BOOLEAN );
-				$image_sizes[] = array(
-					'name'   => $size,
-					'width'  => $size_args['width'],
-					'height' => $size_args['height'],
-					'crop'   => empty( $crop ) || is_array( $size_args['crop'] ) ? 'soft' : 'hard',
-					'ratio'  => empty( $crop ) || is_array( $size_args['crop'] ) ? 'N/A' : $this->get_ratio( $size_args['width'], $size_args['height'] ),
-				);
-			}
+			$image_sizes[] = array(
+				'name'   => $size,
+				'width'  => $size_args['width'],
+				'height' => $size_args['height'],
+				'crop'   => empty( $crop ) || is_array( $size_args['crop'] ) ? 'soft' : 'hard',
+				'ratio'  => empty( $crop ) || is_array( $size_args['crop'] ) ? 'N/A' : $this->get_ratio( $size_args['width'], $size_args['height'] ),
+			);
 		}
 
 		return $image_sizes;
+	}
+
+	/**
+	* Returns a normalized list of all currently registered image sub-sizes.
+	*
+	* If exists, uses output of wp_get_registered_image_subsizes() function (introduced in WP 5.3).
+	* Definition of this method is modified version of core function wp_get_registered_image_subsizes().
+	*
+	* @global array $_wp_additional_image_sizes
+	*
+	* @return array[] Associative array of arrays of image sub-size information, keyed by image size name.
+	*/
+	private function wp_get_registered_image_subsizes() {
+		if ( Utils\wp_version_compare( '5.3', '>=' ) ) {
+			return wp_get_registered_image_subsizes();
+		}
+
+		global $_wp_additional_image_sizes;
+
+		$additional_sizes = $_wp_additional_image_sizes ? $_wp_additional_image_sizes : array();
+
+		$all_sizes = array();
+
+		foreach ( get_intermediate_image_sizes() as $size_name ) {
+			$size_data = array(
+				'width'  => 0,
+				'height' => 0,
+				'crop'   => false,
+			);
+
+			if ( isset( $additional_sizes[ $size_name ]['width'] ) ) {
+				// For sizes added by plugins and themes.
+				$size_data['width'] = (int) $additional_sizes[ $size_name ]['width'];
+			} else {
+				// For default sizes set in options.
+				$size_data['width'] = (int) get_option( "{$size_name}_size_w" );
+			}
+
+			if ( isset( $additional_sizes[ $size_name ]['height'] ) ) {
+				$size_data['height'] = (int) $additional_sizes[ $size_name ]['height'];
+			} else {
+				$size_data['height'] = (int) get_option( "{$size_name}_size_h" );
+			}
+
+			if ( empty( $size_data['width'] ) && empty( $size_data['height'] ) ) {
+				// This size isn't set.
+				continue;
+			}
+
+			if ( isset( $additional_sizes[ $size_name ]['crop'] ) ) {
+				$size_data['crop'] = $additional_sizes[ $size_name ]['crop'];
+			} else {
+				$size_data['crop'] = get_option( "{$size_name}_crop" );
+			}
+
+			if ( ! is_array( $size_data['crop'] ) || empty( $size_data['crop'] ) ) {
+				$size_data['crop'] = (bool) $size_data['crop'];
+			}
+
+			$all_sizes[ $size_name ] = $size_data;
+		}
+
+		return $all_sizes;
 	}
 
 	/**
