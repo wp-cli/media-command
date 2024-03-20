@@ -280,3 +280,19 @@ Feature: Manage WordPress attachments
       """
       Error: Invalid value for <porcelain>: invalid. Expected flag or 'url'.
       """
+
+  @require-wp-4.7.3 @require-extension-imagick
+  Scenario: Thumbnail for PDF file
+    Given download:
+      | path                              | url                                                |
+      | {CACHE_DIR}/canola.jpg            | http://wp-cli.org/behat-data/canola.jpg            |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/minimal-us-letter.pdf {CACHE_DIR}/canola.jpg`
+    Then STDOUT should contain:
+      """
+      Success: Imported 2 of 2 items.
+      """
+    And the wp-content/uploads/canola.jpg file should exist
+    And the wp-content/uploads/minimal-us-letter-pdf.jpg file should exist
