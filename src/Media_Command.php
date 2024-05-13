@@ -621,6 +621,8 @@ class Media_Command extends WP_CLI_Command {
 
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
+		$original_meta = wp_get_attachment_metadata( $id );
+
 		if ( $delete_unknown ) {
 			$this->delete_unknown_image_sizes( $id, $fullsizepath );
 
