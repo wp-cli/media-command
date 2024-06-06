@@ -1710,7 +1710,7 @@ Feature: Regenerate WordPress attachments
         add_image_size( 'test2', 200, 200, true );
       });
       """
-    When I try `wp media regenerate --delete-unknown --yes`
+    When I run `wp media regenerate --delete-unknown --yes`
     Then STDOUT should contain:
       """
       Success: Regenerated 1 of 1 images.
