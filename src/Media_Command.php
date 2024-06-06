@@ -66,6 +66,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--only-missing]
 	 * : Only generate thumbnails for images missing image sizes.
 	 *
+	 * [--delete-unknown]
+	 * : Only delete thumbnails for old unregistered image sizes.
+	 *
 	 * [--yes]
 	 * : Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
 	 *
@@ -130,6 +133,11 @@ class Media_Command extends WP_CLI_Command {
 			$skip_delete = true;
 		}
 
+		$delete_unknown = Utils\get_flag_value( $assoc_args, 'delete-unknown' );
+		if ( $delete_unknown ) {
+			$skip_delete = false;
+		}
+
 		$additional_mime_types = array();
 
 		if ( Utils\wp_version_compare( '4.7', '>=' ) ) {
@@ -165,7 +173,7 @@ class Media_Command extends WP_CLI_Command {
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				Utils\wp_clear_object_cache();
 			}
-			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $image_size, $number . '/' . $count, $successes, $errors, $skips );
+			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $delete_unknown, $image_size, $number . '/' . $count, $successes, $errors, $skips );
 		}
 
 		if ( $image_size ) {
@@ -587,7 +595,7 @@ class Media_Command extends WP_CLI_Command {
 		return $filename;
 	}
 
-	private function process_regeneration( $id, $skip_delete, $only_missing, $image_size, $progress, &$successes, &$errors, &$skips ) {
+	private function process_regeneration( $id, $skip_delete, $only_missing, $delete_unknown, $image_size, $progress, &$successes, &$errors, &$skips ) {
 
 		$title = get_the_title( $id );
 		if ( '' === $title ) {
@@ -614,6 +622,14 @@ class Media_Command extends WP_CLI_Command {
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
 		$original_meta = wp_get_attachment_metadata( $id );
+
+		if ( $delete_unknown ) {
+			$this->delete_unknown_image_sizes( $id, $fullsizepath );
+
+			WP_CLI::log( "$progress Deleted unknown image sizes for $att_desc." );
+			++$successes;
+			return;
+		}
 
 		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_delete, $skip_it );
 
@@ -730,7 +746,7 @@ class Media_Command extends WP_CLI_Command {
 			return true;
 		}
 
-		// Have sizes - check whether there're new ones or they've changed. Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
+		// Have sizes - check whether they're new ones or they've changed. Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
 
 		if ( $image_size ) {
 			if ( empty( $image_sizes[ $image_size ] ) ) {
@@ -778,8 +794,19 @@ class Media_Command extends WP_CLI_Command {
 		return false;
 	}
 
-	// Like WP's get_intermediate_image_sizes(), but removes sizes that won't be generated for a particular attachment due to its being on or below their thresholds,
-	// and returns associative array with size name => width/height entries, resolved to crop values if applicable.
+	/**
+	 * Returns image sizes for a given attachment.
+	 *
+	 * Like WP's get_intermediate_image_sizes(), but removes sizes that won't be generated for a particular attachment due to it being on or below their thresholds,
+	 * and returns associative array with size name => width/height entries, resolved to crop values if applicable.
+	 *
+	 * @param string $fullsizepath Filepath of the attachment
+	 * @param bool   $is_pdf       Whether it is a PDF.
+	 * @param array  $metadata     Attachment metadata.
+	 * @param int    $att_id       Attachment ID.
+	 *
+	 * @return array|WP_Error Image sizes on success, WP_Error instance otherwise.
+	 */
 	private function get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata, $att_id ) {
 
 		// Need to get width, height of attachment for image_resize_dimensions().
@@ -1322,5 +1349,52 @@ class Media_Command extends WP_CLI_Command {
 		$extension = pathinfo( $basename, PATHINFO_EXTENSION );
 
 		return $slug . '.' . $extension;
+	}
+
+	/**
+	 * Removes files for unknown/unregistered image sizes.
+	 *
+	 * Similar to {@see self::remove_old_images} but also updates metadata afterwards.
+	 *
+	 * @param int    $id           Attachment ID.
+	 * @param string $fullsizepath Filepath of the attachment.
+	 *
+	 * @return void
+	 */
+	private function delete_unknown_image_sizes( $id, $fullsizepath ) {
+		$original_meta = wp_get_attachment_metadata( $id );
+
+		$image_sizes = wp_list_pluck( $this->get_registered_image_sizes(), 'name' );
+
+		$dir_path = dirname( $fullsizepath ) . '/';
+
+		$sizes_to_delete = array();
+
+		if ( isset( $original_meta['sizes'] ) ) {
+			foreach ( $original_meta['sizes'] as $size_name => $size_meta ) {
+				if ( 'full' === $size_name ) {
+					continue;
+				}
+
+				if ( ! in_array( $size_name, $image_sizes, true ) ) {
+					$intermediate_path = $dir_path . $size_meta['file'];
+					if ( $intermediate_path === $fullsizepath ) {
+						continue;
+					}
+
+					if ( file_exists( $intermediate_path ) ) {
+						unlink( $intermediate_path );
+					}
+
+					$sizes_to_delete[] = $size_name;
+				}
+			}
+
+			foreach ( $sizes_to_delete as $size_name ) {
+				unset( $original_meta['sizes'][ $size_name ] );
+			}
+		}
+
+		wp_update_attachment_metadata( $id, $original_meta );
 	}
 }

@@ -1685,3 +1685,39 @@ Feature: Regenerate WordPress attachments
       Warning: No editor could be selected.
       """
     And the return code should be 1
+
+  Scenario: Only delete missing image sizes
+    Given download:
+      | path                        | url                                              |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'test1', 125, 125, true );
+      });
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported attachment" --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+    And the wp-content/uploads/large-image-125x125.jpg file should exist
+
+    Given a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'test2', 200, 200, true );
+      });
+      """
+    When I run `wp media regenerate --delete-unknown --yes`
+    Then STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And STDOUT should contain:
+      """
+      Deleted unknown image sizes for "My imported attachment"
+      """
+    And the wp-content/uploads/large-image-125x125.jpg file should not exist
+    And the wp-content/uploads/large-image-200x200.jpg file should not exist

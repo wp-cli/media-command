@@ -31,7 +31,8 @@ wp media
 
     # Import a local image and set it to be the featured image for a post.
     $ wp media import ~/Downloads/image.png --post_id=123 --title="A downloaded picture" --featured_image
-    Success: Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as featured image.
+    Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as featured image.
+    Success: Imported 1 of 1 images.
 
     # List all registered image sizes
     $ wp media image-size
@@ -46,6 +47,11 @@ wp media
     | thumbnail                 | 150   | 150    | hard  |
     +---------------------------+-------+--------+-------+
 
+    # Fix orientation for specific images.
+    $ wp media fix-orientation 63
+    1/1 Fixing orientation for "Portrait_6" (ID 63).
+    Success: Fixed 1 of 1 images.
+
 
 
 ### wp media import
@@ -53,7 +59,7 @@ wp media
 Creates attachments from local files or URLs.
 
 ~~~
-wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--preserve-filetime] [--featured_image] [--porcelain]
+wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--file_name=<name>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--preserve-filetime] [--featured_image] [--porcelain[=<field>]]
 ~~~
 
 **OPTIONS**
@@ -65,6 +71,12 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 
 	[--post_id=<post_id>]
 		ID of the post to attach the imported files to.
+
+	[--post_name=<post_name>]
+		Name of the post to attach the imported files to.
+
+	[--file_name=<name>]
+		Attachment name (post_name field).
 
 	[--title=<title>]
 		Attachment title (post title field).
@@ -87,10 +99,14 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 		Remote files will always use the current time.
 
 	[--featured_image]
-		If set, set the imported image as the Featured Image of the post its attached to.
+		If set, set the imported image as the Featured Image of the post it is attached to.
 
-	[--porcelain]
-		Output just the new attachment ID.
+	[--porcelain[=<field>]]
+		Output a single field for each imported image. Defaults to attachment ID when used as flag.
+		---
+		options:
+		  - url
+		---
 
 **EXAMPLES**
 
@@ -129,7 +145,7 @@ wp media import <file>... [--post_id=<post_id>] [--title=<title>] [--caption=<ca
 Regenerates thumbnails for one or more attachments.
 
 ~~~
-wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-delete] [--only-missing] [--yes]
+wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-delete] [--only-missing] [--delete-unknown] [--yes]
 ~~~
 
 **OPTIONS**
@@ -145,6 +161,9 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-del
 
 	[--only-missing]
 		Only generate thumbnails for images missing image sizes.
+
+	[--delete-unknown]
+		Only delete thumbnails for old unregistered image sizes.
 
 	[--yes]
 		Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
