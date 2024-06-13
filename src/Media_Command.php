@@ -962,8 +962,8 @@ class Media_Command extends WP_CLI_Command {
 				return $custom_upload_dir;
 			}
 
-			if ( ! str_starts_with( $upload_dir, ABSPATH ) ) {
-				// $cdir is absolute, $upload_dir is (maybe) relative to ABSPATH.
+			if ( 0 !== strpos( $upload_dir, ABSPATH ) ) {
+				// $cir is absolute, $upload_dir is (maybe) relative to ABSPATH.
 				$dir = path_join( ABSPATH, $upload_dir );
 			} else {
 				$dir = $upload_dir;
