@@ -218,6 +218,10 @@ class Media_Command extends WP_CLI_Command {
 	 * : If set, media files (local only) are imported to the library but not moved on disk.
 	 * File names will not be run through wp_unique_filename() with this set.
 	 *
+	 * [--destdir=<destdir>]
+	 * : Path to specific directory where to upload imported files.
+	 * Can be absolute or relative to ABSPATH.
+	 *
 	 * [--preserve-filetime]
 	 * : Use the file modified time as the post published & modified dates.
 	 * Remote files will always use the current time.
@@ -272,6 +276,7 @@ class Media_Command extends WP_CLI_Command {
 				'alt'       => '',
 				'desc'      => '',
 				'post_name' => '',
+				'destdir'   => '',
 			)
 		);
 
@@ -411,6 +416,12 @@ class Media_Command extends WP_CLI_Command {
 				}
 				wp_update_attachment_metadata( $success, wp_generate_attachment_metadata( $success, $file ) );
 			} else {
+
+				$destdir = Utils\get_flag_value( $assoc_args, 'destdir' );
+				if ( is_string( $destdir ) && $destdir ) {
+					$custom_upload_dir_filter = $this->add_upload_dir_filter( $destdir );
+				}
+
 				// Deletes the temporary file.
 				$success = media_handle_sideload( $file_array, $assoc_args['post_id'], $assoc_args['title'], $post_array );
 				if ( is_wp_error( $success ) ) {
@@ -466,6 +477,10 @@ class Media_Command extends WP_CLI_Command {
 				);
 			}
 			++$successes;
+		}
+
+		if ( ! empty( $custom_upload_dir_filter ) ) {
+			$this->remove_upload_dir_filter( $custom_upload_dir_filter );
 		}
 
 		// Report the result of the operation
@@ -937,6 +952,45 @@ class Media_Command extends WP_CLI_Command {
 		foreach ( $image_size_filters as $name => $filter ) {
 			remove_filter( $name, $filter, PHP_INT_MAX );
 		}
+	}
+
+	private function add_upload_dir_filter( $upload_dir ) {
+
+		$custom_upload_dir_filter = function () use ( $upload_dir ) {
+			static $custom_upload_dir;
+			if ( $custom_upload_dir ) {
+				return $custom_upload_dir;
+			}
+
+			if ( ! str_starts_with( $upload_dir, ABSPATH ) ) {
+				// $cdir is absolute, $upload_dir is (maybe) relative to ABSPATH.
+				$dir = path_join( ABSPATH, $upload_dir );
+			} else {
+				$dir = $upload_dir;
+				// normalize $upload_dir.
+				$upload_dir = substr( $upload_dir, strlen( ABSPATH ) );
+			}
+
+			$siteurl = get_option( 'siteurl' );
+			$url     = trailingslashit( $siteurl ) . $upload_dir;
+
+			$custom_upload_dir = array(
+				'path'    => $dir,
+				'url'     => $url,
+				'subdir'  => '',
+				'basedir' => $dir,
+				'baseurl' => $url,
+				'error'   => false,
+			);
+
+			return $custom_upload_dir;
+		};
+
+		add_filter( 'upload_dir', $custom_upload_dir_filter, PHP_INT_MAX, 0 );
+	}
+
+	private function remove_upload_dir_filter( $upload_dir_filter ) {
+		remove_filter( 'upload_dir', $upload_dir_filter, PHP_INT_MAX );
 	}
 
 	// Update attachment sizes metadata just for a particular intermediate image size.
