@@ -96,6 +96,9 @@ Feature: Fix WordPress attachments orientation
 
   @require-extension-exif @require-wp-4.0 @less-than-wp-5.3
   Scenario: Fix orientation for single image
+    Given download:
+      | path                             | url                                                                            |
+      | {CACHE_DIR}/portrait-6.jpg       | https://raw.githubusercontent.com/thrijith/test-images/master/Portrait_6.jpg   |
     When I run `wp media import {CACHE_DIR}/portrait-6.jpg --title="Portrait Six" --porcelain`
     Then save STDOUT as {PORTRAIT_SIX}
 
