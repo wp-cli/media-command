@@ -434,7 +434,7 @@ Feature: Regenerate WordPress attachments
       """
       Success: Regenerated 2 of 2 images
       """
-    Then the wp-content/uploads/large-image-125x125.jpg file should exist
+    And the wp-content/uploads/large-image-125x125.jpg file should exist
     And the wp-content/uploads/large-image-1-125x125.jpg file should exist
     And the wp-content/uploads/large-image-200x200.jpg file should exist
     And the wp-content/uploads/large-image-1-200x200.jpg file should exist
@@ -1032,7 +1032,7 @@ Feature: Regenerate WordPress attachments
 
     When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported JPG attachment" --porcelain`
     Then save STDOUT as {JPG_ATTACHMENT_ID}
-    Then the wp-content/uploads/canola-300x225.jpg file should exist
+    And the wp-content/uploads/canola-300x225.jpg file should exist
 
     When I run `wp media regenerate --yes`
     Then STDOUT should contain:
