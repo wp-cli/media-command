@@ -672,6 +672,15 @@ class Media_Command extends WP_CLI_Command {
 		} else {
 			wp_update_attachment_metadata( $id, $metadata );
 
+			// Log generated files if metadata contains sizes
+			if ( ! empty( $metadata['sizes'] ) ) {
+				$dir_path = dirname( $fullsizepath ) . '/';
+				foreach ( $metadata['sizes'] as $size_name => $size_info ) {
+					$generated_file_path = $dir_path . $size_info['file'];
+					WP_CLI::log( "\tGenerated $generated_file_path" );
+				}
+			}
+
 			WP_CLI::log( "$progress Regenerated thumbnails for $att_desc." );
 		}
 		++$successes;
@@ -701,6 +710,14 @@ class Media_Command extends WP_CLI_Command {
 
 			if ( file_exists( $intermediate_path ) ) {
 				unlink( $intermediate_path );
+				WP_CLI::log( "\tDeleted $intermediate_path." );
+			}
+
+			// Also delete the corresponding .webp image if it exists
+			$webp_path = $intermediate_path . '.webp';
+			if ( file_exists( $webp_path ) ) {
+				unlink( $webp_path );
+				WP_CLI::log( "\tDeleted $webp_path." );
 			}
 		}
 	}
@@ -1362,6 +1379,8 @@ class Media_Command extends WP_CLI_Command {
 	 * @return void
 	 */
 	private function delete_unknown_image_sizes( $id, $fullsizepath ) {
+		global $wpdb;
+
 		$original_meta = wp_get_attachment_metadata( $id );
 
 		$image_sizes = wp_list_pluck( $this->get_registered_image_sizes(), 'name' );
@@ -1384,6 +1403,14 @@ class Media_Command extends WP_CLI_Command {
 
 					if ( file_exists( $intermediate_path ) ) {
 						unlink( $intermediate_path );
+						WP_CLI::log( "\tDeleted $intermediate_path." );
+					}
+
+					// Also delete the corresponding .webp image if it exists
+					$webp_path = $intermediate_path . '.webp';
+					if ( file_exists( $webp_path ) ) {
+						unlink( $webp_path );
+						WP_CLI::log( "\tDeleted $webp_path." );
 					}
 
 					$sizes_to_delete[] = $size_name;
@@ -1392,6 +1419,76 @@ class Media_Command extends WP_CLI_Command {
 
 			foreach ( $sizes_to_delete as $size_name ) {
 				unset( $original_meta['sizes'][ $size_name ] );
+			}
+		}
+
+		// Get the relative path for the attachment directory
+		if ( empty( $original_meta['file'] ) ) {
+			return;
+		}
+		$relative_path = dirname( $original_meta['file'] ) . '/';
+
+		// Whitelist legitimate thumbnails having dimensions in filename (e.g. image-123x456.jpg)
+		$whitelist = array_map(
+			'basename',
+			$wpdb->get_col(
+				$wpdb->prepare(
+					'SELECT meta_value FROM ' . $wpdb->postmeta . '
+					 WHERE meta_key = %s
+					 AND meta_value REGEXP %s',
+					'_wp_attached_file',
+					'^' . preg_quote( $relative_path, '/' ) . '[^' . preg_quote( '/', '/' ) . ']+-[0-9]+x[0-9]+\.'
+				)
+			)
+		);
+
+		// Get all files in the directory, filtering out directories and special files
+		$filelist = array();
+
+		$directory_files = scandir( $dir_path );
+		foreach ( $directory_files as $file ) {
+			$file_path = $dir_path . $file;
+
+			if ( '.' === $file || '..' === $file || ! is_file( $file_path ) ) {
+				continue;
+			}
+
+			$filelist[] = $file;
+		}
+
+		// Extract registered thumbnail filenames from attachment metadata
+		$registered_thumbnails = ! empty( $original_meta['sizes'] ) ? array_column( $original_meta['sizes'], 'file' ) : array();
+
+		// Parse the full-size image path for pattern matching
+		$fullsize_parts    = pathinfo( $fullsizepath );
+		$filename_pattern  = preg_quote( $fullsize_parts['filename'], '#' );
+		$extension_pattern = preg_quote( $fullsize_parts['extension'], '#' );
+		$thumbnail_regex   = "#^{$filename_pattern}-[0-9]+x[0-9]+\.{$extension_pattern}$#";
+
+		// Process each file and delete orphaned thumbnails
+		foreach ( $filelist as $file ) {
+			// Skip files that are whitelisted or registered thumbnails
+			if ( in_array( $file, $whitelist, true ) || in_array( $file, $registered_thumbnails, true ) ) {
+				continue;
+			}
+
+			// Skip files that don't match the expected thumbnail naming pattern
+			if ( ! preg_match( $thumbnail_regex, $file ) ) {
+				continue;
+			}
+
+			// Delete the main thumbnail file
+			$thumbnail_path = $dir_path . $file;
+			if ( file_exists( $thumbnail_path ) ) {
+				unlink( $thumbnail_path );
+				WP_CLI::log( "\tDeleted $thumbnail_path." );
+			}
+
+			// Also delete the corresponding .webp image if it exists
+			$webp_path = $thumbnail_path . '.webp';
+			if ( file_exists( $webp_path ) ) {
+				unlink( $webp_path );
+				WP_CLI::log( "\tDeleted $webp_path." );
 			}
 		}
 
