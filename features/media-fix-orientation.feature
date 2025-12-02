@@ -34,67 +34,67 @@ Feature: Fix WordPress attachments orientation
 
     When I run `wp media fix-orientation --dry-run`
     Then STDOUT should contain:
-    """
-    3 "Portrait Four" (ID {PORTRAIT_FOUR}) will be affected.
-    """
+      """
+      3 "Portrait Four" (ID {PORTRAIT_FOUR}) will be affected.
+      """
 
     And STDOUT should contain:
-    """
-    3 "Landscape Five" (ID {LANDSCAPE_FIVE}) will be affected.
-    """
+      """
+      3 "Landscape Five" (ID {LANDSCAPE_FIVE}) will be affected.
+      """
 
     And STDOUT should contain:
-    """
-    3 "Landscape Two" (ID {LANDSCAPE_TWO}) will be affected.
-    """
+      """
+      3 "Landscape Two" (ID {LANDSCAPE_TWO}) will be affected.
+      """
 
     And STDOUT should contain:
-    """
-    Success: 3 of 3 images will be affected.
-    """
+      """
+      Success: 3 of 3 images will be affected.
+      """
 
     When I run `wp media fix-orientation`
     Then STDOUT should contain:
-    """
-    3 Fixing orientation for "Portrait Four" (ID {PORTRAIT_FOUR}).
-    """
+      """
+      3 Fixing orientation for "Portrait Four" (ID {PORTRAIT_FOUR}).
+      """
 
     And STDOUT should contain:
-    """
-    3 Fixing orientation for "Landscape Five" (ID {LANDSCAPE_FIVE}).
-    """
+      """
+      3 Fixing orientation for "Landscape Five" (ID {LANDSCAPE_FIVE}).
+      """
 
     And STDOUT should contain:
-    """
-    3 Fixing orientation for "Landscape Two" (ID {LANDSCAPE_TWO}).
-    """
+      """
+      3 Fixing orientation for "Landscape Two" (ID {LANDSCAPE_TWO}).
+      """
 
     And STDOUT should contain:
-    """
-    Success: Fixed 3 of 3 images.
-    """
+      """
+      Success: Fixed 3 of 3 images.
+      """
 
     # Verify orientation fix.
     When I run `wp media fix-orientation`
     Then STDOUT should contain:
-    """
-    3 No orientation fix required for "Portrait Four" (ID {PORTRAIT_FOUR}).
-    """
+      """
+      3 No orientation fix required for "Portrait Four" (ID {PORTRAIT_FOUR}).
+      """
 
     And STDOUT should contain:
-    """
-    3 No orientation fix required for "Landscape Five" (ID {LANDSCAPE_FIVE}).
-    """
+      """
+      3 No orientation fix required for "Landscape Five" (ID {LANDSCAPE_FIVE}).
+      """
 
     And STDOUT should contain:
-    """
-    3 No orientation fix required for "Landscape Two" (ID {LANDSCAPE_TWO}).
-    """
+      """
+      3 No orientation fix required for "Landscape Two" (ID {LANDSCAPE_TWO}).
+      """
 
     And STDOUT should contain:
-    """
-    Success: Images already fixed.
-    """
+      """
+      Success: Images already fixed.
+      """
 
   # On newer versions (5.3+) the image is already considered fixed.
   # On WP 4.9 tests this results in "Couldn't fix orientation".
@@ -109,23 +109,23 @@ Feature: Fix WordPress attachments orientation
 
     When I run `wp media fix-orientation {PORTRAIT_SIX}`
     Then STDOUT should be:
-    """
-    1/1 Fixing orientation for "Portrait Six" (ID {PORTRAIT_SIX}).
-    Success: Fixed 1 of 1 images.
-    """
+      """
+      1/1 Fixing orientation for "Portrait Six" (ID {PORTRAIT_SIX}).
+      Success: Fixed 1 of 1 images.
+      """
 
     # Verify orientation fix.
     When I run `wp media fix-orientation {PORTRAIT_SIX}`
     Then STDOUT should be:
-    """
-    1/1 No orientation fix required for "Portrait Six" (ID {PORTRAIT_SIX}).
-    Success: Image already fixed.
-    """
+      """
+      1/1 No orientation fix required for "Portrait Six" (ID {PORTRAIT_SIX}).
+      Success: Image already fixed.
+      """
 
   @require-wp-4.0
   Scenario: Fix orientation for non existent image
     When I try `wp media fix-orientation 9999`
     Then STDERR should be:
-    """
-    Error: No images found.
-    """
+      """
+      Error: No images found.
+      """
