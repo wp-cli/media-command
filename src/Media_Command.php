@@ -216,11 +216,13 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * [--skip-copy]
 	 * : If set, media files (local only) are imported to the library but not moved on disk.
-	 * File names will not be run through wp_unique_filename() with this set.
+	 * File names will not be run through wp_unique_filename() with this set. When used, files
+	 * will remain at their current location and will not be copied into any destination directory.
 	 *
 	 * [--destdir=<destdir>]
 	 * : Path to specific directory where to upload imported files.
-	 * Can be absolute or relative to ABSPATH.
+	 * Can be absolute or relative to ABSPATH. Ignored when used together with --skip-copy, as
+	 * files are not moved on disk in that case.
 	 *
 	 * [--preserve-filetime]
 	 * : Use the file modified time as the post published & modified dates.
