@@ -220,7 +220,7 @@ class Media_Command extends WP_CLI_Command {
 	 * will remain at their current location and will not be copied into any destination directory.
 	 *
 	 * [--destdir=<destdir>]
-	 * : Path to specific directory where to upload imported files.
+	 * : Path to the destination directory for uploaded imported files.
 	 * Can be absolute or relative to ABSPATH. Ignored when used together with --skip-copy, as
 	 * files are not moved on disk in that case.
 	 *
