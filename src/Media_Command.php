@@ -420,7 +420,7 @@ class Media_Command extends WP_CLI_Command {
 			} else {
 
 				$destdir = Utils\get_flag_value( $assoc_args, 'destdir' );
-				if ( is_string( $destdir ) && $destdir ) {
+				if ( is_string( $destdir ) && $destdir && ! isset( $custom_upload_dir_filter ) ) {
 					$custom_upload_dir_filter = $this->add_upload_dir_filter( $destdir );
 				}
 
