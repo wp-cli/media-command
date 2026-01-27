@@ -179,9 +179,15 @@ Feature: Manage WordPress attachments
     When I run `wp post get {ATTACHMENT_ID} --format=csv --fields=post_title,post_excerpt,post_content`
     Then STDOUT should contain:
       """
-      post_content,"Desc\Here"
       post_title,"My\Title"
+      """
+    And STDOUT should contain:
+      """
       post_excerpt,"Caption\Here"
+      """
+    And STDOUT should contain:
+      """
+      post_content,"Desc\Here"
       """
 
     When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_image_alt`
