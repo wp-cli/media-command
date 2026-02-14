@@ -20,6 +20,11 @@ use WP_CLI\Utils;
  *     Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as featured image.
  *     Success: Imported 1 of 1 images.
  *
+ *     # Import an image from STDIN.
+ *     $ curl http://example.com/image.jpg | wp media import -
+ *     Imported file 'STDIN' as attachment ID 1754.
+ *     Success: Imported 1 of 1 items.
+ *
  *     # List all registered image sizes
  *     $ wp media image-size
  *     +---------------------------+-------+--------+-------+
@@ -339,15 +344,10 @@ class Media_Command extends WP_CLI_Command {
 					continue;
 				}
 
-				// Determine the name for the imported file
-				if ( ! empty( $assoc_args['file_name'] ) ) {
-					$name = $assoc_args['file_name'];
-				} else {
-					// Try to determine file extension from content
-					$filetype = wp_check_filetype_and_ext( $tempfile, '' );
-					$ext      = ! empty( $filetype['ext'] ) ? '.' . $filetype['ext'] : '';
-					$name     = 'stdin-' . time() . $ext;
-				}
+				// Try to determine file extension from content
+				$filetype = wp_check_filetype_and_ext( $tempfile, '' );
+				$ext      = ! empty( $filetype['ext'] ) ? '.' . $filetype['ext'] : '';
+				$name     = 'stdin-' . time() . $ext;
 
 				$orig_filename = 'STDIN';
 				$file_time     = '';
