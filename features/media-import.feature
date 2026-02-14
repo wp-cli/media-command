@@ -314,6 +314,7 @@ Feature: Manage WordPress attachments
       """
       my-image-png
       """
+    # Note: WordPress sanitizes the post_name (slug) by converting dots to hyphens
 
   Scenario: Fail to import from STDIN when no input provided
     When I try `wp media import - </dev/null`
