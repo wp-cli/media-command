@@ -286,3 +286,39 @@ Feature: Manage WordPress attachments
       """
       Error: Invalid value for <porcelain>: invalid. Expected flag or 'url'.
       """
+
+  Scenario: Import media from STDIN
+    Given download:
+      | path                        | url                                              |
+      | {CACHE_DIR}/codeispoetry.png | http://wp-cli.org/behat-data/codeispoetry.png     |
+
+    When I run `cat {CACHE_DIR}/codeispoetry.png | wp media import - --title="From STDIN" --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post get {ATTACHMENT_ID} --field=title`
+    Then STDOUT should be:
+      """
+      From STDIN
+      """
+
+  Scenario: Import media from STDIN with file_name
+    Given download:
+      | path                        | url                                              |
+      | {CACHE_DIR}/codeispoetry.png | http://wp-cli.org/behat-data/codeispoetry.png     |
+
+    When I run `cat {CACHE_DIR}/codeispoetry.png | wp media import - --file_name=my-image.png --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post get {ATTACHMENT_ID} --field=name`
+    Then STDOUT should be:
+      """
+      my-image-png
+      """
+
+  Scenario: Fail to import from STDIN when no input provided
+    When I try `wp media import - </dev/null`
+    Then STDERR should contain:
+      """
+      Warning: Unable to import file from STDIN. Reason: No input provided.
+      """
+    And the return code should be 1
