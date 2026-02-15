@@ -330,8 +330,8 @@ class Media_Command extends WP_CLI_Command {
 
 				// Read from STDIN and save to a temporary file
 				$stdin_content = file_get_contents( 'php://stdin' );
-				if ( false === $stdin_content ) {
-					WP_CLI::warning( 'Unable to import file from STDIN. Reason: Could not read STDIN.' );
+				if ( false === $stdin_content || empty( $stdin_content ) ) {
+					WP_CLI::warning( 'Unable to import file from STDIN. Reason: No input provided.' );
 					++$errors;
 					continue;
 				}
@@ -344,10 +344,24 @@ class Media_Command extends WP_CLI_Command {
 					continue;
 				}
 
-				// Try to determine file extension from content
-				$filetype = wp_check_filetype_and_ext( $tempfile, '' );
-				$ext      = ! empty( $filetype['ext'] ) ? '.' . $filetype['ext'] : '';
-				$name     = 'stdin-' . time() . $ext;
+				// Determine file extension from content
+				$mimetype = mime_content_type( $tempfile );
+
+				// Map MIME type to extension
+				$ext = '';
+				if ( $mimetype && function_exists( 'wp_get_mime_types' ) ) {
+					$mime_types = wp_get_mime_types();
+					foreach ( $mime_types as $exts => $mime ) {
+						if ( $mime === $mimetype ) {
+							$ext_array = explode( '|', $exts );
+							$ext       = '.' . $ext_array[0];
+							break;
+						}
+					}
+				}
+
+				// Generate filename with proper extension
+				$name = 'stdin-' . time() . $ext;
 
 				$orig_filename = 'STDIN';
 				$file_time     = '';
