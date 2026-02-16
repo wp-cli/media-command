@@ -50,6 +50,11 @@ class Media_Command extends WP_CLI_Command {
 	const WP_CLEAR_OBJECT_CACHE_INTERVAL = 500;
 
 	/**
+	 * @var string|null
+	 */
+	private $destination_dir;
+
+	/**
 	 * Regenerates thumbnails for one or more attachments.
 	 *
 	 * ## OPTIONS
@@ -216,7 +221,13 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * [--skip-copy]
 	 * : If set, media files (local only) are imported to the library but not moved on disk.
-	 * File names will not be run through wp_unique_filename() with this set.
+	 * File names will not be run through wp_unique_filename() with this set. When used, files
+	 * will remain at their current location and will not be copied into any destination directory.
+	 *
+	 * [--destination-dir=<destination-dir>]
+	 * : Path to the destination directory for uploaded imported files.
+	 * Can be absolute or relative to ABSPATH. Ignored when used together with --skip-copy, as
+	 * files are not moved on disk in that case.
 	 *
 	 * [--preserve-filetime]
 	 * : Use the file modified time as the post published & modified dates.
@@ -266,12 +277,13 @@ class Media_Command extends WP_CLI_Command {
 		$assoc_args = wp_parse_args(
 			$assoc_args,
 			array(
-				'file_name' => '',
-				'title'     => '',
-				'caption'   => '',
-				'alt'       => '',
-				'desc'      => '',
-				'post_name' => '',
+				'file_name'       => '',
+				'title'           => '',
+				'caption'         => '',
+				'alt'             => '',
+				'desc'            => '',
+				'post_name'       => '',
+				'destination-dir' => '',
 			)
 		);
 
@@ -411,6 +423,13 @@ class Media_Command extends WP_CLI_Command {
 				}
 				wp_update_attachment_metadata( $success, wp_generate_attachment_metadata( $success, $file ) );
 			} else {
+
+				$destdir = Utils\get_flag_value( $assoc_args, 'destination-dir' );
+				if ( ! empty( $destdir ) ) {
+					$this->destination_dir = $destdir;
+					add_filter( 'upload_dir', [ $this, 'filter_upload_dir' ], PHP_INT_MAX );
+				}
+
 				// Deletes the temporary file.
 				$success = media_handle_sideload( $file_array, $assoc_args['post_id'], $assoc_args['title'], $post_array );
 				if ( is_wp_error( $success ) ) {
@@ -467,6 +486,8 @@ class Media_Command extends WP_CLI_Command {
 			}
 			++$successes;
 		}
+
+		remove_filter( 'upload_dir', [ $this, 'filter_upload_dir' ], PHP_INT_MAX );
 
 		// Report the result of the operation
 		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
@@ -937,6 +958,35 @@ class Media_Command extends WP_CLI_Command {
 		foreach ( $image_size_filters as $name => $filter ) {
 			remove_filter( $name, $filter, PHP_INT_MAX );
 		}
+	}
+
+	public function filter_upload_dir( $uploads ) {
+		if ( ! $this->destination_dir ) {
+			return $uploads;
+		}
+
+		$upload_dir = $this->destination_dir;
+
+		if ( 0 !== strpos( $this->destination_dir, ABSPATH ) ) {
+			// $dir is absolute, $upload_dir is (maybe) relative to ABSPATH.
+			$dir = path_join( ABSPATH, $this->destination_dir );
+		} else {
+			$dir = $this->destination_dir;
+			// normalize $upload_dir.
+			$upload_dir = substr( $this->destination_dir, strlen( ABSPATH ) );
+		}
+
+		$siteurl = get_option( 'siteurl' );
+		$url     = trailingslashit( $siteurl ) . $upload_dir;
+
+		return [
+			'path'    => $this->destination_dir,
+			'url'     => $url,
+			'subdir'  => '',
+			'basedir' => $this->destination_dir,
+			'baseurl' => $url,
+			'error'   => false,
+		];
 	}
 
 	// Update attachment sizes metadata just for a particular intermediate image size.
