@@ -287,11 +287,11 @@ Feature: Manage WordPress attachments
       Error: Invalid value for <porcelain>: invalid. Expected flag or 'url'.
       """
 
-  Scenario: Upload files into a custom directory, relative to ABSPATH, when --destdir flag is applied.
+  Scenario: Upload files into a custom directory, relative to ABSPATH, when --destination-dir flag is applied.
     Given download:
       | path                        | url                                              |
       | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
-    When I run `wp media import --destdir="foo" {CACHE_DIR}/large-image.jpg --porcelain=url`
+    When I run `wp media import --destination-dir="foo" {CACHE_DIR}/large-image.jpg --porcelain=url`
 
     Then STDOUT should not contain:
       """
@@ -303,11 +303,11 @@ Feature: Manage WordPress attachments
       https://example.com/foo/large-image.jpg
       """
 
-  Scenario: Upload files into a custom directory, not relative to ABSPATH, when --destdir flag is applied.
+  Scenario: Upload files into a custom directory, not relative to ABSPATH, when --destination-dir flag is applied.
     Given download:
       | path                        | url                                              |
       | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
-    When I run `wp media import --destdir="{RUN_DIR}/foo" {CACHE_DIR}/large-image.jpg --porcelain=url`
+    When I run `wp media import --destination-dir="{RUN_DIR}/foo" {CACHE_DIR}/large-image.jpg --porcelain=url`
 
     Then STDOUT should not contain:
       """
