@@ -59,7 +59,7 @@ wp media
 Creates attachments from local files or URLs.
 
 ~~~
-wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--file_name=<name>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--preserve-filetime] [--featured_image] [--porcelain[=<field>]]
+wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--file_name=<name>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--destination-dir=<destination-dir>] [--preserve-filetime] [--featured_image] [--porcelain[=<field>]]
 ~~~
 
 **OPTIONS**
@@ -92,7 +92,13 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
 
 	[--skip-copy]
 		If set, media files (local only) are imported to the library but not moved on disk.
-		File names will not be run through wp_unique_filename() with this set.
+		File names will not be run through wp_unique_filename() with this set. When used, files
+		will remain at their current location and will not be copied into any destination directory.
+
+	[--destination-dir=<destination-dir>]
+		Path to the destination directory for uploaded imported files.
+		Can be absolute or relative to ABSPATH. Ignored when used together with --skip-copy, as
+		files are not moved on disk in that case.
 
 	[--preserve-filetime]
 		Use the file modified time as the post published & modified dates.
