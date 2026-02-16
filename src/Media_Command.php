@@ -741,7 +741,12 @@ class Media_Command extends WP_CLI_Command {
 			// Warn unless PDF or non-standard image.
 			if ( ! $is_pdf && is_array( $metadata ) && ! empty( $metadata['sizes'] ) ) {
 				WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
+			} elseif ( $is_pdf ) {
+				WP_CLI::log( sprintf( 'Skipping PDF file (ID %d)', $att_id ) );
+			} elseif ( ! is_array( $metadata ) || empty( $metadata ) ) {
+				WP_CLI::log( sprintf( 'No metadata (ID %d)', $att_id ) );
 			}
+
 			$skip_it = true;
 			return false;
 		}
