@@ -1737,22 +1737,25 @@ Feature: Regenerate WordPress attachments
 
     # Simulate a user edit by copying the scaled file as an "edited" version,
     # updating the attached file metadata, and setting backup sizes.
-    When I run `wp eval '
-      $id = {ATTACHMENT_ID};
+    Given a simulate-edit.php file:
+      """
+      <?php
+      $id = (int) $args[0];
       $meta = wp_get_attachment_metadata( $id );
       $old_file = get_attached_file( $id );
       $edited_file = preg_replace( "/(\.[^.]+)$/", "-e0000000000000$1", $old_file );
       copy( $old_file, $edited_file );
       $edited_relative = _wp_relative_upload_path( $edited_file );
-      update_post_meta( $id, "_wp_attached_file", $edited_relative );
+      update_post_meta( $id, '_wp_attached_file', $edited_relative );
       $backup = array();
       if ( ! empty( $meta['sizes'] ) ) {
         foreach ( $meta['sizes'] as $size => $size_data ) {
           $backup[ $size . '-orig' ] = $size_data;
         }
       }
-      update_post_meta( $id, "_wp_attachment_backup_sizes", $backup );
-    '`
+      update_post_meta( $id, '_wp_attachment_backup_sizes', $backup );
+      """
+    When I run `wp eval-file simulate-edit.php {ATTACHMENT_ID}`
     Then the wp-content/uploads/large-image-scaled-e0000000000000.jpg file should exist
 
     When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
