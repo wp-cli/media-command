@@ -1709,8 +1709,10 @@ Feature: Regenerate WordPress attachments
       $edited_relative = _wp_relative_upload_path( $edited_file );
       update_post_meta( $id, "_wp_attached_file", $edited_relative );
       $backup = array();
-      foreach ( $meta["sizes"] as $size => $size_data ) {
-        $backup[ $size . "-orig" ] = $size_data;
+      if ( ! empty( $meta['sizes'] ) ) {
+        foreach ( $meta['sizes'] as $size => $size_data ) {
+          $backup[ $size . '-orig' ] = $size_data;
+        }
       }
       update_post_meta( $id, "_wp_attachment_backup_sizes", $backup );
     '`
