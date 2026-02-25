@@ -1771,3 +1771,43 @@ Feature: Regenerate WordPress attachments
       """
     And the wp-content/uploads/large-image-125x125.jpg file should not exist
     And the wp-content/uploads/large-image-200x200.jpg file should not exist
+
+  @require-wp-4.3
+  Scenario: Regenerate site-icon attachment preserves site-icon-specific image sizes
+    Given download:
+      | path                        | url                                          |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My site icon" --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post meta update {ATTACHMENT_ID} _wp_attachment_context site-icon`
+    Then STDOUT should contain:
+      """
+      Success: Updated custom field '_wp_attachment_context'.
+      """
+
+    When I run `wp media regenerate {ATTACHMENT_ID} --yes`
+    Then STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_metadata --format=json`
+    Then STDOUT should contain:
+      """
+      site_icon-32
+      """
+    And STDOUT should contain:
+      """
+      site_icon-180
+      """
+    And STDOUT should contain:
+      """
+      site_icon-192
+      """
+    And STDOUT should contain:
+      """
+      site_icon-270
+      """
