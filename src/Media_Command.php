@@ -978,7 +978,7 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		if ( ! class_exists( 'WP_Site_Icon' ) ) {
-			return null;
+			require_once ABSPATH . 'wp-admin/includes/class-wp-site-icon.php';
 		}
 
 		$wp_site_icon = new WP_Site_Icon();
