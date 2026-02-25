@@ -665,7 +665,6 @@ class Media_Command extends WP_CLI_Command {
 			++$successes;
 			return;
 		}
-    
 		$site_icon_filter = $this->add_site_icon_filter( $id );
 
 		// When regenerating a specific image size, use the file that WordPress normally
