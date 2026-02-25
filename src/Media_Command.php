@@ -666,7 +666,13 @@ class Media_Command extends WP_CLI_Command {
 			return;
 		}
 
+		$site_icon_filter = $this->add_site_icon_filter( $id );
+
 		$metadata = wp_generate_attachment_metadata( $id, $fullsizepath );
+
+		if ( $site_icon_filter ) {
+			remove_filter( 'intermediate_image_sizes_advanced', $site_icon_filter );
+		}
 
 		// Note it's possible for no metadata to be generated for PDFs if restricted to a specific image size.
 		if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
@@ -958,6 +964,28 @@ class Media_Command extends WP_CLI_Command {
 		foreach ( $image_size_filters as $name => $filter ) {
 			remove_filter( $name, $filter, PHP_INT_MAX );
 		}
+	}
+
+	/**
+	 * Adds the WP_Site_Icon filter for site-icon attachments.
+	 *
+	 * @param int $id Attachment ID.
+	 * @return callable|null The filter callback if added, null otherwise.
+	 */
+	private function add_site_icon_filter( $id ) {
+		if ( 'site-icon' !== get_post_meta( $id, '_wp_attachment_context', true ) ) {
+			return null;
+		}
+
+		if ( ! class_exists( 'WP_Site_Icon' ) ) {
+			return null;
+		}
+
+		$wp_site_icon = new WP_Site_Icon();
+		$filter       = array( $wp_site_icon, 'additional_sizes' );
+		add_filter( 'intermediate_image_sizes_advanced', $filter );
+
+		return $filter;
 	}
 
 	public function filter_upload_dir( $uploads ) {
