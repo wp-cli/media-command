@@ -665,10 +665,21 @@ class Media_Command extends WP_CLI_Command {
 			++$successes;
 			return;
 		}
-
 		$site_icon_filter = $this->add_site_icon_filter( $id );
 
-		$metadata = wp_generate_attachment_metadata( $id, $fullsizepath );
+		// When regenerating a specific image size, use the file that WordPress normally
+		// serves (the scaled version for big images), not the original pre-scaled file.
+		// This prevents wp_generate_attachment_metadata() from re-creating the scaled
+		// version or auto-rotating the original during specific-size regeneration.
+		$generate_file = $fullsizepath;
+		if ( $image_size && ! $is_pdf ) {
+			$wp_attached_file = \get_attached_file( $id );
+			if ( $wp_attached_file && file_exists( $wp_attached_file ) ) {
+				$generate_file = $wp_attached_file;
+			}
+		}
+
+		$metadata = wp_generate_attachment_metadata( $id, $generate_file );
 
 		if ( $site_icon_filter ) {
 			remove_filter( 'intermediate_image_sizes_advanced', $site_icon_filter );

@@ -832,6 +832,43 @@ Feature: Regenerate WordPress attachments
       Success: Regenerated 1 of 1 images.
       """
 
+  @require-wp-5.3
+  Scenario: Regenerating a specific image size should not regenerate the scaled version of big images
+    Given download:
+      | path                        | url                                          |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported attachment" --porcelain`
+    Then save STDOUT as {LARGE_ATTACHMENT_ID}
+    And the wp-content/uploads/large-image-scaled.jpg file should exist
+    And the wp-content/uploads/large-image-300x225.jpg file should exist
+
+    # Save a checksum of the scaled image before any regeneration.
+    When I run `md5sum wp-content/uploads/large-image-scaled.jpg`
+    Then save STDOUT as {SCALED_CHECKSUM}
+
+    # Add a filter that would produce drastically different results if the scaled image were regenerated.
+    Given a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_filter( 'jpeg_quality', function() { return 1; } );
+      """
+
+    # Regenerate only the medium size - scaled image should not be touched.
+    When I run `wp media regenerate {LARGE_ATTACHMENT_ID} --image_size=medium --yes`
+    Then STDOUT should contain:
+      """
+      Regenerated "medium" thumbnail for "My imported attachment"
+      """
+
+    # Verify the scaled image was NOT regenerated (checksum should be unchanged).
+    When I run `md5sum wp-content/uploads/large-image-scaled.jpg`
+    Then STDOUT should be:
+      """
+      {SCALED_CHECKSUM}
+      """
+
   @require-wp-4.7.3 @require-extension-imagick
   Scenario: Regenerate a specific image size for a PDF attachment
     Given download:
