@@ -1723,6 +1723,67 @@ Feature: Regenerate WordPress attachments
       """
     And the return code should be 1
 
+  @require-wp-5.3
+  Scenario: Regenerate a large image that was edited by the user preserves the edits
+    Given download:
+      | path                        | url                                          |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+    And the wp-content/uploads/large-image.jpg file should exist
+    And the wp-content/uploads/large-image-scaled.jpg file should exist
+
+    # Simulate a user edit by copying the scaled file as an "edited" version,
+    # updating the attached file metadata, and setting backup sizes.
+    Given a simulate-edit.php file:
+      """
+      <?php
+      $id = (int) $args[0];
+      $meta = wp_get_attachment_metadata( $id );
+      $old_file = get_attached_file( $id );
+      $edited_file = preg_replace( "/(\.[^.]+)$/", "-e0000000000000$1", $old_file );
+      copy( $old_file, $edited_file );
+      $edited_relative = _wp_relative_upload_path( $edited_file );
+      update_post_meta( $id, '_wp_attached_file', $edited_relative );
+      $backup = array();
+      if ( ! empty( $meta['sizes'] ) ) {
+        foreach ( $meta['sizes'] as $size => $size_data ) {
+          $backup[ $size . '-orig' ] = $size_data;
+        }
+      }
+      if ( empty( $backup ) ) {
+        $backup['full-orig'] = array(
+          'file'      => wp_basename( $old_file ),
+          'width'     => isset( $meta['width'] ) ? $meta['width'] : 0,
+          'height'    => isset( $meta['height'] ) ? $meta['height'] : 0,
+          'mime-type' => get_post_mime_type( $id ),
+        );
+      }
+      update_post_meta( $id, '_wp_attachment_backup_sizes', $backup );
+      """
+    When I run `wp eval-file simulate-edit.php {ATTACHMENT_ID}`
+    Then the wp-content/uploads/large-image-scaled-e0000000000000.jpg file should exist
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should contain:
+      """
+      large-image-scaled-e0000000000000.jpg
+      """
+
+    When I run `wp media regenerate {ATTACHMENT_ID} --yes`
+    Then STDOUT should contain:
+      """
+      Regenerated thumbnails for "My imported large attachment"
+      """
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should contain:
+      """
+      large-image-scaled-e0000000000000.jpg
+      """
+
   Scenario: Only delete missing image sizes
     Given download:
       | path                        | url                                              |

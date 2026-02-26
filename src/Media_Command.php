@@ -1390,7 +1390,10 @@ class Media_Command extends WP_CLI_Command {
 	 * @return string|false Filepath of the attachment, or false if not found.
 	 */
 	private function get_attached_file( $attachment_id ) {
-		if ( function_exists( 'wp_get_original_image_path' ) ) {
+		// If the image has been edited by the user, use the edited file (tracked
+		// via _wp_attachment_backup_sizes) rather than the original pre-scaled image.
+		$backup_sizes = get_post_meta( $attachment_id, '_wp_attachment_backup_sizes', true );
+		if ( empty( $backup_sizes ) && function_exists( 'wp_get_original_image_path' ) ) {
 			$filepath = wp_get_original_image_path( $attachment_id );
 
 			if ( false !== $filepath ) {
