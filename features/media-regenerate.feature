@@ -1753,6 +1753,14 @@ Feature: Regenerate WordPress attachments
           $backup[ $size . '-orig' ] = $size_data;
         }
       }
+      if ( empty( $backup ) ) {
+        $backup['full-orig'] = array(
+          'file'      => wp_basename( $old_file ),
+          'width'     => isset( $meta['width'] ) ? $meta['width'] : 0,
+          'height'    => isset( $meta['height'] ) ? $meta['height'] : 0,
+          'mime-type' => get_post_mime_type( $id ),
+        );
+      }
       update_post_meta( $id, '_wp_attachment_backup_sizes', $backup );
       """
     When I run `wp eval-file simulate-edit.php {ATTACHMENT_ID}`
