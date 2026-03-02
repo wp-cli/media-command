@@ -211,7 +211,7 @@ Feature: Manage WordPress attachments
     Given download:
       | path                        | url                                          |
       | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
-    And a {RUN_DIR}/images/ directory
+    And an empty images directory
     And I run `cp {CACHE_DIR}/large-image.jpg {RUN_DIR}/images/image1.jpg`
     And I run `cp {CACHE_DIR}/large-image.jpg {RUN_DIR}/images/image2.jpg`
 
