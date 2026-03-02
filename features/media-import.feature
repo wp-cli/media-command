@@ -207,6 +207,29 @@ Feature: Manage WordPress attachments
       Success: Imported 2 of 2 items.
       """
 
+  Scenario: Import multiple images using a glob pattern
+    Given download:
+      | path                        | url                                          |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+    And a {RUN_DIR}/images/ directory
+    And I run `cp {CACHE_DIR}/large-image.jpg {RUN_DIR}/images/image1.jpg`
+    And I run `cp {CACHE_DIR}/large-image.jpg {RUN_DIR}/images/image2.jpg`
+
+    When I run `wp media import '{RUN_DIR}/images/*.jpg'`
+    Then STDOUT should contain:
+      """
+      Success: Imported 2 of 2 items.
+      """
+
+  Scenario: Fail to import when a glob pattern matches no files
+    When I try `wp media import '/nonexistent-dir/*.png'`
+    Then STDERR should be:
+      """
+      Warning: Pattern matched no files: '/nonexistent-dir/*.png'.
+      Error: No items imported.
+      """
+    And the return code should be 1
+
   Scenario: Fail to import one image but continue trying the next
     When I try `wp media import gobbledygook.png 'http://wp-cli.org/behat-data/codeispoetry.png'`
     Then STDERR should contain:
