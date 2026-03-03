@@ -36,6 +36,7 @@
         "bundled": true,
         "commands": [
             "media",
+            "media fix-orientation",
             "media import",
             "media regenerate",
             "media image-size"
