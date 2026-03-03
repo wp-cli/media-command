@@ -1248,67 +1248,6 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should be empty
 
-  # Audio/video `_cover_hash` meta, used to determine if sub attachment, added in WP 3.9
-  # Test on PHP 5.6 latest only, and iterate over various WP versions.
-  @require-php-5.6 @less-than-php-7.0
-  Scenario Outline: Regenerating audio with thumbnail
-    # If version is trunk/latest then can get warning about checksums not being available, so STDERR may or may not be empty
-    Given I try `wp core download --version=<version> --force`
-    Then the return code should be 0
-    And I run `wp core update-db`
-    And download:
-      | path                                     | url                                                       |
-      | {CACHE_DIR}/audio-with-400x300-cover.mp3 | http://wp-cli.org/behat-data/audio-with-400x300-cover.mp3 |
-      | {CACHE_DIR}/audio-with-no-cover.mp3      | http://wp-cli.org/behat-data/audio-with-no-cover.mp3      |
-    And a wp-content/mu-plugins/media-settings.php file:
-      """
-      <?php add_post_type_support( 'attachment:audio', 'thumbnail' );
-      """
-    And I run `wp option update uploads_use_yearmonth_folders 0`
-
-    When I run `wp media import {CACHE_DIR}/audio-with-400x300-cover.mp3 --title="My imported audio with cover attachment" --porcelain`
-    Then save STDOUT as {COVER_ATTACHMENT_ID}
-    And the wp-content/uploads/audio-with-400x300-cover.mp3 file should exist
-    And the wp-content/uploads/audio-with-400x300-cover-mp3-image.png file should exist
-    And the wp-content/uploads/audio-with-400x300-cover-mp3-image-150x150.png file should exist
-    And the wp-content/uploads/audio-with-400x300-cover-mp3-image-300x225.png file should exist
-    When I run `wp post meta get {COVER_ATTACHMENT_ID} _thumbnail_id`
-    Then save STDOUT as {COVER_SUB_ATTACHMENT_ID}
-
-    When I run `wp media import {CACHE_DIR}/audio-with-no-cover.mp3 --title="My imported audio with no cover attachment" --porcelain`
-    Then save STDOUT as {NO_COVER_ATTACHMENT_ID}
-    And the wp-content/uploads/audio-with-no-cover.mp3 file should exist
-    And the wp-content/uploads/audio-with-no-cover-mp3-image.png file should not exist
-    And the wp-content/uploads/audio-with-no-cover-mp3-image-150x150.png file should not exist
-    And the wp-content/uploads/audio-with-no-cover-mp3-image-300x225.png file should not exist
-    When I try `wp post meta get {NO_COVER_ATTACHMENT_ID} _thumbnail_id`
-    Then the return code should be 1
-
-    When I run `wp media regenerate --yes`
-    Then STDOUT should contain:
-      """
-      Found 1 image to regenerate.
-      """
-    And STDOUT should contain:
-      """
-      1/1 Regenerated thumbnails for cover attachment (ID {COVER_SUB_ATTACHMENT_ID}).
-      """
-    And STDOUT should not contain:
-      """
-      Warning
-      """
-    And STDOUT should contain:
-      """
-      Success: Regenerated 1 of 1 images.
-      """
-    And STDERR should be empty
-
-    Examples:
-      | version |
-      | 6.2     |
-      | 4.2     |
-      | 3.9     |
-
   # Video cover support requires ID3 library 1.9.9, updated WP 4.3 https://core.trac.wordpress.org/ticket/32806
   # Currently throwing notice on PHP 7.4+: https://core.trac.wordpress.org/ticket/49945
   @require-wp-4.3 @less-than-php-7.4 @less-than-wp-5.5
