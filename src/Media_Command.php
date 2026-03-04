@@ -112,6 +112,10 @@ class Media_Command extends WP_CLI_Command {
 	 *     2/3 No "large" thumbnail regeneration needed for "Boardwalk" (ID 757).
 	 *     3/3 Regenerated "large" thumbnail for "Sunburst Over River" (ID 756).
 	 *     Success: Regenerated 3 of 3 images.
+	 *
+	 * @param string[] $args Positional arguments.
+	 * @param array{image_size?: string, 'skip-delete'?: bool, 'only-missing'?: bool, 'delete-unknown'?: bool, yes?: bool} $assoc_args Associative arguments.
+	 * @return void
 	 */
 	public function regenerate( $args, $assoc_args = array() ) {
 		$assoc_args = wp_parse_args(
@@ -173,15 +177,20 @@ class Media_Command extends WP_CLI_Command {
 		$successes = 0;
 		$errors    = 0;
 		$skips     = 0;
+
+		/**
+		 * @var int $post_id
+		 */
 		foreach ( $images->posts as $post_id ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				// @phpstan-ignore function.deprecated
 				Utils\wp_clear_object_cache();
 			}
 			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $delete_unknown, $image_size, $number . '/' . $count, $successes, $errors, $skips );
 		}
 
-		if ( $image_size ) {
+		if ( isset( $image_size_filters ) ) {
 			$this->remove_image_size_filters( $image_size_filters );
 		}
 
@@ -272,6 +281,10 @@ class Media_Command extends WP_CLI_Command {
 	 *     # Get the URL for an attachment after import.
 	 *     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --porcelain | xargs -I {} wp post list --post__in={} --field=url --post_type=attachment
 	 *     http://wordpress-develop.dev/wp-header-logo/
+	 *
+	 * @param string[] $args Positional arguments.
+	 * @param array{post_id?: string, post_name?: string, file_name?: string, title?: string, caption?: string, alt?: string, desc?: string, 'skip-copy'?: bool, 'destination-dir'?: string, 'preserve-filetime'?: bool, featured_image?: bool, porcelain?: bool|string} $assoc_args Associative arguments.
+	 * @return void
 	 */
 	public function import( $args, $assoc_args = array() ) {
 		$assoc_args = wp_parse_args(
@@ -291,7 +304,9 @@ class Media_Command extends WP_CLI_Command {
 		$noun = 'item';
 
 		// Current site's timezone offset.
-		$gmt_offset = get_option( 'gmt_offset' );
+
+		// @phpstan-ignore cast.double
+		$gmt_offset = (float) get_option( 'gmt_offset' );
 
 		// Use the noun `image` when sure the media file is an image
 		if ( Utils\get_flag_value( $assoc_args, 'featured_image' ) || $assoc_args['alt'] ) {
@@ -324,6 +339,7 @@ class Media_Command extends WP_CLI_Command {
 		foreach ( $args as $file ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				// @phpstan-ignore function.deprecated
 				Utils\wp_clear_object_cache();
 			}
 
@@ -361,7 +377,7 @@ class Media_Command extends WP_CLI_Command {
 					++$errors;
 					continue;
 				}
-				$name = strtok( Utils\basename( $file ), '?' );
+				$name = (string) strtok( Utils\basename( $file ), '?' );
 			}
 
 			if ( ! empty( $assoc_args['file_name'] ) ) {
@@ -382,9 +398,9 @@ class Media_Command extends WP_CLI_Command {
 			);
 
 			if ( ! empty( $file_time ) ) {
-				$post_array['post_date']         = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) );
+				$post_array['post_date']         = gmdate( 'Y-m-d H:i:s', (int) ( $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) ) );
 				$post_array['post_date_gmt']     = gmdate( 'Y-m-d H:i:s', $file_time );
-				$post_array['post_modified']     = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) );
+				$post_array['post_modified']     = gmdate( 'Y-m-d H:i:s', (int) ( $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) ) );
 				$post_array['post_modified_gmt'] = gmdate( 'Y-m-d H:i:s', $file_time );
 			}
 
@@ -435,6 +451,7 @@ class Media_Command extends WP_CLI_Command {
 				}
 
 				// Deletes the temporary file.
+
 				$success = media_handle_sideload( $file_array, $assoc_args['post_id'], $assoc_args['title'], $post_array );
 				if ( is_wp_error( $success ) ) {
 					WP_CLI::warning(
@@ -474,9 +491,14 @@ class Media_Command extends WP_CLI_Command {
 			if ( $porcelain ) {
 				if ( 'url' === strtolower( $porcelain ) ) {
 					$file_location = $this->get_real_attachment_url( $success );
-					WP_CLI::line( $file_location );
+					if ( $file_location ) {
+						WP_CLI::line( $file_location );
+					} else {
+						// This should never happen.
+						WP_CLI::error( 'Attachment URL not found' );
+					}
 				} else {
-					WP_CLI::line( $success );
+					WP_CLI::line( (string) $success );
 				}
 			} else {
 				WP_CLI::log(
@@ -546,6 +568,10 @@ class Media_Command extends WP_CLI_Command {
 	 *     +---------------------------+-------+--------+-------+-------+
 	 *
 	 * @subcommand image-size
+	 *
+	 * @param string[] $args Positional arguments. Unused.
+	 * @param array{fields?: string, format: string} $assoc_args Associative arguments.
+	 * @return void
 	 */
 	public function image_size( $args, $assoc_args ) {
 		$assoc_args = array_merge(
@@ -579,6 +605,13 @@ class Media_Command extends WP_CLI_Command {
 		WP_CLI\Utils\format_items( $assoc_args['format'], $sizes, explode( ',', $assoc_args['fields'] ) );
 	}
 
+	/**
+	 * Get aspect ratio.
+	 *
+	 * @param int $width
+	 * @param int $height
+	 * @return string
+	 */
 	private function get_ratio( $width, $height ) {
 		if ( 0 === $height ) {
 			return "0:{$width}";
@@ -595,6 +628,13 @@ class Media_Command extends WP_CLI_Command {
 		return "{$width_ratio}:{$height_ratio}";
 	}
 
+	/**
+	 * Get the greatest common divisor.
+	 *
+	 * @param int $num1
+	 * @param int $num2
+	 * @return int
+	 */
 	private function gcd( $num1, $num2 ) {
 		while ( 0 !== $num2 ) {
 			$t    = $num1 % $num2;
@@ -604,12 +644,19 @@ class Media_Command extends WP_CLI_Command {
 		return $num1;
 	}
 
-	// wp_tempnam() inexplicably forces a .tmp extension, which spoils MIME type detection
+	/**
+	 * Make a temporary file copy.
+	 *
+	 * {@see wp_tempnam()} inexplicably forces a .tmp extension, which spoils MIME type detection.
+	 *
+	 * @param string $path
+	 * @return string
+	 */
 	private function make_copy( $path ) {
 		$dir      = get_temp_dir();
 		$filename = Utils\basename( $path );
 		if ( empty( $filename ) ) {
-			$filename = time();
+			$filename = (string) time();
 		}
 
 		$filename = $dir . wp_unique_filename( $dir, $filename );
@@ -620,6 +667,23 @@ class Media_Command extends WP_CLI_Command {
 		return $filename;
 	}
 
+	/**
+	 * Process media regeneration
+	 *
+	 * @param int $id Attachment ID.
+	 * @param bool $skip_delete
+	 * @param bool $only_missing
+	 * @param bool $delete_unknown
+	 * @param string $image_size
+	 * @param string $progress
+	 * @param int $successes
+	 * @param int $errors
+	 * @param int $skips
+	 * @param-out int $successes
+	 * @param-out int $errors
+	 * @param-out int $skips
+	 * @return void
+	 */
 	private function process_regeneration( $id, $skip_delete, $only_missing, $delete_unknown, $image_size, $progress, &$successes, &$errors, &$skips ) {
 
 		$title = get_the_title( $id );
@@ -719,6 +783,14 @@ class Media_Command extends WP_CLI_Command {
 		++$successes;
 	}
 
+	/**
+	 * Removes old images.
+	 *
+	 * @param array $metadata
+	 * @param string $fullsizepath
+	 * @param string $image_size
+	 * @return void
+	 */
 	private function remove_old_images( $metadata, $fullsizepath, $image_size ) {
 
 		if ( empty( $metadata['sizes'] ) ) {
@@ -747,6 +819,18 @@ class Media_Command extends WP_CLI_Command {
 		}
 	}
 
+	/**
+	 * Whether the attachment needs regeneration.
+	 *
+	 * @param int $att_id
+	 * @param string $fullsizepath
+	 * @param bool $is_pdf
+	 * @param string $image_size
+	 * @param bool $skip_delete
+	 * @param bool $skip_it
+	 * @param-out bool $skip_it
+	 * @return bool
+	 */
 	private function needs_regeneration( $att_id, $fullsizepath, $is_pdf, $image_size, $skip_delete, &$skip_it ) {
 
 		// Assume not skipping.
@@ -797,6 +881,11 @@ class Media_Command extends WP_CLI_Command {
 			if ( empty( $metadata['sizes'][ $image_size ] ) ) {
 				return true;
 			}
+
+			/**
+			 * @var array{sizes: array<string, array<string, mixed>>} $metadata
+			 */
+
 			$metadata['sizes'] = array( $image_size => $metadata['sizes'][ $image_size ] );
 		}
 
@@ -807,6 +896,10 @@ class Media_Command extends WP_CLI_Command {
 		$dir_path = dirname( $fullsizepath ) . '/';
 
 		// Check that the thumbnail files exist.
+
+		/**
+		 * @var array{file: string} $size_info
+		 */
 		foreach ( $metadata['sizes'] as $size_info ) {
 			$intermediate_path = $dir_path . $size_info['file'];
 
@@ -821,7 +914,13 @@ class Media_Command extends WP_CLI_Command {
 		return false;
 	}
 
-	// Whether there's new image sizes or the width/height of existing image sizes have changed.
+	/**
+	 * Whether there's new image sizes or the width/height of existing image sizes have changed.
+	 *
+	 * @param array<string, array> $image_sizes
+	 * @param array<string, array> $meta_sizes
+	 * @return bool
+	 */
 	private function image_sizes_differ( $image_sizes, $meta_sizes ) {
 		// Check if have new image size(s).
 		if ( array_diff( array_keys( $image_sizes ), array_keys( $meta_sizes ) ) ) {
@@ -842,10 +941,10 @@ class Media_Command extends WP_CLI_Command {
 	 * Like WP's get_intermediate_image_sizes(), but removes sizes that won't be generated for a particular attachment due to it being on or below their thresholds,
 	 * and returns associative array with size name => width/height entries, resolved to crop values if applicable.
 	 *
-	 * @param string $fullsizepath Filepath of the attachment
-	 * @param bool   $is_pdf       Whether it is a PDF.
-	 * @param array  $metadata     Attachment metadata.
-	 * @param int    $att_id       Attachment ID.
+	 * @param string                     $fullsizepath Filepath of the attachment
+	 * @param bool                       $is_pdf       Whether it is a PDF.
+	 * @param array<string, mixed>|false $metadata     Attachment metadata.
+	 * @param int                        $att_id       Attachment ID.
 	 *
 	 * @return array|WP_Error Image sizes on success, WP_Error instance otherwise.
 	 */
@@ -879,7 +978,14 @@ class Media_Command extends WP_CLI_Command {
 		return $sizes;
 	}
 
-	// Like WP's get_intermediate_image_sizes(), but returns associative array with name => size info entries (and caters for PDFs also).
+	/**
+	 * Like WP's get_intermediate_image_sizes(), but returns associative array with name => size info entries (and caters for PDFs also).
+	 *
+	 * @param bool $is_pdf
+	 * @param array<string, mixed>|false $metadata
+	 * @param int $att_id
+	 * @return array<string, array{width: int, height: int, crop: bool}>
+	 */
 	private function get_intermediate_sizes( $is_pdf, $metadata, $att_id ) {
 		if ( $is_pdf ) {
 			// Copied from wp_generate_attachment_metadata() in "wp-admin/includes/image.php".
@@ -912,12 +1018,14 @@ class Media_Command extends WP_CLI_Command {
 			if ( isset( $_wp_additional_image_sizes[ $s ]['width'] ) ) {
 				$sizes[ $s ]['width'] = (int) $_wp_additional_image_sizes[ $s ]['width'];
 			} else {
+				// @phpstan-ignore cast.int
 				$sizes[ $s ]['width'] = (int) get_option( "{$s}_size_w" );
 			}
 
 			if ( isset( $_wp_additional_image_sizes[ $s ]['height'] ) ) {
 				$sizes[ $s ]['height'] = (int) $_wp_additional_image_sizes[ $s ]['height'];
 			} else {
+				// @phpstan-ignore cast.int
 				$sizes[ $s ]['height'] = (int) get_option( "{$s}_size_h" );
 			}
 
@@ -945,7 +1053,12 @@ class Media_Command extends WP_CLI_Command {
 		return $sizes;
 	}
 
-	// Add filters to only process a particular intermediate image size in wp_generate_attachment_metadata().
+	/**
+	 * Add filters to only process a particular intermediate image size in wp_generate_attachment_metadata().
+	 *
+	 * @param string $image_size
+	 * @return array<string, callable>
+	 */
 	private function add_image_size_filters( $image_size ) {
 		$image_size_filters = array();
 
@@ -974,7 +1087,12 @@ class Media_Command extends WP_CLI_Command {
 		return $image_size_filters;
 	}
 
-	// Remove above intermediate image size filters.
+	/**
+	 * Remove above intermediate image size filters.
+	 *
+	 * @param array<string, callable> $image_size_filters
+	 * @return void
+	 */
 	private function remove_image_size_filters( $image_size_filters ) {
 		foreach ( $image_size_filters as $name => $filter ) {
 			remove_filter( $name, $filter, PHP_INT_MAX );
@@ -1003,6 +1121,12 @@ class Media_Command extends WP_CLI_Command {
 		return $filter;
 	}
 
+	/**
+	 * Filters the uploads directory.
+	 *
+	 * @param array{path: string, url: string, subdir: string, basedir: string, baseurl: string, error: string|false} $uploads
+	 * @return array{path: string, url: string, subdir: string, basedir: string, baseurl: string, error: string|false}
+	 */
 	private function filter_upload_dir( $uploads ) {
 		if ( ! $this->destination_dir ) {
 			return $uploads;
@@ -1019,7 +1143,8 @@ class Media_Command extends WP_CLI_Command {
 			$upload_dir = substr( $this->destination_dir, strlen( ABSPATH ) );
 		}
 
-		$siteurl = get_option( 'siteurl' );
+		// @phpstan-ignore cast.string
+		$siteurl = (string) get_option( 'siteurl' );
 		$url     = trailingslashit( $siteurl ) . $upload_dir;
 
 		return [
@@ -1032,7 +1157,15 @@ class Media_Command extends WP_CLI_Command {
 		];
 	}
 
-	// Update attachment sizes metadata just for a particular intermediate image size.
+	/**
+	 * Update attachment sizes metadata just for a particular intermediate image size.
+	 *
+	 * @param int $id
+	 * @param array $new_metadata
+	 * @param string $image_size
+	 * @param array{sizes: array<string, mixed>}|false $metadata
+	 * @return bool
+	 */
 	private function update_attachment_metadata_for_image_size( $id, $new_metadata, $image_size, $metadata ) {
 
 		if ( ! is_array( $metadata ) ) {
@@ -1138,12 +1271,14 @@ class Media_Command extends WP_CLI_Command {
 				$size_data['width'] = (int) $additional_sizes[ $size_name ]['width'];
 			} else {
 				// For default sizes set in options.
+				// @phpstan-ignore cast.int
 				$size_data['width'] = (int) get_option( "{$size_name}_size_w" );
 			}
 
 			if ( isset( $additional_sizes[ $size_name ]['height'] ) ) {
 				$size_data['height'] = (int) $additional_sizes[ $size_name ]['height'];
 			} else {
+				// @phpstan-ignore cast.int
 				$size_data['height'] = (int) get_option( "{$size_name}_size_h" );
 			}
 
@@ -1199,6 +1334,10 @@ class Media_Command extends WP_CLI_Command {
 	 *     Success: Fixed 1 of 1 images.
 	 *
 	 * @subcommand fix-orientation
+	 *
+	 * @param string[] $args Positional arguments.
+	 * @param array{'dry-run'?: bool} $assoc_args Associative arguments.
+	 * @return void
 	 */
 	public function fix_orientation( $args, $assoc_args ) {
 
@@ -1220,9 +1359,14 @@ class Media_Command extends WP_CLI_Command {
 		$number    = 0;
 		$successes = 0;
 		$errors    = 0;
+
+		/**
+		 * @var int $post_id
+		 */
 		foreach ( $images->posts as $post_id ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				// @phpstan-ignore function.deprecated
 				Utils\wp_clear_object_cache();
 			}
 			$this->process_orientation_fix( $post_id, "{$number}/{$count}", $successes, $errors, $dry_run );
@@ -1243,6 +1387,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param int    $successes Count of success in current operation.
 	 * @param int    $errors    Count of errors in current operation.
 	 * @param bool   $dry_run   Is this a dry run?
+	 * @return void
 	 */
 	private function process_orientation_fix( $id, $progress, &$successes, &$errors, $dry_run ) {
 		$title = get_the_title( $id );
@@ -1491,6 +1636,7 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
+		// @phpstan-ignore argument.type
 		wp_update_attachment_metadata( $id, $original_meta );
 	}
 }
