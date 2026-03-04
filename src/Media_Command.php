@@ -491,7 +491,11 @@ class Media_Command extends WP_CLI_Command {
 			if ( $porcelain ) {
 				if ( 'url' === strtolower( $porcelain ) ) {
 					$file_location = $this->get_real_attachment_url( $success );
-					WP_CLI::line( $file_location ?: 'Attachment URL not found' );
+					if ( $file_location ) {
+						WP_CLI::line( $file_location );
+					} else {
+						WP_CLI::error( 'Attachment URL not found' );
+					}
 				} else {
 					WP_CLI::line( (string) $success );
 				}
