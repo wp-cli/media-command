@@ -1056,7 +1056,7 @@ class Media_Command extends WP_CLI_Command {
 	 * Add filters to only process a particular intermediate image size in wp_generate_attachment_metadata().
 	 *
 	 * @param string $image_size
-	 * @return array
+	 * @return array<string, callable>
 	 */
 	private function add_image_size_filters( $image_size ) {
 		$image_size_filters = array();
