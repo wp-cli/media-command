@@ -893,7 +893,7 @@ class Media_Command extends WP_CLI_Command {
 		// Check that the thumbnail files exist.
 
 		/**
-		 * @var array{file: string, width: int, height: int, mime_type: string, filesize: int} $size_info
+		 * @var array{file: string} $size_info
 		 */
 		foreach ( $metadata['sizes'] as $size_info ) {
 			$intermediate_path = $dir_path . $size_info['file'];
