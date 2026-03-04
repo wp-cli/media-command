@@ -979,7 +979,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param bool $is_pdf
 	 * @param array<string, mixed>|false $metadata
 	 * @param int $att_id
-	 * @return array<string, array{file: string, width: int, height: int, mime_type: string, filesize: int, crop: bool}>
+	 * @return array<string, array{width: int, height: int, crop: bool}>
 	 */
 	private function get_intermediate_sizes( $is_pdf, $metadata, $att_id ) {
 		if ( $is_pdf ) {
