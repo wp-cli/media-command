@@ -194,7 +194,8 @@ class Media_Command extends WP_CLI_Command {
 	 * ## OPTIONS
 	 *
 	 * <file>...
-	 * : Path to file or files to be imported. Supports the glob(3) capabilities of the current shell.
+	 * : Path to file or files to be imported. Glob patterns (e.g. `dir/*.jpg`) are supported and
+	 *     expanded by WP-CLI, so quoting the argument is recommended to prevent shell expansion.
 	 *     If file is recognized as a URL (for example, with a scheme of http or ftp), the file will be
 	 *     downloaded to a temp file before being sideloaded.
 	 *
@@ -246,7 +247,7 @@ class Media_Command extends WP_CLI_Command {
 	 * ## EXAMPLES
 	 *
 	 *     # Import all jpgs in the current user's "Pictures" directory, not attached to any post.
-	 *     $ wp media import ~/Pictures/**\/*.jpg
+	 *     $ wp media import '~/Pictures/*.jpg'
 	 *     Imported file '/home/person/Pictures/landscape-photo.jpg' as attachment ID 1751.
 	 *     Imported file '/home/person/Pictures/fashion-icon.jpg' as attachment ID 1752.
 	 *     Success: Imported 2 of 2 items.
@@ -311,6 +312,28 @@ class Media_Command extends WP_CLI_Command {
 		} else {
 			$assoc_args['post_id'] = false;
 		}
+
+		$glob_errors   = 0;
+		$expanded_args = array();
+		foreach ( $args as $arg ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- parse_url will only be used in absence of wp_parse_url.
+			$is_remote = function_exists( 'wp_parse_url' ) ? wp_parse_url( $arg, PHP_URL_HOST ) : parse_url( $arg, PHP_URL_HOST );
+			if ( empty( $is_remote ) && strpbrk( $arg, '*?[' ) !== false ) {
+				$matches = glob( $arg );
+				if ( false === $matches ) {
+					WP_CLI::warning( "Unable to expand glob pattern '{$arg}'." );
+					++$glob_errors;
+				} elseif ( empty( $matches ) ) {
+					WP_CLI::warning( "Pattern matched no files: '{$arg}'." );
+					++$glob_errors;
+				} else {
+					$expanded_args = array_merge( $expanded_args, $matches );
+				}
+			} else {
+				$expanded_args[] = $arg;
+			}
+		}
+		$args = $expanded_args;
 
 		$number    = 0;
 		$successes = 0;
@@ -491,8 +514,8 @@ class Media_Command extends WP_CLI_Command {
 
 		// Report the result of the operation
 		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
-			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors );
-		} elseif ( $errors ) {
+			Utils\report_batch_operation_results( $noun, 'import', count( $args ) + $glob_errors, $successes, $errors + $glob_errors );
+		} elseif ( $errors || $glob_errors ) {
 			WP_CLI::halt( 1 );
 		}
 	}
