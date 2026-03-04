@@ -312,9 +312,9 @@ class Media_Command extends WP_CLI_Command {
 			$assoc_args['post_id'] = false;
 		}
 
-		$destdir = Utils\get_flag_value( $assoc_args, 'destination-dir' );
-
-		$filter_upload_dir = function ( $uploads ) {
+		$destdir               = Utils\get_flag_value( $assoc_args, 'destination-dir' );
+		$this->destination_dir = $destdir;
+		$filter_upload_dir     = function ( $uploads ) {
 			return $this->filter_upload_dir( $uploads );
 		};
 
@@ -431,7 +431,6 @@ class Media_Command extends WP_CLI_Command {
 			} else {
 
 				if ( ! empty( $destdir ) ) {
-					$this->destination_dir = $destdir;
 					add_filter( 'upload_dir', $filter_upload_dir, PHP_INT_MAX );
 				}
 
