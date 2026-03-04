@@ -305,8 +305,8 @@ class Media_Command extends WP_CLI_Command {
 
 		// Current site's timezone offset.
 
-		// @phpstan-ignore cast.int
-		$gmt_offset = (int) get_option( 'gmt_offset' );
+		// @phpstan-ignore cast.double
+		$gmt_offset = (float) get_option( 'gmt_offset' );
 
 		// Use the noun `image` when sure the media file is an image
 		if ( Utils\get_flag_value( $assoc_args, 'featured_image' ) || $assoc_args['alt'] ) {
@@ -398,9 +398,9 @@ class Media_Command extends WP_CLI_Command {
 			);
 
 			if ( ! empty( $file_time ) ) {
-				$post_array['post_date']         = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) );
+				$post_array['post_date']         = gmdate( 'Y-m-d H:i:s', (int) ( $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) ) );
 				$post_array['post_date_gmt']     = gmdate( 'Y-m-d H:i:s', $file_time );
-				$post_array['post_modified']     = gmdate( 'Y-m-d H:i:s', $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) );
+				$post_array['post_modified']     = gmdate( 'Y-m-d H:i:s', (int) ( $file_time + ( $gmt_offset * HOUR_IN_SECONDS ) ) );
 				$post_array['post_modified_gmt'] = gmdate( 'Y-m-d H:i:s', $file_time );
 			}
 
@@ -494,6 +494,7 @@ class Media_Command extends WP_CLI_Command {
 					if ( $file_location ) {
 						WP_CLI::line( $file_location );
 					} else {
+						// This should never happen.
 						WP_CLI::error( 'Attachment URL not found' );
 					}
 				} else {
