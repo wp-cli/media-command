@@ -113,7 +113,7 @@ class Media_Command extends WP_CLI_Command {
 	 *     3/3 Regenerated "large" thumbnail for "Sunburst Over River" (ID 756).
 	 *     Success: Regenerated 3 of 3 images.
 	 *
-	 * @param string[] $args Positional arguments;
+	 * @param string[] $args Positional arguments.
 	 * @param array{image_size?: string, 'skip-delete'?: bool, 'only-missing'?: bool, 'delete-unknown'?: bool, yes?: bool} $assoc_args Associative arguments.
 	 * @return void
 	 */
