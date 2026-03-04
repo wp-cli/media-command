@@ -312,6 +312,12 @@ class Media_Command extends WP_CLI_Command {
 			$assoc_args['post_id'] = false;
 		}
 
+		$destdir               = Utils\get_flag_value( $assoc_args, 'destination-dir' );
+		$this->destination_dir = $destdir;
+		$filter_upload_dir     = function ( $uploads ) {
+			return $this->filter_upload_dir( $uploads );
+		};
+
 		$number    = 0;
 		$successes = 0;
 		$errors    = 0;
@@ -424,10 +430,8 @@ class Media_Command extends WP_CLI_Command {
 				wp_update_attachment_metadata( $success, wp_generate_attachment_metadata( $success, $file ) );
 			} else {
 
-				$destdir = Utils\get_flag_value( $assoc_args, 'destination-dir' );
 				if ( ! empty( $destdir ) ) {
-					$this->destination_dir = $destdir;
-					add_filter( 'upload_dir', [ $this, 'filter_upload_dir' ], PHP_INT_MAX );
+					add_filter( 'upload_dir', $filter_upload_dir, PHP_INT_MAX );
 				}
 
 				// Deletes the temporary file.
@@ -487,7 +491,7 @@ class Media_Command extends WP_CLI_Command {
 			++$successes;
 		}
 
-		remove_filter( 'upload_dir', [ $this, 'filter_upload_dir' ], PHP_INT_MAX );
+		remove_filter( 'upload_dir', $filter_upload_dir, PHP_INT_MAX );
 
 		// Report the result of the operation
 		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
@@ -999,7 +1003,7 @@ class Media_Command extends WP_CLI_Command {
 		return $filter;
 	}
 
-	public function filter_upload_dir( $uploads ) {
+	private function filter_upload_dir( $uploads ) {
 		if ( ! $this->destination_dir ) {
 			return $uploads;
 		}
