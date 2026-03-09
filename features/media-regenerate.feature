@@ -984,6 +984,97 @@ Feature: Regenerate WordPress attachments
       """
     And the return code should be 1
 
+  Scenario: Provide error message when one of the multiple image sizes is non-existent
+    When I try `wp media regenerate --image_size=medium,test1`
+    Then STDERR should be:
+      """
+      Error: Unknown image size "test1".
+      """
+    And the return code should be 1
+
+  Scenario: Regenerate multiple specific image sizes
+    Given download:
+      | path                        | url                                          |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.org/behat-data/canola.jpg      |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'too_big', 4000, 4000, true );
+      });
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    # Import without "test1" and "test2" image sizes.
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported attachment" --porcelain`
+    And save STDOUT as {ATTACHMENT_ID}
+    Then the wp-content/uploads/canola-300x225.jpg file should exist
+    And the wp-content/uploads/canola-400x400.jpg file should not exist
+    And the wp-content/uploads/canola-350x350.jpg file should not exist
+
+    # Add "test1" and "test2" image sizes.
+    Given a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'test1', 400, 400, true );
+        add_image_size( 'test2', 350, 350, true );
+        add_image_size( 'too_big', 4000, 4000, true );
+      });
+      """
+
+    # Regenerate both "test1" and "test2" sizes only if missing - both should be generated.
+    When I run `wp media regenerate --image_size=test1,test2 --only-missing --yes`
+    Then STDOUT should contain:
+      """
+      Found 1 image to regenerate
+      """
+    And STDOUT should contain:
+      """
+      1/1 Regenerated "test1", "test2" thumbnails for "My imported attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And the wp-content/uploads/canola-400x400.jpg file should exist
+    And the wp-content/uploads/canola-350x350.jpg file should exist
+    And the wp-content/uploads/canola-300x225.jpg file should exist
+
+    # Check metadata contains both new sizes.
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_metadata --format=json | grep -o '"test1":{[^}]*"file":"canola-400x400.jpg"'`
+    Then STDOUT should contain:
+      """
+      "file":"canola-400x400.jpg"
+      """
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_metadata --format=json | grep -o '"test2":{[^}]*"file":"canola-350x350.jpg"'`
+    Then STDOUT should contain:
+      """
+      "file":"canola-350x350.jpg"
+      """
+
+    # Check other sizes metadata is still present.
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attachment_metadata`
+    Then STDOUT should contain:
+      """
+      'medium'
+      """
+    And STDOUT should contain:
+      """
+      'thumbnail'
+      """
+
+    # Run again for already-generated sizes - nothing should happen.
+    When I run `wp media regenerate --image_size=test1,test2 --only-missing --yes`
+    Then STDOUT should contain:
+      """
+      1/1 No "test1", "test2" thumbnail regeneration needed for "My imported attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+
   Scenario: Regenerating SVGs should be marked as skipped and not produce PHP notices
     Given an svg.svg file:
       """

@@ -63,7 +63,7 @@ class Media_Command extends WP_CLI_Command {
 	 * : One or more IDs of the attachments to regenerate.
 	 *
 	 * [--image_size=<image_size>]
-	 * : Name of the image size to regenerate. Only thumbnails of this image size will be regenerated, thumbnails of other image sizes will not.
+	 * : Name of the image size (or comma-separated list of image sizes) to regenerate. Only thumbnails of specified image size(s) will be regenerated, thumbnails of other image sizes will not.
 	 *
 	 * [--skip-delete]
 	 * : Skip deletion of the original thumbnails. If your thumbnails are linked from sources outside your control, it's likely best to leave them around. Defaults to false.
@@ -113,6 +113,15 @@ class Media_Command extends WP_CLI_Command {
 	 *     3/3 Regenerated "large" thumbnail for "Sunburst Over River" (ID 756).
 	 *     Success: Regenerated 3 of 3 images.
 	 *
+	 *     # Re-generate only the thumbnails of "large" and "medium" image sizes for all images.
+	 *     $ wp media regenerate --image_size=large,medium
+	 *     Do you really want to regenerate the "large", "medium" image sizes for all images? [y/n] y
+	 *     Found 3 images to regenerate.
+	 *     1/3 Regenerated "large", "medium" thumbnails for "Sydney Harbor Bridge" (ID 760).
+	 *     2/3 No "large", "medium" thumbnail regeneration needed for "Boardwalk" (ID 757).
+	 *     3/3 Regenerated "large", "medium" thumbnails for "Sunburst Over River" (ID 756).
+	 *     Success: Regenerated 3 of 3 images.
+	 *
 	 * @param string[] $args Positional arguments.
 	 * @param array{image_size?: string, 'skip-delete'?: bool, 'only-missing'?: bool, 'delete-unknown'?: bool, yes?: bool} $assoc_args Associative arguments.
 	 * @return void
@@ -124,13 +133,29 @@ class Media_Command extends WP_CLI_Command {
 		);
 
 		$image_size = $assoc_args['image_size'];
-		if ( $image_size && ! in_array( $image_size, get_intermediate_image_sizes(), true ) ) {
-			WP_CLI::error( sprintf( 'Unknown image size "%s".', $image_size ) );
+
+		// Support comma-separated list of image sizes.
+		$image_sizes = array();
+		if ( $image_size ) {
+			$image_sizes = array_values( array_filter( array_map( 'trim', explode( ',', $image_size ) ) ) );
+		}
+
+		if ( $image_sizes ) {
+			$registered_sizes = get_intermediate_image_sizes();
+			foreach ( $image_sizes as $size ) {
+				if ( ! in_array( $size, $registered_sizes, true ) ) {
+					WP_CLI::error( sprintf( 'Unknown image size "%s".', $size ) );
+				}
+			}
 		}
 
 		if ( empty( $args ) ) {
-			if ( $image_size ) {
-				WP_CLI::confirm( sprintf( 'Do you really want to regenerate the "%s" image size for all images?', $image_size ), $assoc_args );
+			if ( $image_sizes ) {
+				if ( 1 === count( $image_sizes ) ) {
+					WP_CLI::confirm( sprintf( 'Do you really want to regenerate the "%s" image size for all images?', reset( $image_sizes ) ), $assoc_args );
+				} else {
+					WP_CLI::confirm( sprintf( 'Do you really want to regenerate the "%s" image sizes for all images?', implode( '", "', $image_sizes ) ), $assoc_args );
+				}
 			} else {
 				WP_CLI::confirm( 'Do you really want to regenerate all images?', $assoc_args );
 			}
@@ -169,8 +194,8 @@ class Media_Command extends WP_CLI_Command {
 			)
 		);
 
-		if ( $image_size ) {
-			$image_size_filters = $this->add_image_size_filters( $image_size );
+		if ( $image_sizes ) {
+			$image_size_filters = $this->add_image_size_filters( $image_sizes );
 		}
 
 		$number    = 0;
@@ -187,7 +212,7 @@ class Media_Command extends WP_CLI_Command {
 				// @phpstan-ignore function.deprecated
 				Utils\wp_clear_object_cache();
 			}
-			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $delete_unknown, $image_size, $number . '/' . $count, $successes, $errors, $skips );
+			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $number . '/' . $count, $successes, $errors, $skips );
 		}
 
 		if ( isset( $image_size_filters ) ) {
@@ -674,7 +699,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param bool $skip_delete
 	 * @param bool $only_missing
 	 * @param bool $delete_unknown
-	 * @param string $image_size
+	 * @param string[] $image_sizes
 	 * @param string $progress
 	 * @param int $successes
 	 * @param int $errors
@@ -684,7 +709,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param-out int $skips
 	 * @return void
 	 */
-	private function process_regeneration( $id, $skip_delete, $only_missing, $delete_unknown, $image_size, $progress, &$successes, &$errors, &$skips ) {
+	private function process_regeneration( $id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $progress, &$successes, &$errors, &$skips ) {
 
 		$title = get_the_title( $id );
 		if ( '' === $title ) {
@@ -698,7 +723,13 @@ class Media_Command extends WP_CLI_Command {
 		} else {
 			$att_desc = sprintf( '"%1$s" (ID %2$d)', $title, $id );
 		}
-		$thumbnail_desc = $image_size ? sprintf( '"%s" thumbnail', $image_size ) : 'thumbnail';
+		if ( count( $image_sizes ) === 1 ) {
+			$thumbnail_desc = sprintf( '"%s" thumbnail', reset( $image_sizes ) );
+		} elseif ( count( $image_sizes ) > 1 ) {
+			$thumbnail_desc = sprintf( '"%s" thumbnails', implode( '", "', $image_sizes ) );
+		} else {
+			$thumbnail_desc = 'thumbnail';
+		}
 
 		$fullsizepath = $this->get_attached_file( $id );
 
@@ -720,7 +751,7 @@ class Media_Command extends WP_CLI_Command {
 			return;
 		}
 
-		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_size, $skip_delete, $skip_it );
+		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_sizes, $skip_delete, $skip_it );
 
 		if ( $skip_it ) {
 			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc." );
@@ -735,12 +766,12 @@ class Media_Command extends WP_CLI_Command {
 		}
 		$site_icon_filter = $this->add_site_icon_filter( $id );
 
-		// When regenerating a specific image size, use the file that WordPress normally
+		// When regenerating specific image size(s), use the file that WordPress normally
 		// serves (the scaled version for big images), not the original pre-scaled file.
 		// This prevents wp_generate_attachment_metadata() from re-creating the scaled
 		// version or auto-rotating the original during specific-size regeneration.
 		$generate_file = $fullsizepath;
-		if ( $image_size && ! $is_pdf ) {
+		if ( $image_sizes && ! $is_pdf ) {
 			$wp_attached_file = \get_attached_file( $id );
 			if ( $wp_attached_file && file_exists( $wp_attached_file ) ) {
 				$generate_file = $wp_attached_file;
@@ -753,8 +784,8 @@ class Media_Command extends WP_CLI_Command {
 			remove_filter( 'intermediate_image_sizes_advanced', $site_icon_filter );
 		}
 
-		// Note it's possible for no metadata to be generated for PDFs if restricted to a specific image size.
-		if ( empty( $metadata ) && ! ( $is_pdf && $image_size ) ) {
+		// Note it's possible for no metadata to be generated for PDFs if restricted to specific image size(s).
+		if ( empty( $metadata ) && ! ( $is_pdf && $image_sizes ) ) {
 			WP_CLI::warning( sprintf( 'No metadata. (ID %d)', $id ) );
 			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
 			++$errors;
@@ -762,15 +793,15 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		// On read error, we might only get the filesize returned and nothing else.
-		if ( 1 === count( $metadata ) && array_key_exists( 'filesize', $metadata ) && ! ( $is_pdf && $image_size ) ) {
+		if ( 1 === count( $metadata ) && array_key_exists( 'filesize', $metadata ) && ! ( $is_pdf && $image_sizes ) ) {
 			WP_CLI::warning( sprintf( 'Read error while retrieving metadata. (ID %d)', $id ) );
 			WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
 			++$errors;
 			return;
 		}
 
-		if ( $image_size ) {
-			if ( $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_size, $original_meta ) ) {
+		if ( $image_sizes ) {
+			if ( $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_sizes, $original_meta ) ) {
 				WP_CLI::log( "$progress Regenerated $thumbnail_desc for $att_desc." );
 			} else {
 				WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
@@ -788,20 +819,20 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * @param array $metadata
 	 * @param string $fullsizepath
-	 * @param string $image_size
+	 * @param string[] $image_sizes
 	 * @return void
 	 */
-	private function remove_old_images( $metadata, $fullsizepath, $image_size ) {
+	private function remove_old_images( $metadata, $fullsizepath, $image_sizes ) {
 
 		if ( empty( $metadata['sizes'] ) ) {
 			return;
 		}
 
-		if ( $image_size ) {
-			if ( empty( $metadata['sizes'][ $image_size ] ) ) {
+		if ( $image_sizes ) {
+			$metadata['sizes'] = array_intersect_key( $metadata['sizes'], array_flip( $image_sizes ) );
+			if ( empty( $metadata['sizes'] ) ) {
 				return;
 			}
-			$metadata['sizes'] = array( $image_size => $metadata['sizes'][ $image_size ] );
 		}
 
 		$dir_path = dirname( $fullsizepath ) . '/';
@@ -825,13 +856,13 @@ class Media_Command extends WP_CLI_Command {
 	 * @param int $att_id
 	 * @param string $fullsizepath
 	 * @param bool $is_pdf
-	 * @param string $image_size
+	 * @param string[] $image_sizes
 	 * @param bool $skip_delete
 	 * @param bool $skip_it
 	 * @param-out bool $skip_it
 	 * @return bool
 	 */
-	private function needs_regeneration( $att_id, $fullsizepath, $is_pdf, $image_size, $skip_delete, &$skip_it ) {
+	private function needs_regeneration( $att_id, $fullsizepath, $is_pdf, $image_sizes, $skip_delete, &$skip_it ) {
 
 		// Assume not skipping.
 		$skip_it = false;
@@ -839,13 +870,13 @@ class Media_Command extends WP_CLI_Command {
 		// Note: zero-length string returned if no metadata, for instance if PDF or non-standard image (eg an SVG).
 		$metadata = wp_get_attachment_metadata( $att_id );
 
-		$image_sizes = $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata, $att_id );
+		$attachment_sizes = $this->get_intermediate_image_sizes_for_attachment( $fullsizepath, $is_pdf, $metadata, $att_id );
 
 		// First check if no applicable editor currently available (non-destructive - ie old thumbnails not removed).
-		if ( is_wp_error( $image_sizes ) && 'image_no_editor' === $image_sizes->get_error_code() ) {
+		if ( is_wp_error( $attachment_sizes ) && 'image_no_editor' === $attachment_sizes->get_error_code() ) {
 			// Warn unless PDF or non-standard image.
 			if ( ! $is_pdf && is_array( $metadata ) && ! empty( $metadata['sizes'] ) ) {
-				WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
+				WP_CLI::warning( sprintf( '%s (ID %d)', $attachment_sizes->get_error_message(), $att_id ) );
 			}
 			$skip_it = true;
 			return false;
@@ -862,34 +893,43 @@ class Media_Command extends WP_CLI_Command {
 
 		// Remove any old thumbnails (so now destructive).
 		if ( ! $skip_delete ) {
-			$this->remove_old_images( $metadata, $fullsizepath, $image_size );
+			$this->remove_old_images( $metadata, $fullsizepath, $image_sizes );
 		}
 
 		// Check for any other error (such as load error) apart from no editor available.
-		if ( is_wp_error( $image_sizes ) ) {
+		if ( is_wp_error( $attachment_sizes ) ) {
 			// Warn but assume it may be possible to regenerate and allow processing to continue and possibly fail.
-			WP_CLI::warning( sprintf( '%s (ID %d)', $image_sizes->get_error_message(), $att_id ) );
+			WP_CLI::warning( sprintf( '%s (ID %d)', $attachment_sizes->get_error_message(), $att_id ) );
 			return true;
 		}
 
 		// Have sizes - check whether they're new ones or they've changed. Note that an attachment can have no sizes if it's on or below the thumbnail threshold.
 
-		if ( $image_size ) {
-			if ( empty( $image_sizes[ $image_size ] ) ) {
+		if ( $image_sizes ) {
+			// Filter to only the requested sizes that are applicable to this attachment.
+			$filtered_sizes = array_intersect_key( $attachment_sizes, array_flip( $image_sizes ) );
+
+			if ( empty( $filtered_sizes ) ) {
 				return false;
 			}
-			if ( empty( $metadata['sizes'][ $image_size ] ) ) {
-				return true;
+
+			// Check if any applicable requested size is missing from metadata.
+			foreach ( array_keys( $filtered_sizes ) as $size ) {
+				if ( empty( $metadata['sizes'][ $size ] ) ) {
+					return true;
+				}
 			}
 
 			/**
 			 * @var array{sizes: array<string, array<string, mixed>>} $metadata
 			 */
 
-			$metadata['sizes'] = array( $image_size => $metadata['sizes'][ $image_size ] );
+			// Filter metadata and attachment_sizes to only the applicable requested sizes.
+			$metadata['sizes'] = array_intersect_key( $metadata['sizes'], $filtered_sizes );
+			$attachment_sizes  = $filtered_sizes;
 		}
 
-		if ( $this->image_sizes_differ( $image_sizes, $metadata['sizes'] ) ) {
+		if ( $this->image_sizes_differ( $attachment_sizes, $metadata['sizes'] ) ) {
 			return true;
 		}
 
@@ -1054,30 +1094,24 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * Add filters to only process a particular intermediate image size in wp_generate_attachment_metadata().
+	 * Add filters to only process particular intermediate image sizes in wp_generate_attachment_metadata().
 	 *
-	 * @param string $image_size
+	 * @param string[] $image_sizes
 	 * @return array<string, callable>
 	 */
-	private function add_image_size_filters( $image_size ) {
+	private function add_image_size_filters( $image_sizes ) {
 		$image_size_filters = array();
 
 		// For images.
-		$image_size_filters['intermediate_image_sizes_advanced'] = function ( $sizes ) use ( $image_size ) {
+		$image_size_filters['intermediate_image_sizes_advanced'] = function ( $sizes ) use ( $image_sizes ) {
 			// $sizes is associative array of name => size info entries.
-			if ( isset( $sizes[ $image_size ] ) ) {
-				return array( $image_size => $sizes[ $image_size ] );
-			}
-			return array();
+			return array_intersect_key( $sizes, array_flip( $image_sizes ) );
 		};
 
 		// For PDF previews.
-		$image_size_filters['fallback_intermediate_image_sizes'] = function ( $fallback_sizes ) use ( $image_size ) {
+		$image_size_filters['fallback_intermediate_image_sizes'] = function ( $fallback_sizes ) use ( $image_sizes ) {
 			// $fallback_sizes is indexed array of size names.
-			if ( in_array( $image_size, $fallback_sizes, true ) ) {
-				return array( $image_size );
-			}
-			return array();
+			return array_values( array_intersect( $fallback_sizes, $image_sizes ) );
 		};
 
 		foreach ( $image_size_filters as $name => $filter ) {
@@ -1158,34 +1192,41 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * Update attachment sizes metadata just for a particular intermediate image size.
+	 * Update attachment sizes metadata just for particular intermediate image sizes.
 	 *
 	 * @param int $id
 	 * @param array $new_metadata
-	 * @param string $image_size
+	 * @param string[] $image_sizes
 	 * @param array{sizes: array<string, mixed>}|false $metadata
 	 * @return bool
 	 */
-	private function update_attachment_metadata_for_image_size( $id, $new_metadata, $image_size, $metadata ) {
+	private function update_attachment_metadata_for_image_size( $id, $new_metadata, $image_sizes, $metadata ) {
 
 		if ( ! is_array( $metadata ) ) {
 			return false;
 		}
 
-		// If have metadata for image_size.
-		if ( ! empty( $new_metadata['sizes'][ $image_size ] ) ) {
-			$metadata['sizes'][ $image_size ] = $new_metadata['sizes'][ $image_size ];
-			wp_update_attachment_metadata( $id, $metadata );
-			return true;
+		$regenerated = false;
+		$changed     = false;
+
+		foreach ( $image_sizes as $image_size ) {
+			// If have metadata for image_size.
+			if ( ! empty( $new_metadata['sizes'][ $image_size ] ) ) {
+				$metadata['sizes'][ $image_size ] = $new_metadata['sizes'][ $image_size ];
+				$regenerated                      = true;
+				$changed                          = true;
+			} elseif ( ! empty( $metadata['sizes'][ $image_size ] ) ) {
+				// Else remove unused metadata if any.
+				unset( $metadata['sizes'][ $image_size ] );
+				$changed = true;
+				// Treat removing unused metadata as no change (don't set $regenerated).
+			}
 		}
 
-		// Else remove unused metadata if any.
-		if ( ! empty( $metadata['sizes'][ $image_size ] ) ) {
-			unset( $metadata['sizes'][ $image_size ] );
+		if ( $changed ) {
 			wp_update_attachment_metadata( $id, $metadata );
-			// Treat removing unused metadata as no change.
 		}
-		return false;
+		return $regenerated;
 	}
 
 	/**
