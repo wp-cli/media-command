@@ -149,11 +149,13 @@ class Media_Command extends WP_CLI_Command {
 
 		if ( empty( $args ) ) {
 			if ( $image_sizes ) {
-				if ( 1 === count( $image_sizes ) ) {
-					WP_CLI::confirm( sprintf( 'Do you really want to regenerate the "%s" image size for all images?', reset( $image_sizes ) ), $assoc_args );
-				} else {
-					WP_CLI::confirm( sprintf( 'Do you really want to regenerate the "%s" image sizes for all images?', implode( '", "', $image_sizes ) ), $assoc_args );
-				}
+				WP_CLI::confirm(
+					sprintf(
+						'Do you really want to regenerate the %s for all images?',
+						$this->get_image_sizes_description( $image_sizes, 'image size', 'image sizes' )
+					),
+					$assoc_args
+				);
 			} else {
 				WP_CLI::confirm( 'Do you really want to regenerate all images?', $assoc_args );
 			}
@@ -691,6 +693,26 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	/**
+	 * Returns a human-readable description for one or more image size names.
+	 *
+	 * @param string[] $sizes           The size names.
+	 * @param string   $singular_noun   Noun to use when exactly one size is given (e.g. 'thumbnail').
+	 * @param string   $plural_noun     Noun to use when more than one size is given (e.g. 'thumbnails').
+	 * @param string   $default_if_empty String to return when $sizes is empty.
+	 * @return string
+	 */
+	private function get_image_sizes_description( array $sizes, $singular_noun, $plural_noun, $default_if_empty = '' ) {
+		$count = count( $sizes );
+		if ( 0 === $count ) {
+			return $default_if_empty;
+		}
+		if ( 1 === $count ) {
+			return sprintf( '"%s" %s', reset( $sizes ), $singular_noun );
+		}
+		return sprintf( '"%s" %s', implode( '", "', $sizes ), $plural_noun );
+	}
+
+	/**
 	 * Process media regeneration
 	 *
 	 * @param int $id Attachment ID.
@@ -721,13 +743,7 @@ class Media_Command extends WP_CLI_Command {
 		} else {
 			$att_desc = sprintf( '"%1$s" (ID %2$d)', $title, $id );
 		}
-		if ( count( $image_sizes ) === 1 ) {
-			$thumbnail_desc = sprintf( '"%s" thumbnail', reset( $image_sizes ) );
-		} elseif ( count( $image_sizes ) > 1 ) {
-			$thumbnail_desc = sprintf( '"%s" thumbnails', implode( '", "', $image_sizes ) );
-		} else {
-			$thumbnail_desc = 'thumbnail';
-		}
+		$thumbnail_desc = $this->get_image_sizes_description( $image_sizes, 'thumbnail', 'thumbnails', 'thumbnail' );
 
 		$fullsizepath = $this->get_attached_file( $id );
 
@@ -801,12 +817,7 @@ class Media_Command extends WP_CLI_Command {
 		if ( $image_sizes ) {
 			$regenerated_sizes = $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_sizes, $original_meta );
 			if ( $regenerated_sizes ) {
-				if ( count( $regenerated_sizes ) === 1 ) {
-					$regenerated_desc = sprintf( '"%s" thumbnail', reset( $regenerated_sizes ) );
-				} else {
-					$regenerated_desc = sprintf( '"%s" thumbnails', implode( '", "', $regenerated_sizes ) );
-				}
-				WP_CLI::log( "$progress Regenerated $regenerated_desc for $att_desc." );
+				WP_CLI::log( "$progress Regenerated {$this->get_image_sizes_description( $regenerated_sizes, 'thumbnail', 'thumbnails' )} for $att_desc." );
 			} else {
 				WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
 			}
