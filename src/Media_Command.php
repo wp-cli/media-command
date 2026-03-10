@@ -799,8 +799,14 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		if ( $image_sizes ) {
-			if ( $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_sizes, $original_meta ) ) {
-				WP_CLI::log( "$progress Regenerated $thumbnail_desc for $att_desc." );
+			$regenerated_sizes = $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_sizes, $original_meta );
+			if ( $regenerated_sizes ) {
+				if ( count( $regenerated_sizes ) === 1 ) {
+					$regenerated_desc = sprintf( '"%s" thumbnail', reset( $regenerated_sizes ) );
+				} else {
+					$regenerated_desc = sprintf( '"%s" thumbnails', implode( '", "', $regenerated_sizes ) );
+				}
+				WP_CLI::log( "$progress Regenerated $regenerated_desc for $att_desc." );
 			} else {
 				WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
 			}
@@ -1196,35 +1202,35 @@ class Media_Command extends WP_CLI_Command {
 	 * @param array $new_metadata
 	 * @param string[] $image_sizes
 	 * @param array{sizes: array<string, mixed>}|false $metadata
-	 * @return bool
+	 * @return string[] The sizes that were actually regenerated.
 	 */
 	private function update_attachment_metadata_for_image_size( $id, $new_metadata, $image_sizes, $metadata ) {
 
 		if ( ! is_array( $metadata ) ) {
-			return false;
+			return array();
 		}
 
-		$regenerated = false;
-		$changed     = false;
+		$regenerated_sizes = array();
+		$changed           = false;
 
 		foreach ( $image_sizes as $image_size ) {
 			// If have metadata for image_size.
 			if ( ! empty( $new_metadata['sizes'][ $image_size ] ) ) {
 				$metadata['sizes'][ $image_size ] = $new_metadata['sizes'][ $image_size ];
-				$regenerated                      = true;
+				$regenerated_sizes[]              = $image_size;
 				$changed                          = true;
 			} elseif ( ! empty( $metadata['sizes'][ $image_size ] ) ) {
 				// Else remove unused metadata if any.
 				unset( $metadata['sizes'][ $image_size ] );
 				$changed = true;
-				// Treat removing unused metadata as no change (don't set $regenerated).
+				// Treat removing unused metadata as no change (don't add to $regenerated_sizes).
 			}
 		}
 
 		if ( $changed ) {
 			wp_update_attachment_metadata( $id, $metadata );
 		}
-		return $regenerated;
+		return $regenerated_sizes;
 	}
 
 	/**
