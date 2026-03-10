@@ -1068,7 +1068,7 @@ Feature: Regenerate WordPress attachments
     When I run `wp media regenerate --image_size=test1 --image_size=test2 --only-missing --yes`
     Then STDOUT should contain:
       """
-      1/1 No "test1", "test2" thumbnail regeneration needed for "My imported attachment"
+      1/1 No "test1", "test2" thumbnails regeneration needed for "My imported attachment"
       """
     And STDOUT should contain:
       """
