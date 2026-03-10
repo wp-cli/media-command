@@ -985,7 +985,7 @@ Feature: Regenerate WordPress attachments
     And the return code should be 1
 
   Scenario: Provide error message when one of the multiple image sizes is non-existent
-    When I try `wp media regenerate --image_size=medium,test1`
+    When I try `wp media regenerate --image_size=medium --image_size=test1`
     Then STDERR should be:
       """
       Error: Unknown image size "test1".
@@ -1024,7 +1024,7 @@ Feature: Regenerate WordPress attachments
       """
 
     # Regenerate both "test1" and "test2" sizes only if missing - both should be generated.
-    When I run `wp media regenerate --image_size=test1,test2 --only-missing --yes`
+    When I run `wp media regenerate --image_size=test1 --image_size=test2 --only-missing --yes`
     Then STDOUT should contain:
       """
       Found 1 image to regenerate
@@ -1065,7 +1065,7 @@ Feature: Regenerate WordPress attachments
       """
 
     # Run again for already-generated sizes - nothing should happen.
-    When I run `wp media regenerate --image_size=test1,test2 --only-missing --yes`
+    When I run `wp media regenerate --image_size=test1 --image_size=test2 --only-missing --yes`
     Then STDOUT should contain:
       """
       1/1 No "test1", "test2" thumbnail regeneration needed for "My imported attachment"

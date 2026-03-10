@@ -62,8 +62,8 @@ class Media_Command extends WP_CLI_Command {
 	 * [<attachment-id>...]
 	 * : One or more IDs of the attachments to regenerate.
 	 *
-	 * [--image_size=<image_size>]
-	 * : Name of the image size (or comma-separated list of image sizes) to regenerate. Only thumbnails of specified image size(s) will be regenerated, thumbnails of other image sizes will not.
+	 * [--image_size=<image_size>...]
+	 * : Name of the image size to regenerate. Repeat the flag to specify multiple. Only thumbnails of specified image size(s) will be regenerated, thumbnails of other image sizes will not.
 	 *
 	 * [--skip-delete]
 	 * : Skip deletion of the original thumbnails. If your thumbnails are linked from sources outside your control, it's likely best to leave them around. Defaults to false.
@@ -114,7 +114,7 @@ class Media_Command extends WP_CLI_Command {
 	 *     Success: Regenerated 3 of 3 images.
 	 *
 	 *     # Re-generate only the thumbnails of "large" and "medium" image sizes for all images.
-	 *     $ wp media regenerate --image_size=large,medium
+	 *     $ wp media regenerate --image_size=large --image_size=medium
 	 *     Do you really want to regenerate the "large", "medium" image sizes for all images? [y/n] y
 	 *     Found 3 images to regenerate.
 	 *     1/3 Regenerated "large", "medium" thumbnails for "Sydney Harbor Bridge" (ID 760).
@@ -123,21 +123,19 @@ class Media_Command extends WP_CLI_Command {
 	 *     Success: Regenerated 3 of 3 images.
 	 *
 	 * @param string[] $args Positional arguments.
-	 * @param array{image_size?: string, 'skip-delete'?: bool, 'only-missing'?: bool, 'delete-unknown'?: bool, yes?: bool} $assoc_args Associative arguments.
+	 * @param array{image_size?: string|string[], 'skip-delete'?: bool, 'only-missing'?: bool, 'delete-unknown'?: bool, yes?: bool} $assoc_args Associative arguments.
 	 * @return void
 	 */
 	public function regenerate( $args, $assoc_args = array() ) {
-		$assoc_args = wp_parse_args(
-			$assoc_args,
-			[ 'image_size' => '' ]
-		);
+		// Extract image_size separately as it may be a string or an array of strings.
+		$image_size_raw = $assoc_args['image_size'] ?? null;
+		unset( $assoc_args['image_size'] );
 
-		$image_size = $assoc_args['image_size'];
-
-		// Support comma-separated list of image sizes.
+		// Normalize to an array: with WP-CLI 3.x and the ellipsis syntax, repeated flags yield an array.
+		// With earlier versions a single string is returned.
 		$image_sizes = array();
-		if ( $image_size ) {
-			$image_sizes = array_values( array_filter( array_map( 'trim', explode( ',', $image_size ) ) ) );
+		if ( null !== $image_size_raw ) {
+			$image_sizes = is_array( $image_size_raw ) ? $image_size_raw : [ $image_size_raw ];
 		}
 
 		if ( $image_sizes ) {
