@@ -152,7 +152,7 @@ class Media_Command extends WP_CLI_Command {
 				WP_CLI::confirm(
 					sprintf(
 						'Do you really want to regenerate the %s for all images?',
-						$this->get_image_sizes_description( $image_sizes, 'image size', 'image sizes' )
+						$this->get_image_sizes_description( $image_sizes, 'image size' )
 					),
 					$assoc_args
 				);
@@ -696,20 +696,15 @@ class Media_Command extends WP_CLI_Command {
 	 * Returns a human-readable description for one or more image size names.
 	 *
 	 * @param string[] $sizes           The size names.
-	 * @param string   $singular_noun   Noun to use when exactly one size is given (e.g. 'thumbnail').
-	 * @param string   $plural_noun     Noun to use when more than one size is given (e.g. 'thumbnails').
+	 * @param string   $noun            Noun in singular form (e.g. 'thumbnail'); pluralized automatically.
 	 * @param string   $default_if_empty String to return when $sizes is empty.
 	 * @return string
 	 */
-	private function get_image_sizes_description( array $sizes, $singular_noun, $plural_noun, $default_if_empty = '' ) {
-		$count = count( $sizes );
-		if ( 0 === $count ) {
+	private function get_image_sizes_description( array $sizes, $noun, $default_if_empty = '' ) {
+		if ( empty( $sizes ) ) {
 			return $default_if_empty;
 		}
-		if ( 1 === $count ) {
-			return sprintf( '"%s" %s', reset( $sizes ), $singular_noun );
-		}
-		return sprintf( '"%s" %s', implode( '", "', $sizes ), $plural_noun );
+		return sprintf( '"%s" %s', implode( '", "', $sizes ), Utils\pluralize( $noun, count( $sizes ) ) );
 	}
 
 	/**
@@ -743,7 +738,7 @@ class Media_Command extends WP_CLI_Command {
 		} else {
 			$att_desc = sprintf( '"%1$s" (ID %2$d)', $title, $id );
 		}
-		$thumbnail_desc = $this->get_image_sizes_description( $image_sizes, 'thumbnail', 'thumbnails', 'thumbnail' );
+		$thumbnail_desc = $this->get_image_sizes_description( $image_sizes, 'thumbnail', 'thumbnail' );
 
 		$fullsizepath = $this->get_attached_file( $id );
 
@@ -817,7 +812,7 @@ class Media_Command extends WP_CLI_Command {
 		if ( $image_sizes ) {
 			$regenerated_sizes = $this->update_attachment_metadata_for_image_size( $id, $metadata, $image_sizes, $original_meta );
 			if ( $regenerated_sizes ) {
-				WP_CLI::log( "$progress Regenerated {$this->get_image_sizes_description( $regenerated_sizes, 'thumbnail', 'thumbnails' )} for $att_desc." );
+				WP_CLI::log( "$progress Regenerated {$this->get_image_sizes_description( $regenerated_sizes, 'thumbnail' )} for $att_desc." );
 			} else {
 				WP_CLI::log( "$progress No $thumbnail_desc regeneration needed for $att_desc." );
 			}
