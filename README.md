@@ -188,7 +188,7 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
 Regenerates thumbnails for one or more attachments.
 
 ~~~
-wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-delete] [--only-missing] [--delete-unknown] [--yes]
+wp media regenerate [<attachment-id>...] [--image_size=<image_size>...] [--skip-delete] [--only-missing] [--delete-unknown] [--yes]
 ~~~
 
 **OPTIONS**
@@ -196,8 +196,8 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-del
 	[<attachment-id>...]
 		One or more IDs of the attachments to regenerate.
 
-	[--image_size=<image_size>]
-		Name of the image size to regenerate. Only thumbnails of this image size will be regenerated, thumbnails of other image sizes will not.
+	[--image_size=<image_size>...]
+		Name of the image size to regenerate. Repeat the flag to specify multiple. Only thumbnails of specified image size(s) will be regenerated, thumbnails of other image sizes will not.
 
 	[--skip-delete]
 		Skip deletion of the original thumbnails. If your thumbnails are linked from sources outside your control, it's likely best to leave them around. Defaults to false.
@@ -245,6 +245,15 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-del
     1/3 Regenerated "large" thumbnail for "Sydney Harbor Bridge" (ID 760).
     2/3 No "large" thumbnail regeneration needed for "Boardwalk" (ID 757).
     3/3 Regenerated "large" thumbnail for "Sunburst Over River" (ID 756).
+    Success: Regenerated 3 of 3 images.
+
+    # Re-generate only the thumbnails of "large" and "medium" image sizes for all images.
+    $ wp media regenerate --image_size=large --image_size=medium
+    Do you really want to regenerate the "large", "medium" image sizes for all images? [y/n] y
+    Found 3 images to regenerate.
+    1/3 Regenerated "large", "medium" thumbnails for "Sydney Harbor Bridge" (ID 760).
+    2/3 No "large", "medium" thumbnail regeneration needed for "Boardwalk" (ID 757).
+    3/3 Regenerated "large", "medium" thumbnails for "Sunburst Over River" (ID 756).
     Success: Regenerated 3 of 3 images.
 
 
