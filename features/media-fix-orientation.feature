@@ -119,6 +119,52 @@ Feature: Fix WordPress attachments orientation
       Success: Image already fixed.
       """
 
+  # This specifically tests the Imagick flip-only path (orientations 2, 4) where
+  # WP_Image_Editor_Imagick::flip() does not update the EXIF orientation tag, requiring
+  # explicit metadata normalization after the fix.
+  @require-extension-exif @require-extension-imagick @require-wp-4.0 @less-than-wp-5.3
+  Scenario: Fix flip-only orientation with Imagick
+    Given download:
+      | path                         | url                                                                            |
+      | {CACHE_DIR}/landscape-2.jpg  | https://raw.githubusercontent.com/thrijith/test-images/master/Landscape_2.jpg  |
+      | {CACHE_DIR}/portrait-4.jpg   | https://raw.githubusercontent.com/thrijith/test-images/master/Portrait_4.jpg   |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/landscape-2.jpg --title="Landscape Two" --porcelain`
+    Then save STDOUT as {LANDSCAPE_TWO}
+
+    When I run `wp media import {CACHE_DIR}/portrait-4.jpg --title="Portrait Four" --porcelain`
+    Then save STDOUT as {PORTRAIT_FOUR}
+
+    When I run `wp media fix-orientation`
+    Then STDOUT should contain:
+      """
+      Fixing orientation for "Landscape Two" (ID {LANDSCAPE_TWO}).
+      """
+    And STDOUT should contain:
+      """
+      Fixing orientation for "Portrait Four" (ID {PORTRAIT_FOUR}).
+      """
+    And STDOUT should contain:
+      """
+      Success: Fixed 2 of 2 images.
+      """
+
+    # Verify that a second run reports no fix required (metadata normalized after save).
+    When I run `wp media fix-orientation`
+    Then STDOUT should contain:
+      """
+      No orientation fix required for "Landscape Two" (ID {LANDSCAPE_TWO}).
+      """
+    And STDOUT should contain:
+      """
+      No orientation fix required for "Portrait Four" (ID {PORTRAIT_FOUR}).
+      """
+    And STDOUT should contain:
+      """
+      Success: Images already fixed.
+      """
+
   @require-wp-4.0
   Scenario: Fix orientation for non existent image
     When I try `wp media fix-orientation 9999`

@@ -1473,7 +1473,8 @@ class Media_Command extends WP_CLI_Command {
 		if ( $orientation <= 1 ) {
 			$file_image_meta = wp_read_image_metadata( $full_size_path );
 			if ( is_array( $file_image_meta ) && isset( $file_image_meta['orientation'] ) ) {
-				$file_orientation = absint( $file_image_meta['orientation'] );
+				$raw_orientation  = $file_image_meta['orientation'];
+				$file_orientation = is_scalar( $raw_orientation ) ? absint( $raw_orientation ) : 0;
 				if ( $file_orientation > 1 ) {
 					// Merge file-based metadata so flip_rotate_image() has the orientation.
 					$image_meta  = array_merge( $image_meta, $file_image_meta );
