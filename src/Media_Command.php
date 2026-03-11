@@ -1462,14 +1462,14 @@ class Media_Command extends WP_CLI_Command {
 			return;
 		}
 
-		// Get current metadata of the attachment.
-		$metadata   = wp_generate_attachment_metadata( $id, $full_size_path );
-		$image_meta = ! empty( $metadata['image_meta'] ) ? $metadata['image_meta'] : [];
+		// Get current metadata of the attachment from the database.
+		$metadata   = wp_get_attachment_metadata( $id );
+		$image_meta = is_array( $metadata ) && ! empty( $metadata['image_meta'] ) ? $metadata['image_meta'] : [];
 
 		if ( isset( $image_meta['orientation'] ) && absint( $image_meta['orientation'] ) > 1 ) {
 			if ( ! $dry_run ) {
 				WP_CLI::log( "{$progress} Fixing orientation for {$att_desc}." );
-				if ( false !== $this->flip_rotate_image( $id, $metadata, $image_meta, $full_size_path ) ) {
+				if ( false !== $this->flip_rotate_image( $id, is_array( $metadata ) ? $metadata : [], $image_meta, $full_size_path ) ) {
 					++$successes;
 				} else {
 					++$errors;
@@ -1511,14 +1511,23 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			// Save the image and generate metadata.
-			$editor->save( $full_size_path );
-			$metadata   = wp_generate_attachment_metadata( $id, $full_size_path );
-			$image_meta = empty( $metadata['image_meta'] ) ? [] : $metadata['image_meta'];
+			$saved    = $editor->save( $full_size_path );
+			$metadata = wp_generate_attachment_metadata( $id, $full_size_path );
+
+			// After a successful save, normalize the stored orientation to prevent
+			// re-detection on subsequent runs. WP_Image_Editor_Imagick::flip() does not
+			// reset the EXIF orientation tag, so the file may still report a non-normal
+			// orientation even though the pixels have been corrected. Because $editor->save()
+			// succeeded, the transformation was applied to the image; forcing orientation to 0
+			// in the stored metadata ensures the next run reports "No orientation fix required".
+			if ( ! is_wp_error( $saved ) && isset( $metadata['image_meta']['orientation'] ) ) {
+				$metadata['image_meta']['orientation'] = 0;
+			}
 
 			// Update attachment metadata with newly generated data.
 			wp_update_attachment_metadata( $id, $metadata );
 
-			if ( ! isset( $image_meta['orientation'] ) || absint( $image_meta['orientation'] ) <= 1 ) {
+			if ( ! is_wp_error( $saved ) ) {
 				return true;
 			}
 		}
