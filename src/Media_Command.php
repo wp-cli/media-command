@@ -1469,8 +1469,22 @@ class Media_Command extends WP_CLI_Command {
 		// Determine orientation from DB metadata first.
 		$orientation = isset( $image_meta['orientation'] ) ? absint( $image_meta['orientation'] ) : 0;
 
-		// If DB metadata is missing/incomplete, fall back to reading from the file's EXIF data.
-		if ( $orientation <= 1 ) {
+		if ( $orientation > 1 ) {
+			// DB shows orientation > 1, but WP 5.3+ may have already auto-rotated the image
+			// on import (via wp_maybe_exif_rotate()), storing the original EXIF value before
+			// rotating. Verify against the file's current EXIF: if it is <= 1 the image is
+			// already correctly oriented and no fix is needed.
+			$file_image_meta = wp_read_image_metadata( $full_size_path );
+			if ( is_array( $file_image_meta ) && isset( $file_image_meta['orientation'] ) ) {
+				$raw_orientation  = $file_image_meta['orientation'];
+				$file_orientation = is_scalar( $raw_orientation ) ? absint( $raw_orientation ) : 0;
+				if ( $file_orientation <= 1 ) {
+					$orientation = $file_orientation;
+				}
+			}
+		} elseif ( empty( $image_meta ) || ! isset( $image_meta['orientation'] ) ) {
+			// DB has no orientation data at all (stale/absent metadata). Fall back to reading
+			// from the file's EXIF so the command still works for such attachments.
 			$file_image_meta = wp_read_image_metadata( $full_size_path );
 			if ( is_array( $file_image_meta ) && isset( $file_image_meta['orientation'] ) ) {
 				$raw_orientation  = $file_image_meta['orientation'];
