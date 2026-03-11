@@ -11,9 +11,8 @@ Feature: Fix WordPress attachments orientation
       Error: No images found.
       """
 
-  # On WP 4.9 tests this results in "Couldn't fix orientation".
-  # Todo: Revisit this test and improve or potentially remove it if useless.
-  @require-extension-exif @require-wp-4.0 @less-than-wp-4.9
+  # On WP 5.3+, images are auto-rotated by WordPress during import, so fix-orientation reports them as already fixed.
+  @require-extension-exif @require-wp-4.0 @less-than-wp-5.3
   Scenario: Fix orientation for all images
     Given download:
       | path                             | url                                                                            |
@@ -96,10 +95,8 @@ Feature: Fix WordPress attachments orientation
       Success: Images already fixed.
       """
 
-  # On newer versions (5.3+) the image is already considered fixed.
-  # On WP 4.9 tests this results in "Couldn't fix orientation".
-  # Todo: Revisit this test and improve or potentially remove it if useless.
-  @require-extension-exif @require-wp-4.0 @less-than-wp-4.9
+  # On WP 5.3+, images are auto-rotated by WordPress during import, so fix-orientation reports them as already fixed.
+  @require-extension-exif @require-wp-4.0 @less-than-wp-5.3
   Scenario: Fix orientation for single image
     Given download:
       | path                             | url                                                                            |
@@ -122,10 +119,110 @@ Feature: Fix WordPress attachments orientation
       Success: Image already fixed.
       """
 
+  # This specifically tests the Imagick flip-only path (orientations 2, 4) where
+  # WP_Image_Editor_Imagick::flip() does not update the EXIF orientation tag, requiring
+  # explicit metadata normalization after the fix.
+  @require-extension-exif @require-extension-imagick @require-wp-4.0 @less-than-wp-5.3
+  Scenario: Fix flip-only orientation with Imagick
+    Given download:
+      | path                         | url                                                                            |
+      | {CACHE_DIR}/landscape-2.jpg  | https://raw.githubusercontent.com/thrijith/test-images/master/Landscape_2.jpg  |
+      | {CACHE_DIR}/portrait-4.jpg   | https://raw.githubusercontent.com/thrijith/test-images/master/Portrait_4.jpg   |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/landscape-2.jpg --title="Landscape Two" --porcelain`
+    Then save STDOUT as {LANDSCAPE_TWO}
+
+    When I run `wp media import {CACHE_DIR}/portrait-4.jpg --title="Portrait Four" --porcelain`
+    Then save STDOUT as {PORTRAIT_FOUR}
+
+    When I run `wp media fix-orientation`
+    Then STDOUT should contain:
+      """
+      Fixing orientation for "Landscape Two" (ID {LANDSCAPE_TWO}).
+      """
+    And STDOUT should contain:
+      """
+      Fixing orientation for "Portrait Four" (ID {PORTRAIT_FOUR}).
+      """
+    And STDOUT should contain:
+      """
+      Success: Fixed 2 of 2 images.
+      """
+
+    # Verify that a second run reports no fix required (metadata normalized after save).
+    When I run `wp media fix-orientation`
+    Then STDOUT should contain:
+      """
+      No orientation fix required for "Landscape Two" (ID {LANDSCAPE_TWO}).
+      """
+    And STDOUT should contain:
+      """
+      No orientation fix required for "Portrait Four" (ID {PORTRAIT_FOUR}).
+      """
+    And STDOUT should contain:
+      """
+      Success: Images already fixed.
+      """
+
   @require-wp-4.0
   Scenario: Fix orientation for non existent image
     When I try `wp media fix-orientation 9999`
     Then STDERR should be:
       """
       Error: No images found.
+      """
+
+  @require-extension-exif @require-wp-5.3
+  Scenario: Fix orientation for all images already auto-rotated by WordPress
+    Given download:
+      | path                             | url                                                                            |
+      | {CACHE_DIR}/landscape-2.jpg      | https://raw.githubusercontent.com/thrijith/test-images/master/Landscape_2.jpg  |
+      | {CACHE_DIR}/landscape-5.jpg      | https://raw.githubusercontent.com/thrijith/test-images/master/Landscape_5.jpg  |
+      | {CACHE_DIR}/portrait-4.jpg       | https://raw.githubusercontent.com/thrijith/test-images/master/Portrait_4.jpg   |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/landscape-2.jpg --title="Landscape Two" --porcelain`
+    Then save STDOUT as {LANDSCAPE_TWO}
+
+    When I run `wp media import {CACHE_DIR}/landscape-5.jpg --title="Landscape Five" --porcelain`
+    Then save STDOUT as {LANDSCAPE_FIVE}
+
+    When I run `wp media import {CACHE_DIR}/portrait-4.jpg --title="Portrait Four" --porcelain`
+    Then save STDOUT as {PORTRAIT_FOUR}
+
+    When I run `wp media fix-orientation`
+    Then STDOUT should contain:
+      """
+      No orientation fix required for "Portrait Four" (ID {PORTRAIT_FOUR}).
+      """
+
+    And STDOUT should contain:
+      """
+      No orientation fix required for "Landscape Five" (ID {LANDSCAPE_FIVE}).
+      """
+
+    And STDOUT should contain:
+      """
+      No orientation fix required for "Landscape Two" (ID {LANDSCAPE_TWO}).
+      """
+
+    And STDOUT should contain:
+      """
+      Success: Images already fixed.
+      """
+
+  @require-extension-exif @require-wp-5.3
+  Scenario: Fix orientation for single image already auto-rotated by WordPress
+    Given download:
+      | path                             | url                                                                            |
+      | {CACHE_DIR}/portrait-6.jpg       | https://raw.githubusercontent.com/thrijith/test-images/master/Portrait_6.jpg   |
+    When I run `wp media import {CACHE_DIR}/portrait-6.jpg --title="Portrait Six" --porcelain`
+    Then save STDOUT as {PORTRAIT_SIX}
+
+    When I run `wp media fix-orientation {PORTRAIT_SIX}`
+    Then STDOUT should be:
+      """
+      1/1 No orientation fix required for "Portrait Six" (ID {PORTRAIT_SIX}).
+      Success: Image already fixed.
       """

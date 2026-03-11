@@ -1462,14 +1462,48 @@ class Media_Command extends WP_CLI_Command {
 			return;
 		}
 
-		// Get current metadata of the attachment.
-		$metadata   = wp_generate_attachment_metadata( $id, $full_size_path );
-		$image_meta = ! empty( $metadata['image_meta'] ) ? $metadata['image_meta'] : [];
+		// Get current metadata of the attachment from the database.
+		$metadata   = wp_get_attachment_metadata( $id );
+		$image_meta = is_array( $metadata ) && ! empty( $metadata['image_meta'] ) ? $metadata['image_meta'] : [];
 
-		if ( isset( $image_meta['orientation'] ) && absint( $image_meta['orientation'] ) > 1 ) {
+		// Determine orientation from DB metadata first.
+		$orientation = isset( $image_meta['orientation'] ) ? absint( $image_meta['orientation'] ) : 0;
+
+		if ( $orientation > 1 ) {
+			// DB shows orientation > 1, but WP 5.3+ may have already auto-rotated the image
+			// on import (via wp_maybe_exif_rotate()), storing the original EXIF value before
+			// rotating. On WP < 5.3 this behavior does not occur, so skip the extra EXIF read.
+			if ( Utils\wp_version_compare( '5.3', '>=' ) ) {
+				// Verify against the file's current EXIF: if it is <= 1 the image is already
+				// correctly oriented and no fix is needed.
+				$file_image_meta = wp_read_image_metadata( $full_size_path );
+				if ( is_array( $file_image_meta ) && isset( $file_image_meta['orientation'] ) ) {
+					$raw_orientation  = $file_image_meta['orientation'];
+					$file_orientation = is_scalar( $raw_orientation ) ? absint( $raw_orientation ) : 0;
+					if ( $file_orientation <= 1 ) {
+						$orientation = $file_orientation;
+					}
+				}
+			}
+		} elseif ( empty( $image_meta ) || ! isset( $image_meta['orientation'] ) ) {
+			// DB has no orientation data at all (stale/absent metadata). Fall back to reading
+			// from the file's EXIF so the command still works for such attachments.
+			$file_image_meta = wp_read_image_metadata( $full_size_path );
+			if ( is_array( $file_image_meta ) && isset( $file_image_meta['orientation'] ) ) {
+				$raw_orientation  = $file_image_meta['orientation'];
+				$file_orientation = is_scalar( $raw_orientation ) ? absint( $raw_orientation ) : 0;
+				if ( $file_orientation > 1 ) {
+					// Merge file-based metadata so flip_rotate_image() has the orientation.
+					$image_meta  = array_merge( $image_meta, $file_image_meta );
+					$orientation = $file_orientation;
+				}
+			}
+		}
+
+		if ( $orientation > 1 ) {
 			if ( ! $dry_run ) {
 				WP_CLI::log( "{$progress} Fixing orientation for {$att_desc}." );
-				if ( false !== $this->flip_rotate_image( $id, $metadata, $image_meta, $full_size_path ) ) {
+				if ( false !== $this->flip_rotate_image( $id, $image_meta, $full_size_path ) ) {
 					++$successes;
 				} else {
 					++$errors;
@@ -1488,13 +1522,12 @@ class Media_Command extends WP_CLI_Command {
 	 * Perform image rotate operations on the image.
 	 *
 	 * @param int    $id             Attachment Id.
-	 * @param array  $metadata       Attachment Metadata.
 	 * @param array  $image_meta     `image_meta` information for the attachment.
 	 * @param string $full_size_path Path to original image.
 	 *
 	 * @return bool Whether the image rotation operation succeeded.
 	 */
-	private function flip_rotate_image( $id, $metadata, $image_meta, $full_size_path ) {
+	private function flip_rotate_image( $id, $image_meta, $full_size_path ) {
 		$editor = wp_get_image_editor( $full_size_path );
 
 		if ( ! is_wp_error( $editor ) ) {
@@ -1510,17 +1543,31 @@ class Media_Command extends WP_CLI_Command {
 				$editor->flip( $operations['flip'][0], $operations['flip'][1] );
 			}
 
-			// Save the image and generate metadata.
-			$editor->save( $full_size_path );
-			$metadata   = wp_generate_attachment_metadata( $id, $full_size_path );
-			$image_meta = empty( $metadata['image_meta'] ) ? [] : $metadata['image_meta'];
+			$saved = $editor->save( $full_size_path );
 
-			// Update attachment metadata with newly generated data.
+			if ( is_wp_error( $saved ) ) {
+				return false;
+			}
+
+			// Regenerate attachment metadata after the corrected image is saved.
+			$metadata = wp_generate_attachment_metadata( $id, $full_size_path );
+
+			if ( empty( $metadata ) ) {
+				return false;
+			}
+
+			// Normalize the stored orientation to prevent re-detection on subsequent runs.
+			// WP_Image_Editor_Imagick::flip() does not reset the EXIF orientation tag in the
+			// file, so the file may still report a non-normal orientation even though the pixels
+			// have been corrected. Forcing orientation to 0 in the stored metadata ensures the
+			// next run reports "No orientation fix required".
+			if ( isset( $metadata['image_meta']['orientation'] ) ) {
+				$metadata['image_meta']['orientation'] = 0;
+			}
+
 			wp_update_attachment_metadata( $id, $metadata );
 
-			if ( isset( $image_meta['orientation'] ) && absint( $image_meta['orientation'] ) === 0 ) {
-				return true;
-			}
+			return true;
 		}
 
 		return false;
