@@ -1466,7 +1466,23 @@ class Media_Command extends WP_CLI_Command {
 		$metadata   = wp_get_attachment_metadata( $id );
 		$image_meta = is_array( $metadata ) && ! empty( $metadata['image_meta'] ) ? $metadata['image_meta'] : [];
 
-		if ( isset( $image_meta['orientation'] ) && absint( $image_meta['orientation'] ) > 1 ) {
+		// Determine orientation from DB metadata first.
+		$orientation = isset( $image_meta['orientation'] ) ? absint( $image_meta['orientation'] ) : 0;
+
+		// If DB metadata is missing/incomplete, fall back to reading from the file's EXIF data.
+		if ( $orientation <= 1 ) {
+			$file_image_meta = wp_read_image_metadata( $full_size_path );
+			if ( is_array( $file_image_meta ) && isset( $file_image_meta['orientation'] ) ) {
+				$file_orientation = absint( $file_image_meta['orientation'] );
+				if ( $file_orientation > 1 ) {
+					// Merge file-based metadata so flip_rotate_image() has the orientation.
+					$image_meta  = array_merge( $image_meta, $file_image_meta );
+					$orientation = $file_orientation;
+				}
+			}
+		}
+
+		if ( $orientation > 1 ) {
 			if ( ! $dry_run ) {
 				WP_CLI::log( "{$progress} Fixing orientation for {$att_desc}." );
 				if ( false !== $this->flip_rotate_image( $id, is_array( $metadata ) ? $metadata : [], $image_meta, $full_size_path ) ) {
