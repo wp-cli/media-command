@@ -1518,7 +1518,7 @@ class Media_Command extends WP_CLI_Command {
 			// Update attachment metadata with newly generated data.
 			wp_update_attachment_metadata( $id, $metadata );
 
-			if ( isset( $image_meta['orientation'] ) && absint( $image_meta['orientation'] ) === 0 ) {
+			if ( ! isset( $image_meta['orientation'] ) || absint( $image_meta['orientation'] ) <= 1 ) {
 				return true;
 			}
 		}
