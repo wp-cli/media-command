@@ -1472,14 +1472,17 @@ class Media_Command extends WP_CLI_Command {
 		if ( $orientation > 1 ) {
 			// DB shows orientation > 1, but WP 5.3+ may have already auto-rotated the image
 			// on import (via wp_maybe_exif_rotate()), storing the original EXIF value before
-			// rotating. Verify against the file's current EXIF: if it is <= 1 the image is
-			// already correctly oriented and no fix is needed.
-			$file_image_meta = wp_read_image_metadata( $full_size_path );
-			if ( is_array( $file_image_meta ) && isset( $file_image_meta['orientation'] ) ) {
-				$raw_orientation  = $file_image_meta['orientation'];
-				$file_orientation = is_scalar( $raw_orientation ) ? absint( $raw_orientation ) : 0;
-				if ( $file_orientation <= 1 ) {
-					$orientation = $file_orientation;
+			// rotating. On WP < 5.3 this behavior does not occur, so skip the extra EXIF read.
+			if ( Utils\wp_version_compare( '5.3', '>=' ) ) {
+				// Verify against the file's current EXIF: if it is <= 1 the image is already
+				// correctly oriented and no fix is needed.
+				$file_image_meta = wp_read_image_metadata( $full_size_path );
+				if ( is_array( $file_image_meta ) && isset( $file_image_meta['orientation'] ) ) {
+					$raw_orientation  = $file_image_meta['orientation'];
+					$file_orientation = is_scalar( $raw_orientation ) ? absint( $raw_orientation ) : 0;
+					if ( $file_orientation <= 1 ) {
+						$orientation = $file_orientation;
+					}
 				}
 			}
 		} elseif ( empty( $image_meta ) || ! isset( $image_meta['orientation'] ) ) {
