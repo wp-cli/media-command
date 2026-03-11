@@ -1486,7 +1486,7 @@ class Media_Command extends WP_CLI_Command {
 		if ( $orientation > 1 ) {
 			if ( ! $dry_run ) {
 				WP_CLI::log( "{$progress} Fixing orientation for {$att_desc}." );
-				if ( false !== $this->flip_rotate_image( $id, is_array( $metadata ) ? $metadata : [], $image_meta, $full_size_path ) ) {
+				if ( false !== $this->flip_rotate_image( $id, $image_meta, $full_size_path ) ) {
 					++$successes;
 				} else {
 					++$errors;
@@ -1505,13 +1505,12 @@ class Media_Command extends WP_CLI_Command {
 	 * Perform image rotate operations on the image.
 	 *
 	 * @param int    $id             Attachment Id.
-	 * @param array  $metadata       Attachment Metadata.
 	 * @param array  $image_meta     `image_meta` information for the attachment.
 	 * @param string $full_size_path Path to original image.
 	 *
 	 * @return bool Whether the image rotation operation succeeded.
 	 */
-	private function flip_rotate_image( $id, $metadata, $image_meta, $full_size_path ) {
+	private function flip_rotate_image( $id, $image_meta, $full_size_path ) {
 		$editor = wp_get_image_editor( $full_size_path );
 
 		if ( ! is_wp_error( $editor ) ) {
@@ -1527,26 +1526,31 @@ class Media_Command extends WP_CLI_Command {
 				$editor->flip( $operations['flip'][0], $operations['flip'][1] );
 			}
 
-			// Save the image and generate metadata.
-			$saved    = $editor->save( $full_size_path );
+			$saved = $editor->save( $full_size_path );
+
+			if ( is_wp_error( $saved ) ) {
+				return false;
+			}
+
+			// Regenerate attachment metadata after the corrected image is saved.
 			$metadata = wp_generate_attachment_metadata( $id, $full_size_path );
 
-			// After a successful save, normalize the stored orientation to prevent
-			// re-detection on subsequent runs. WP_Image_Editor_Imagick::flip() does not
-			// reset the EXIF orientation tag, so the file may still report a non-normal
-			// orientation even though the pixels have been corrected. Because $editor->save()
-			// succeeded, the transformation was applied to the image; forcing orientation to 0
-			// in the stored metadata ensures the next run reports "No orientation fix required".
-			if ( ! is_wp_error( $saved ) && isset( $metadata['image_meta']['orientation'] ) ) {
+			if ( empty( $metadata ) ) {
+				return false;
+			}
+
+			// Normalize the stored orientation to prevent re-detection on subsequent runs.
+			// WP_Image_Editor_Imagick::flip() does not reset the EXIF orientation tag in the
+			// file, so the file may still report a non-normal orientation even though the pixels
+			// have been corrected. Forcing orientation to 0 in the stored metadata ensures the
+			// next run reports "No orientation fix required".
+			if ( isset( $metadata['image_meta']['orientation'] ) ) {
 				$metadata['image_meta']['orientation'] = 0;
 			}
 
-			// Update attachment metadata with newly generated data.
 			wp_update_attachment_metadata( $id, $metadata );
 
-			if ( ! is_wp_error( $saved ) ) {
-				return true;
-			}
+			return true;
 		}
 
 		return false;
