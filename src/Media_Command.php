@@ -775,6 +775,25 @@ class Media_Command extends WP_CLI_Command {
 		}
 		$site_icon_filter = $this->add_site_icon_filter( $id );
 
+		// On WP 5.3+, for the --only-missing case (no specific image sizes, not a PDF, and not a
+		// site-icon attachment), prefer wp_update_image_subsizes() which only generates sub-sizes
+		// that are absent from the attachment metadata and saves metadata incrementally after each
+		// sub-size, so partial progress is preserved if the server runs out of resources.
+		$can_use_wp53_subsizes = $only_missing && ! $image_sizes && ! $is_pdf && ! $site_icon_filter
+			&& function_exists( 'wp_get_missing_image_subsizes' ) && function_exists( 'wp_update_image_subsizes' );
+		if ( $can_use_wp53_subsizes ) {
+			$missing_sizes = wp_get_missing_image_subsizes( $id );
+			if ( ! empty( $missing_sizes ) ) {
+				wp_update_image_subsizes( $id );
+				WP_CLI::log( "$progress Regenerated thumbnails for $att_desc." );
+				++$successes;
+				return;
+			}
+			// $missing_sizes is empty but needs_regeneration() returned true, which means some
+			// thumbnail files are physically missing from disk even though the metadata is intact.
+			// Fall through to the wp_generate_attachment_metadata() path below.
+		}
+
 		// When regenerating specific image size(s), use the file that WordPress normally
 		// serves (the scaled version for big images), not the original pre-scaled file.
 		// This prevents wp_generate_attachment_metadata() from re-creating the scaled
