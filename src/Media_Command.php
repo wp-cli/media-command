@@ -784,7 +784,13 @@ class Media_Command extends WP_CLI_Command {
 		if ( $can_use_wp53_subsizes ) {
 			$missing_sizes = wp_get_missing_image_subsizes( $id );
 			if ( ! empty( $missing_sizes ) ) {
-				wp_update_image_subsizes( $id );
+				$result = wp_update_image_subsizes( $id );
+				if ( is_wp_error( $result ) ) {
+					WP_CLI::warning( sprintf( '%s (ID %d)', $result->get_error_message(), $id ) );
+					WP_CLI::log( "$progress Couldn't regenerate thumbnails for $att_desc." );
+					++$errors;
+					return;
+				}
 				WP_CLI::log( "$progress Regenerated thumbnails for $att_desc." );
 				++$successes;
 				return;
