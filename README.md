@@ -54,12 +54,49 @@ wp media
 
 
 
+### wp media fix-orientation
+
+Fix image orientation for one or more attachments.
+
+~~~
+wp media fix-orientation [<attachment-id>...] [--dry-run]
+~~~
+
+**OPTIONS**
+
+	[<attachment-id>...]
+		One or more IDs of the attachments to regenerate.
+
+	[--dry-run]
+		Check images needing orientation without performing the operation.
+
+**EXAMPLES**
+
+    # Fix orientation for all images.
+    $ wp media fix-orientation
+    1/3 Fixing orientation for "Landscape_4" (ID 62).
+    2/3 Fixing orientation for "Landscape_3" (ID 61).
+    3/3 Fixing orientation for "Landscape_2" (ID 60).
+    Success: Fixed 3 of 3 images.
+
+    # Fix orientation dry run.
+    $ wp media fix-orientation 63 --dry-run
+    1/1 "Portrait_6" (ID 63) will be affected.
+    Success: 1 of 1 image will be affected.
+
+    # Fix orientation for specific images.
+    $ wp media fix-orientation 63
+    1/1 Fixing orientation for "Portrait_6" (ID 63).
+    Success: Fixed 1 of 1 images.
+
+
+
 ### wp media import
 
 Creates attachments from local files or URLs.
 
 ~~~
-wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--file_name=<name>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--preserve-filetime] [--featured_image] [--porcelain[=<field>]]
+wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--file_name=<name>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--destination-dir=<destination-dir>] [--preserve-filetime] [--featured_image] [--porcelain[=<field>]]
 ~~~
 
 **OPTIONS**
@@ -92,7 +129,13 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
 
 	[--skip-copy]
 		If set, media files (local only) are imported to the library but not moved on disk.
-		File names will not be run through wp_unique_filename() with this set.
+		File names will not be run through wp_unique_filename() with this set. When used, files
+		will remain at their current location and will not be copied into any destination directory.
+
+	[--destination-dir=<destination-dir>]
+		Path to the destination directory for uploaded imported files.
+		Can be absolute or relative to ABSPATH. Ignored when used together with --skip-copy, as
+		files are not moved on disk in that case.
 
 	[--preserve-filetime]
 		Use the file modified time as the post published & modified dates.
@@ -145,7 +188,7 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
 Regenerates thumbnails for one or more attachments.
 
 ~~~
-wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-delete] [--only-missing] [--delete-unknown] [--yes]
+wp media regenerate [<attachment-id>...] [--image_size=<image_size>...] [--skip-delete] [--only-missing] [--delete-unknown] [--yes]
 ~~~
 
 **OPTIONS**
@@ -153,8 +196,8 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-del
 	[<attachment-id>...]
 		One or more IDs of the attachments to regenerate.
 
-	[--image_size=<image_size>]
-		Name of the image size to regenerate. Only thumbnails of this image size will be regenerated, thumbnails of other image sizes will not.
+	[--image_size=<image_size>...]
+		Name of the image size to regenerate. Repeat the flag to specify multiple. Only thumbnails of specified image size(s) will be regenerated, thumbnails of other image sizes will not.
 
 	[--skip-delete]
 		Skip deletion of the original thumbnails. If your thumbnails are linked from sources outside your control, it's likely best to leave them around. Defaults to false.
@@ -202,6 +245,15 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>] [--skip-del
     1/3 Regenerated "large" thumbnail for "Sydney Harbor Bridge" (ID 760).
     2/3 No "large" thumbnail regeneration needed for "Boardwalk" (ID 757).
     3/3 Regenerated "large" thumbnail for "Sunburst Over River" (ID 756).
+    Success: Regenerated 3 of 3 images.
+
+    # Re-generate only the thumbnails of "large" and "medium" image sizes for all images.
+    $ wp media regenerate --image_size=large --image_size=medium
+    Do you really want to regenerate the "large", "medium" image sizes for all images? [y/n] y
+    Found 3 images to regenerate.
+    1/3 Regenerated "large", "medium" thumbnails for "Sydney Harbor Bridge" (ID 760).
+    2/3 No "large", "medium" thumbnail regeneration needed for "Boardwalk" (ID 757).
+    3/3 Regenerated "large", "medium" thumbnails for "Sunburst Over River" (ID 756).
     Success: Regenerated 3 of 3 images.
 
 
