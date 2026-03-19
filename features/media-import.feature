@@ -318,3 +318,69 @@ Feature: Manage WordPress attachments
       """
       /foo/large-image.jpg
       """
+
+  Scenario: Skip importing a local file that was already imported
+    Given download:
+      | path                        | url                                          |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+    And STDOUT should not be empty
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --skip-duplicates`
+    Then STDOUT should contain:
+      """
+      Skipped importing file
+      """
+    And STDOUT should contain:
+      """
+      already exists as attachment ID {ATTACHMENT_ID}
+      """
+    And STDOUT should contain:
+      """
+      Success: Imported 0 of 1 items (1 skipped).
+      """
+    And the return code should be 0
+
+  Scenario: Skip importing a remote file that was already imported
+    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+    And STDOUT should not be empty
+
+    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --skip-duplicates`
+    Then STDOUT should contain:
+      """
+      Skipped importing file
+      """
+    And STDOUT should contain:
+      """
+      already exists as attachment ID {ATTACHMENT_ID}
+      """
+    And STDOUT should contain:
+      """
+      Success: Imported 0 of 1 items (1 skipped).
+      """
+    And the return code should be 0
+
+  Scenario: Import new file while skipping duplicates from a batch
+    Given download:
+      | path                        | url                                          |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg`
+    Then STDOUT should contain:
+      """
+      Success: Imported 1 of 1 items.
+      """
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg 'http://wp-cli.org/behat-data/codeispoetry.png' --skip-duplicates`
+    Then STDOUT should contain:
+      """
+      Skipped importing file
+      """
+    And STDOUT should contain:
+      """
+      Success: Imported 1 of 2 items (1 skipped).
+      """
+    And the return code should be 0

@@ -270,6 +270,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--featured_image]
 	 * : If set, set the imported image as the Featured Image of the post it is attached to.
 	 *
+	 * [--skip-duplicates]
+	 * : If set, media files that have already been imported will be skipped.
+	 *
 	 * [--porcelain[=<field>]]
 	 * : Output a single field for each imported image. Defaults to attachment ID when used as flag.
 	 * ---
@@ -308,7 +311,7 @@ class Media_Command extends WP_CLI_Command {
 	 *     http://wordpress-develop.dev/wp-header-logo/
 	 *
 	 * @param string[] $args Positional arguments.
-	 * @param array{post_id?: string, post_name?: string, file_name?: string, title?: string, caption?: string, alt?: string, desc?: string, 'skip-copy'?: bool, 'destination-dir'?: string, 'preserve-filetime'?: bool, featured_image?: bool, porcelain?: bool|string} $assoc_args Associative arguments.
+	 * @param array{post_id?: string, post_name?: string, file_name?: string, title?: string, caption?: string, alt?: string, desc?: string, 'skip-copy'?: bool, 'destination-dir'?: string, 'preserve-filetime'?: bool, featured_image?: bool, 'skip-duplicates'?: bool, porcelain?: bool|string} $assoc_args Associative arguments.
 	 * @return void
 	 */
 	public function import( $args, $assoc_args = array() ) {
@@ -361,6 +364,7 @@ class Media_Command extends WP_CLI_Command {
 		$number    = 0;
 		$successes = 0;
 		$errors    = 0;
+		$skips     = 0;
 		foreach ( $args as $file ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
@@ -379,6 +383,16 @@ class Media_Command extends WP_CLI_Command {
 					++$errors;
 					continue;
 				}
+				if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
+					$existing = $this->find_duplicate_attachment( Utils\basename( $file ), false );
+					if ( false !== $existing ) {
+						if ( ! $porcelain ) {
+							WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
+						}
+						++$skips;
+						continue;
+					}
+				}
 				if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
 					$tempfile = $file;
 				} else {
@@ -390,6 +404,16 @@ class Media_Command extends WP_CLI_Command {
 					$file_time = @filemtime( $file );
 				}
 			} else {
+				if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
+					$existing = $this->find_duplicate_attachment( $file, true );
+					if ( false !== $existing ) {
+						if ( ! $porcelain ) {
+							WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
+						}
+						++$skips;
+						continue;
+					}
+				}
 				$tempfile = download_url( $file );
 				if ( is_wp_error( $tempfile ) ) {
 					WP_CLI::warning(
@@ -542,7 +566,7 @@ class Media_Command extends WP_CLI_Command {
 
 		// Report the result of the operation
 		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
-			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors );
+			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors, $skips );
 		} elseif ( $errors ) {
 			WP_CLI::halt( 1 );
 		}
@@ -690,6 +714,40 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		return $filename;
+	}
+
+	/**
+	 * Finds an existing attachment by filename or source URL.
+	 *
+	 * For local files, matches against the basename of the `_wp_attached_file` meta value.
+	 * This will match the first attachment found when multiple files share the same basename
+	 * in different upload subdirectories.
+	 *
+	 * @param string $file_or_name Basename of the local file, or full URL for remote files.
+	 * @param bool   $is_remote    Whether to search by source URL (remote) or by filename (local).
+	 * @return int|false Attachment ID if found, false otherwise.
+	 */
+	private function find_duplicate_attachment( $file_or_name, $is_remote ) {
+		global $wpdb;
+
+		if ( $is_remote ) {
+			$result = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_source_url' AND meta_value = %s LIMIT 1",
+					$file_or_name
+				)
+			);
+		} else {
+			$result = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND (meta_value = %s OR meta_value LIKE %s) LIMIT 1",
+					$file_or_name,
+					'%/' . $wpdb->esc_like( $file_or_name )
+				)
+			);
+		}
+
+		return $result ? (int) $result : false;
 	}
 
 	/**
