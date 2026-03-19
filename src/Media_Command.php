@@ -1037,6 +1037,10 @@ class Media_Command extends WP_CLI_Command {
 		$sizes_to_prune   = array();
 
 		foreach ( $metadata['sizes'] as $size_name => $size_meta ) {
+			// The 'full' size is not an intermediate size and should never be pruned.
+			if ( 'full' === $size_name ) {
+				continue;
+			}
 			$is_registered = in_array( $size_name, $registered_sizes, true );
 
 			// Determine whether this size should be pruned.
