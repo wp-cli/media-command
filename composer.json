@@ -39,6 +39,7 @@
             "media fix-orientation",
             "media import",
             "media regenerate",
+            "media replace",
             "media image-size"
         ]
     },
