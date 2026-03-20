@@ -656,11 +656,13 @@ class Media_Command extends WP_CLI_Command {
 			array(
 				'ID'             => $attachment_id,
 				'post_mime_type' => $new_mime_type,
-			)
+			),
+			true
 		);
-		if ( is_wp_error( $updated ) ) {
+		if ( false === $updated || is_wp_error( $updated ) ) {
+			$message = is_wp_error( $updated ) ? $updated->get_error_message() : 'Unknown error.';
 			WP_CLI::warning(
-				sprintf( 'Failed to update MIME type for attachment %d: %s', $attachment_id, $updated->get_error_message() )
+				sprintf( 'Failed to update MIME type for attachment %d: %s', $attachment_id, $message )
 			);
 		}
 
