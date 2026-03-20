@@ -1,6 +1,7 @@
 <?php
 
 use WP_CLI\Utils;
+use WP_CLI\Path;
 
 /**
  * Imports files as attachments, regenerates thumbnails, or lists registered image sizes.
@@ -389,7 +390,7 @@ class Media_Command extends WP_CLI_Command {
 				} else {
 					$tempfile = $this->make_copy( $file );
 				}
-				$name = Utils\basename( $file );
+				$name = Path::basename( $file );
 
 				if ( Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
 					$file_time = @filemtime( $file );
@@ -407,7 +408,7 @@ class Media_Command extends WP_CLI_Command {
 					++$errors;
 					continue;
 				}
-				$name = (string) strtok( Utils\basename( $file ), '?' );
+				$name = (string) strtok( Path::basename( $file ), '?' );
 			}
 
 			if ( ! empty( $assoc_args['file_name'] ) ) {
@@ -453,7 +454,7 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			if ( empty( $post_array['post_title'] ) ) {
-				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Utils\basename( $file ) );
+				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Path::basename( $file ) );
 			}
 
 			if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
@@ -684,7 +685,7 @@ class Media_Command extends WP_CLI_Command {
 	 */
 	private function make_copy( $path ) {
 		$dir      = get_temp_dir();
-		$filename = Utils\basename( $path );
+		$filename = Path::basename( $path );
 		if ( empty( $filename ) ) {
 			$filename = (string) time();
 		}
