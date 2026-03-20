@@ -1841,14 +1841,31 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		$where_sql = implode( ' OR ', $where_clauses );
+
+		// First, find the IDs of posts whose content will be updated so we can clear their object cache entries.
 		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$post_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT ID FROM {$wpdb->posts} WHERE {$where_sql}",
+				...$where_args
+			)
+		);
+
 		$result = $wpdb->query(
-			$wpdb->prepare( "UPDATE {$wpdb->posts} SET post_content = {$replace_expr} WHERE {$where_sql}", ...array_merge( $replace_args, $where_args ) )
+			$wpdb->prepare(
+				"UPDATE {$wpdb->posts} SET post_content = {$replace_expr} WHERE {$where_sql}",
+				...array_merge( $replace_args, $where_args )
+			)
 		);
 		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		if ( false === $result ) {
 			WP_CLI::warning( 'Failed to update post content references for attachment.' );
 		} else {
+			if ( ! empty( $post_ids ) ) {
+				foreach ( $post_ids as $post_id ) {
+					clean_post_cache( (int) $post_id );
+				}
+			}
 			wp_cache_set( 'last_changed', microtime(), 'posts' );
 		}
 	}
