@@ -874,7 +874,8 @@ class Media_Command extends WP_CLI_Command {
 				/**
 				 * @var array<string, array<string, mixed>> $new_sizes
 				 */
-				$new_sizes = is_array( $metadata['sizes'] ) ? $metadata['sizes'] : array();
+				$new_sizes        = is_array( $metadata['sizes'] ) ? $metadata['sizes'] : array();
+				$url_replacements = array();
 				foreach ( $old_size_urls as $size => $old_url ) {
 					$size_data = $new_sizes[ $size ] ?? null;
 					if ( ! is_array( $size_data ) || empty( $size_data['file'] ) ) {
@@ -885,8 +886,11 @@ class Media_Command extends WP_CLI_Command {
 					 */
 					$new_url = $dir_url . $size_data['file'];
 					if ( $old_url !== $new_url ) {
-						$this->update_post_content_for_attachment( $old_url, $new_url );
+						$url_replacements[ $old_url ] = $new_url;
 					}
+				}
+				if ( ! empty( $url_replacements ) ) {
+					$this->update_post_content_for_attachment( $url_replacements );
 				}
 			}
 		}
@@ -1809,24 +1813,43 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * Updates post content replacing an old attachment URL with a new one.
+	 * Updates post content replacing old attachment URLs with new ones in a single query.
 	 *
-	 * @param string $old_url Old thumbnail URL to search for.
-	 * @param string $new_url New thumbnail URL to replace with.
+	 * Applies all replacements as nested REPLACE() calls so only one table scan is needed.
+	 *
+	 * @param array<string, string> $url_replacements Map of old URL => new URL.
 	 * @return void
 	 */
-	private function update_post_content_for_attachment( $old_url, $new_url ) {
+	private function update_post_content_for_attachment( array $url_replacements ) {
 		global $wpdb;
+
+		if ( empty( $url_replacements ) ) {
+			return;
+		}
+
+		$replace_expr  = 'post_content';
+		$replace_args  = array();
+		$where_clauses = array();
+		$where_args    = array();
+
+		foreach ( $url_replacements as $old_url => $new_url ) {
+			$replace_expr    = "REPLACE($replace_expr, %s, %s)";
+			$replace_args[]  = $old_url;
+			$replace_args[]  = $new_url;
+			$where_clauses[] = 'post_content LIKE %s';
+			$where_args[]    = '%' . $wpdb->esc_like( $old_url ) . '%';
+		}
+
+		$where_sql = implode( ' OR ', $where_clauses );
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		$result = $wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$wpdb->posts} SET post_content = REPLACE(post_content, %s, %s) WHERE post_content LIKE %s",
-				$old_url,
-				$new_url,
-				'%' . $wpdb->esc_like( $old_url ) . '%'
-			)
+			$wpdb->prepare( "UPDATE {$wpdb->posts} SET post_content = {$replace_expr} WHERE {$where_sql}", ...array_merge( $replace_args, $where_args ) )
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		if ( false === $result ) {
-			WP_CLI::warning( sprintf( 'Failed to update post content references from "%s" to "%s".', $old_url, $new_url ) );
+			WP_CLI::warning( 'Failed to update post content references for attachment.' );
+		} else {
+			wp_cache_set( 'last_changed', microtime(), 'posts' );
 		}
 	}
 }
