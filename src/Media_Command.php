@@ -679,7 +679,7 @@ class Media_Command extends WP_CLI_Command {
 			WP_CLI::log(
 				sprintf( "Replaced file for attachment ID %d with '%s'.", $attachment_id, $orig_filename )
 			);
-			Utils\report_batch_operation_results( 'image', 'replace', 1, 1, 0 );
+			Utils\report_batch_operation_results( 'attachment', 'replace', 1, 1, 0 );
 		}
 	}
 
