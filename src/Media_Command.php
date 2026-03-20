@@ -384,7 +384,7 @@ class Media_Command extends WP_CLI_Command {
 					continue;
 				}
 				if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
-					$existing = $this->find_duplicate_attachment( Utils\basename( $file ), false );
+					$existing = $this->find_duplicate_attachment( Utils\basename( $file ) );
 					if ( false !== $existing ) {
 						if ( ! $porcelain ) {
 							WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
@@ -405,7 +405,7 @@ class Media_Command extends WP_CLI_Command {
 				}
 			} else {
 				if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
-					$existing = $this->find_duplicate_attachment( $file, true );
+					$existing = $this->find_duplicate_attachment( (string) explode( '?', Utils\basename( $file ), 2 )[0] );
 					if ( false !== $existing ) {
 						if ( ! $porcelain ) {
 							WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
@@ -566,7 +566,7 @@ class Media_Command extends WP_CLI_Command {
 
 		// Report the result of the operation
 		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
-			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors, $skips );
+			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors, Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ? $skips : null );
 		} elseif ( $errors ) {
 			WP_CLI::halt( 1 );
 		}
@@ -717,35 +717,29 @@ class Media_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * Finds an existing attachment by filename or source URL.
+	 * Finds an existing attachment whose basename matches the given filename.
 	 *
-	 * For local files, matches against the basename of the `_wp_attached_file` meta value.
-	 * This will match the first attachment found when multiple files share the same basename
-	 * in different upload subdirectories.
+	 * Searches the `_wp_attached_file` post meta, which stores the path relative to
+	 * the uploads directory (e.g. '2026/03/image.jpg' or just 'image.jpg'). Matches
+	 * the first attachment found when multiple files share the same basename across
+	 * different upload subdirectories.
 	 *
-	 * @param string $file_or_name Basename of the local file, or full URL for remote files.
-	 * @param bool   $is_remote    Whether to search by source URL (remote) or by filename (local).
+	 * @param string $basename Filename basename to search for (e.g. 'image.jpg').
 	 * @return int|false Attachment ID if found, false otherwise.
 	 */
-	private function find_duplicate_attachment( $file_or_name, $is_remote ) {
+	private function find_duplicate_attachment( $basename ) {
 		global $wpdb;
 
-		if ( $is_remote ) {
-			$result = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_source_url' AND meta_value = %s LIMIT 1",
-					$file_or_name
-				)
-			);
-		} else {
-			$result = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND (meta_value = %s OR meta_value LIKE %s) LIMIT 1",
-					$file_or_name,
-					'%/' . $wpdb->esc_like( $file_or_name )
-				)
-			);
-		}
+		$slash_basename = '/' . $basename;
+
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND (meta_value = %s OR RIGHT(meta_value, %d) = %s) LIMIT 1",
+				$basename,
+				mb_strlen( $slash_basename, 'UTF-8' ),
+				$slash_basename
+			)
+		);
 
 		return $result ? (int) $result : false;
 	}
