@@ -732,11 +732,17 @@ class Media_Command extends WP_CLI_Command {
 
 		$slash_basename = '/' . $basename;
 
+		if ( function_exists( 'mb_strlen' ) ) {
+			$slash_basename_length = mb_strlen( $slash_basename, 'UTF-8' );
+		} else {
+			$slash_basename_length = strlen( $slash_basename );
+		}
+
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND (meta_value = %s OR RIGHT(meta_value, %d) = %s) LIMIT 1",
 				$basename,
-				mb_strlen( $slash_basename, 'UTF-8' ),
+				$slash_basename_length,
 				$slash_basename
 			)
 		);
