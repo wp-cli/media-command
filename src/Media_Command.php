@@ -751,7 +751,7 @@ class Media_Command extends WP_CLI_Command {
 				WP_CLI::error( "Unable to replace attachment {$attachment_id} with file '{$file}'. Reason: File doesn't exist." );
 			}
 			$tempfile = $this->make_copy( $file );
-			$name     = Utils\basename( $file );
+			$name     = Path::basename( $file );
 		} else {
 			$tempfile = download_url( $file );
 			if ( is_wp_error( $tempfile ) ) {
@@ -764,7 +764,7 @@ class Media_Command extends WP_CLI_Command {
 					)
 				);
 			}
-			$name = (string) strtok( Utils\basename( $file ), '?' );
+			$name = (string) strtok( Path::basename( $file ), '?' );
 		}
 
 		// Get old metadata before replacement for cleanup.
