@@ -656,11 +656,12 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			// For big-image scaling (WP 5.3+), delete the original image if present in metadata.
-			if ( ! empty( $old_metadata['original_image'] ) && ! empty( $old_metadata['file'] ) ) {
+			$original_image = isset( $old_metadata['original_image'] ) ? (string) $old_metadata['original_image'] : '';
+			if ( '' !== $original_image && ! empty( $old_metadata['file'] ) ) {
 				$uploads = wp_get_upload_dir();
 				if ( ! empty( $uploads['basedir'] ) ) {
-					$dirname              = dirname( $old_metadata['file'] );
-					$original_image_rel   = ( '.' === $dirname || '/' === $dirname ) ? $old_metadata['original_image'] : $dirname . '/' . $old_metadata['original_image'];
+					$dirname                = dirname( $old_metadata['file'] );
+					$original_image_rel     = ( '.' === $dirname || '/' === $dirname ) ? $original_image : $dirname . '/' . $original_image;
 					$original_image_abspath = $uploads['basedir'] . '/' . $original_image_rel;
 					if ( $original_image_abspath !== $new_file_path && file_exists( $original_image_abspath ) ) {
 						@unlink( $original_image_abspath );
@@ -677,10 +678,9 @@ class Media_Command extends WP_CLI_Command {
 			),
 			true
 		);
-		if ( false === $updated || is_wp_error( $updated ) ) {
-			$message = is_wp_error( $updated ) ? $updated->get_error_message() : 'Unknown error.';
+		if ( is_wp_error( $updated ) ) {
 			WP_CLI::warning(
-				sprintf( 'Failed to update MIME type for attachment %d: %s', $attachment_id, $message )
+				sprintf( 'Failed to update MIME type for attachment %d: %s', $attachment_id, $updated->get_error_message() )
 			);
 		}
 
@@ -694,7 +694,7 @@ class Media_Command extends WP_CLI_Command {
 		} else {
 			WP_CLI::warning(
 				sprintf(
-					"Failed to generate new attachment metadata for attachment ID %d. Existing metadata has been preserved.",
+					'Failed to generate new attachment metadata for attachment ID %d. Existing metadata has been preserved.',
 					$attachment_id
 				)
 			);
