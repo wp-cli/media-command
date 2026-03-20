@@ -126,4 +126,4 @@ Feature: Replace WordPress attachment files
       Success: Replaced 1 of 1 attachments.
       """
 
-    Then the wp-content/uploads/{OLD_FILE} file should exist
+    And the wp-content/uploads/{OLD_FILE} file should exist
