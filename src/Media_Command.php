@@ -1846,14 +1846,14 @@ class Media_Command extends WP_CLI_Command {
 		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		$post_ids = $wpdb->get_col(
 			$wpdb->prepare(
-				"SELECT ID FROM {$wpdb->posts} WHERE {$where_sql}",
+				"SELECT ID FROM {$wpdb->posts} WHERE post_type <> 'revision' AND ({$where_sql})",
 				...$where_args
 			)
 		);
 
 		$result = $wpdb->query(
 			$wpdb->prepare(
-				"UPDATE {$wpdb->posts} SET post_content = {$replace_expr} WHERE {$where_sql}",
+				"UPDATE {$wpdb->posts} SET post_content = {$replace_expr} WHERE post_type <> 'revision' AND ({$where_sql})",
 				...array_merge( $replace_args, $where_args )
 			)
 		);
