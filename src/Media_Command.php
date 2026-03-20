@@ -671,7 +671,16 @@ class Media_Command extends WP_CLI_Command {
 
 		// Generate and update new attachment metadata.
 		$new_metadata = wp_generate_attachment_metadata( $attachment_id, $new_file_path );
-		wp_update_attachment_metadata( $attachment_id, $new_metadata );
+		if ( is_array( $new_metadata ) && ! empty( $new_metadata ) ) {
+			wp_update_attachment_metadata( $attachment_id, $new_metadata );
+		} else {
+			WP_CLI::warning(
+				sprintf(
+					"Failed to generate new attachment metadata for attachment ID %d. Existing metadata has been preserved.",
+					$attachment_id
+				)
+			);
+		}
 
 		if ( Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
 			WP_CLI::line( (string) $attachment_id );
