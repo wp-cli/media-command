@@ -530,7 +530,7 @@ class Media_Command extends WP_CLI_Command {
 					continue;
 				}
 				if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
-					$existing = $this->find_duplicate_attachment( Utils\basename( $file ) );
+					$existing = $this->find_duplicate_attachment( Path::basename( $file ) );
 					if ( false !== $existing ) {
 						if ( ! $porcelain ) {
 							WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
@@ -551,7 +551,7 @@ class Media_Command extends WP_CLI_Command {
 				}
 			} else {
 				if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
-					$existing = $this->find_duplicate_attachment( (string) explode( '?', Utils\basename( $file ), 2 )[0] );
+					$existing = $this->find_duplicate_attachment( (string) explode( '?', Path::basename( $file ), 2 )[0] );
 					if ( false !== $existing ) {
 						if ( ! $porcelain ) {
 							WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
@@ -572,7 +572,7 @@ class Media_Command extends WP_CLI_Command {
 					++$errors;
 					continue;
 				}
-				$name = (string)  explode( '?', Path::basename( $file ), 2 )[0];
+				$name = (string) explode( '?', Path::basename( $file ), 2 )[0];
 			}
 
 			if ( ! empty( $assoc_args['file_name'] ) ) {
