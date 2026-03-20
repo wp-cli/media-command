@@ -720,9 +720,11 @@ class Media_Command extends WP_CLI_Command {
 	 * Finds an existing attachment whose basename matches the given filename.
 	 *
 	 * Searches the `_wp_attached_file` post meta, which stores the path relative to
-	 * the uploads directory (e.g. '2026/03/image.jpg' or just 'image.jpg'). Matches
-	 * the first attachment found when multiple files share the same basename across
-	 * different upload subdirectories.
+	 * the uploads directory (e.g. '2026/03/image.jpg' or just 'image.jpg'). Also
+	 * checks `_wp_original_image_file` (absolute path, WP 5.3+) to handle images
+	 * that were scaled down on upload (stored as 'image-scaled.jpg') but whose
+	 * original filename is still 'image.jpg'. Matches the first attachment found
+	 * when multiple files share the same basename across different subdirectories.
 	 *
 	 * @param string $basename Filename basename to search for (e.g. 'image.jpg').
 	 * @return int|false Attachment ID if found, false otherwise.
@@ -746,7 +748,7 @@ class Media_Command extends WP_CLI_Command {
 				     ON p.ID = pm.post_id
 				 WHERE p.post_type = 'attachment'
 				   AND p.post_status != 'trash'
-				   AND pm.meta_key = '_wp_attached_file'
+				   AND pm.meta_key IN ('_wp_attached_file', '_wp_original_image_file')
 				   AND ( pm.meta_value = %s OR RIGHT(pm.meta_value, %d) = %s )
 				 LIMIT 1",
 				$basename,
