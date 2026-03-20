@@ -1046,9 +1046,8 @@ class Media_Command extends WP_CLI_Command {
 
 			// Determine whether this size should be pruned.
 			if ( $image_sizes ) {
-				// Specific sizes requested: prune if explicitly listed, or if abandoned with --remove-abandoned.
-				$should_prune = in_array( $size_name, $image_sizes, true )
-					|| ( ! $is_registered && $remove_abandoned );
+				// Specific sizes requested: only prune if explicitly listed.
+				$should_prune = in_array( $size_name, $image_sizes, true );
 			} else {
 				// No specific sizes: prune all registered sizes, plus abandoned if requested.
 				$should_prune = $is_registered || $remove_abandoned;
