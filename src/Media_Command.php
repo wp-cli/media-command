@@ -1,6 +1,7 @@
 <?php
 
 use WP_CLI\Utils;
+use WP_CLI\Path;
 
 /**
  * Imports files as attachments, regenerates thumbnails, replaces existing attachment files, or lists registered image sizes.
@@ -38,6 +39,14 @@ use WP_CLI\Utils;
  *     1/1 Fixing orientation for "Portrait_6" (ID 63).
  *     Success: Fixed 1 of 1 images.
  *
+ *     # Remove all generated thumbnails, without confirmation.
+ *     $ wp media prune --yes
+ *     Found 3 images to prune.
+ *     1/3 Pruned thumbnails for "Sydney Harbor Bridge" (ID 760).
+ *     2/3 Pruned thumbnails for "Boardwalk" (ID 757).
+ *     3/3 Pruned thumbnails for "Sunburst Over River" (ID 756).
+ *     Success: Pruned 3 of 3 images.
+ *
  * @package wp-cli
  */
 class Media_Command extends WP_CLI_Command {
@@ -73,6 +82,9 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * [--delete-unknown]
 	 * : Only delete thumbnails for old unregistered image sizes.
+	 *
+	 * [--update-attachment-refs]
+	 * : Update references to regenerated thumbnails in post content.
 	 *
 	 * [--yes]
 	 * : Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
@@ -123,7 +135,7 @@ class Media_Command extends WP_CLI_Command {
 	 *     Success: Regenerated 3 of 3 images.
 	 *
 	 * @param string[] $args Positional arguments.
-	 * @param array{image_size?: string|string[], 'skip-delete'?: bool, 'only-missing'?: bool, 'delete-unknown'?: bool, yes?: bool} $assoc_args Associative arguments.
+	 * @param array{image_size?: string|string[], 'skip-delete'?: bool, 'only-missing'?: bool, 'delete-unknown'?: bool, 'update-attachment-refs'?: bool, yes?: bool} $assoc_args Associative arguments.
 	 * @return void
 	 */
 	public function regenerate( $args, $assoc_args = array() ) {
@@ -172,6 +184,8 @@ class Media_Command extends WP_CLI_Command {
 			$skip_delete = false;
 		}
 
+		$update_attachment_refs = Utils\get_flag_value( $assoc_args, 'update-attachment-refs' );
+
 		$additional_mime_types = array();
 
 		if ( Utils\wp_version_compare( '4.7', '>=' ) ) {
@@ -212,7 +226,7 @@ class Media_Command extends WP_CLI_Command {
 				// @phpstan-ignore function.deprecated
 				Utils\wp_clear_object_cache();
 			}
-			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $number . '/' . $count, $successes, $errors, $skips );
+			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $update_attachment_refs, $number . '/' . $count, $successes, $errors, $skips );
 		}
 
 		if ( isset( $image_size_filters ) ) {
@@ -220,6 +234,138 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		Utils\report_batch_operation_results( 'image', 'regenerate', $count, $successes, $errors, $skips );
+	}
+
+	/**
+	 * Removes all generated image files for one or more attachments.
+	 *
+	 * Generated image files for registered sizes can be recreated with
+	 * `wp media regenerate`. Thumbnails for image sizes that are no longer
+	 * registered are kept by default because they cannot be regenerated; use
+	 * `--remove-abandoned` to remove them as well.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [<attachment-id>...]
+	 * : One or more IDs of the attachments to prune.
+	 *
+	 * [--image_size=<image_size>...]
+	 * : Name of the image size to remove. Repeat the flag to specify multiple. Only thumbnails of specified image size(s) will be removed, thumbnails of other image sizes will not.
+	 *
+	 * [--remove-abandoned]
+	 * : Also remove thumbnails for image sizes that are no longer registered.
+	 *
+	 * [--yes]
+	 * : Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # Remove all generated thumbnails for all images, without confirmation.
+	 *     $ wp media prune --yes
+	 *     Found 3 images to prune.
+	 *     1/3 Pruned thumbnails for "Sydney Harbor Bridge" (ID 760).
+	 *     2/3 Pruned thumbnails for "Boardwalk" (ID 757).
+	 *     3/3 Pruned thumbnails for "Sunburst Over River" (ID 756).
+	 *     Success: Pruned 3 of 3 images.
+	 *
+	 *     # Remove only the "large" thumbnails for all images.
+	 *     $ wp media prune --image_size=large
+	 *     Do you really want to prune the "large" image size for all images? [y/n] y
+	 *     Found 3 images to prune.
+	 *     1/3 Pruned thumbnails for "Sydney Harbor Bridge" (ID 760).
+	 *     2/3 Pruned thumbnails for "Boardwalk" (ID 757).
+	 *     3/3 Pruned thumbnails for "Sunburst Over River" (ID 756).
+	 *     Success: Pruned 3 of 3 images.
+	 *
+	 *     # Remove all thumbnails including those for unregistered sizes.
+	 *     $ wp media prune --remove-abandoned --yes
+	 *     Found 3 images to prune.
+	 *     1/3 Pruned thumbnails for "Sydney Harbor Bridge" (ID 760).
+	 *     2/3 Pruned thumbnails for "Boardwalk" (ID 757).
+	 *     3/3 Pruned thumbnails for "Sunburst Over River" (ID 756).
+	 *     Success: Pruned 3 of 3 images.
+	 *
+	 * @param string[] $args Positional arguments.
+	 * @param array{image_size?: string|string[], 'remove-abandoned'?: bool, yes?: bool} $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public function prune( $args, $assoc_args = array() ) {
+		// Extract image_size separately as it may be a string or an array of strings.
+		$image_size_raw = $assoc_args['image_size'] ?? null;
+		unset( $assoc_args['image_size'] );
+
+		// Normalize to an array: with WP-CLI 3.x and the ellipsis syntax, repeated flags yield an array.
+		// With earlier versions a single string is returned.
+		$image_sizes = array();
+		if ( null !== $image_size_raw ) {
+			$image_sizes = is_array( $image_size_raw ) ? $image_size_raw : [ $image_size_raw ];
+		}
+
+		if ( $image_sizes ) {
+			$registered_sizes = get_intermediate_image_sizes();
+			foreach ( $image_sizes as $size ) {
+				if ( ! in_array( $size, $registered_sizes, true ) ) {
+					WP_CLI::error( sprintf( 'Unknown image size "%s".', $size ) );
+				}
+			}
+		}
+
+		$remove_abandoned = Utils\get_flag_value( $assoc_args, 'remove-abandoned' );
+
+		if ( empty( $args ) ) {
+			if ( $image_sizes ) {
+				WP_CLI::confirm(
+					sprintf(
+						'Do you really want to prune the %s for all images?',
+						$this->get_image_sizes_description( $image_sizes, 'image size' )
+					),
+					$assoc_args
+				);
+			} else {
+				WP_CLI::confirm( 'Do you really want to prune all images?', $assoc_args );
+			}
+		}
+
+		$additional_mime_types = array();
+
+		if ( Utils\wp_version_compare( '4.7', '>=' ) ) {
+			$additional_mime_types[] = 'application/pdf';
+		}
+
+		$images = $this->get_images( $args, $additional_mime_types );
+		$count  = $images->post_count;
+
+		if ( ! $count ) {
+			WP_CLI::warning( 'No images found.' );
+			return;
+		}
+
+		WP_CLI::log(
+			sprintf(
+				'Found %1$d %2$s to prune.',
+				$count,
+				_n( 'image', 'images', $count )
+			)
+		);
+
+		$number    = 0;
+		$successes = 0;
+		$errors    = 0;
+		$skips     = 0;
+
+		/**
+		 * @var int $post_id
+		 */
+		foreach ( $images->posts as $post_id ) {
+			++$number;
+			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				// @phpstan-ignore function.deprecated
+				Utils\wp_clear_object_cache();
+			}
+			$this->process_prune( $post_id, $image_sizes, $remove_abandoned, $number . '/' . $count, $successes, $errors, $skips );
+		}
+
+		Utils\report_batch_operation_results( 'image', 'prune', $count, $successes, $errors, $skips );
 	}
 
 	/**
@@ -384,7 +530,7 @@ class Media_Command extends WP_CLI_Command {
 				} else {
 					$tempfile = $this->make_copy( $file );
 				}
-				$name = Utils\basename( $file );
+				$name = Path::basename( $file );
 
 				if ( Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
 					$file_time = @filemtime( $file );
@@ -402,7 +548,7 @@ class Media_Command extends WP_CLI_Command {
 					++$errors;
 					continue;
 				}
-				$name = (string) strtok( Utils\basename( $file ), '?' );
+				$name = (string) strtok( Path::basename( $file ), '?' );
 			}
 
 			if ( ! empty( $assoc_args['file_name'] ) ) {
@@ -448,7 +594,7 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			if ( empty( $post_array['post_title'] ) ) {
-				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Utils\basename( $file ) );
+				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Path::basename( $file ) );
 			}
 
 			if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
@@ -841,7 +987,7 @@ class Media_Command extends WP_CLI_Command {
 	 */
 	private function make_copy( $path ) {
 		$dir      = get_temp_dir();
-		$filename = Utils\basename( $path );
+		$filename = Path::basename( $path );
 		if ( empty( $filename ) ) {
 			$filename = (string) time();
 		}
@@ -877,6 +1023,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param bool $only_missing
 	 * @param bool $delete_unknown
 	 * @param string[] $image_sizes
+	 * @param bool $update_attachment_refs
 	 * @param string $progress
 	 * @param int $successes
 	 * @param int $errors
@@ -886,7 +1033,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param-out int $skips
 	 * @return void
 	 */
-	private function process_regeneration( $id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $progress, &$successes, &$errors, &$skips ) {
+	private function process_regeneration( $id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $update_attachment_refs, $progress, &$successes, &$errors, &$skips ) {
 
 		$title = get_the_title( $id );
 		if ( '' === $title ) {
@@ -913,6 +1060,20 @@ class Media_Command extends WP_CLI_Command {
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
 		$original_meta = wp_get_attachment_metadata( $id );
+
+		$old_size_urls = array();
+		if ( $update_attachment_refs && is_array( $original_meta ) && ! empty( $original_meta['sizes'] ) ) {
+			$attachment_url = wp_get_attachment_url( $id );
+			if ( $attachment_url ) {
+				$dir_url        = trailingslashit( dirname( $attachment_url ) );
+				$sizes_to_track = $image_sizes ?: array_keys( $original_meta['sizes'] );
+				foreach ( $sizes_to_track as $size ) {
+					if ( ! empty( $original_meta['sizes'][ $size ]['file'] ) ) {
+						$old_size_urls[ $size ] = $dir_url . $original_meta['sizes'][ $size ]['file'];
+					}
+				}
+			}
+		}
 
 		if ( $delete_unknown ) {
 			$this->delete_unknown_image_sizes( $id, $fullsizepath );
@@ -1008,6 +1169,138 @@ class Media_Command extends WP_CLI_Command {
 
 			WP_CLI::log( "$progress Regenerated thumbnails for $att_desc." );
 		}
+
+		if ( $update_attachment_refs && ! empty( $old_size_urls ) && is_array( $metadata ) && ! empty( $metadata['sizes'] ) ) {
+			$attachment_url = wp_get_attachment_url( $id );
+			if ( $attachment_url ) {
+				$dir_url = trailingslashit( dirname( $attachment_url ) );
+				/**
+				 * @var array<string, array<string, mixed>> $new_sizes
+				 */
+				$new_sizes        = is_array( $metadata['sizes'] ) ? $metadata['sizes'] : array();
+				$url_replacements = array();
+				foreach ( $old_size_urls as $size => $old_url ) {
+					$size_data = $new_sizes[ $size ] ?? null;
+					if ( ! is_array( $size_data ) || empty( $size_data['file'] ) ) {
+						continue;
+					}
+					/**
+					 * @var array{file: string} $size_data
+					 */
+					$new_url = $dir_url . $size_data['file'];
+					if ( $old_url !== $new_url ) {
+						$url_replacements[ $old_url ] = $new_url;
+					}
+				}
+				if ( ! empty( $url_replacements ) ) {
+					$this->update_post_content_for_attachment( $url_replacements );
+				}
+			}
+		}
+
+		++$successes;
+	}
+
+	/**
+	 * Process pruning of generated thumbnails for an attachment.
+	 *
+	 * @param int      $id               Attachment ID.
+	 * @param string[] $image_sizes      Specific image size names to prune; empty means all registered sizes.
+	 * @param bool     $remove_abandoned Also remove thumbnails for unregistered (abandoned) image sizes.
+	 * @param string   $progress         Current progress string (e.g. "1/5").
+	 * @param int      $successes        Count of successes. Passed by reference.
+	 * @param int      $errors           Count of errors. Passed by reference.
+	 * @param int      $skips            Count of skips. Passed by reference.
+	 * @param-out int $successes
+	 * @param-out int $errors
+	 * @param-out int $skips
+	 * @return void
+	 */
+	private function process_prune( $id, $image_sizes, $remove_abandoned, $progress, &$successes, &$errors, &$skips ) {
+		$title = get_the_title( $id );
+		if ( '' === $title ) {
+			if ( metadata_exists( 'post', $id, '_cover_hash' ) ) {
+				$att_desc = sprintf( 'cover attachment (ID %d)', $id );
+			} else {
+				$att_desc = sprintf( '"(no title)" (ID %d)', $id );
+			}
+		} else {
+			$att_desc = sprintf( '"%1$s" (ID %2$d)', $title, $id );
+		}
+
+		$fullsizepath = $this->get_attached_file( $id );
+
+		if ( false === $fullsizepath || ! file_exists( $fullsizepath ) ) {
+			WP_CLI::warning( "Can't find $att_desc." );
+			++$errors;
+			return;
+		}
+
+		$metadata = wp_get_attachment_metadata( $id );
+
+		if ( ! is_array( $metadata ) || empty( $metadata['sizes'] ) ) {
+			WP_CLI::log( "$progress No thumbnails to prune for $att_desc." );
+			++$skips;
+			return;
+		}
+
+		$registered_sizes = get_intermediate_image_sizes();
+		$dir_path         = dirname( $fullsizepath ) . '/';
+		$sizes_to_prune   = array();
+		$failed_delete    = false;
+
+		foreach ( $metadata['sizes'] as $size_name => $size_meta ) {
+			// The 'full' size is not an intermediate size and should never be pruned.
+			if ( 'full' === $size_name ) {
+				continue;
+			}
+			$is_registered = in_array( $size_name, $registered_sizes, true );
+
+			// Determine whether this size should be pruned.
+			if ( $image_sizes ) {
+				// Specific sizes requested: only prune if explicitly listed.
+				$should_prune = in_array( $size_name, $image_sizes, true );
+			} else {
+				// No specific sizes: prune all registered sizes, plus abandoned if requested.
+				$should_prune = $is_registered || $remove_abandoned;
+			}
+
+			if ( ! $should_prune ) {
+				continue;
+			}
+
+			$intermediate_path = $dir_path . $size_meta['file'];
+
+			// Never remove the full-size file.
+			if ( $intermediate_path === $fullsizepath ) {
+				continue;
+			}
+
+			if ( file_exists( $intermediate_path ) && ! unlink( $intermediate_path ) ) {
+				WP_CLI::warning( "Could not delete thumbnail file '{$size_meta['file']}' for $att_desc." );
+				$failed_delete = true;
+				continue;
+			}
+
+			$sizes_to_prune[] = $size_name;
+		}
+
+		if ( empty( $sizes_to_prune ) ) {
+			if ( $failed_delete ) {
+				++$errors;
+			} else {
+				WP_CLI::log( "$progress No thumbnails to prune for $att_desc." );
+				++$skips;
+			}
+			return;
+		}
+
+		foreach ( $sizes_to_prune as $size_name ) {
+			unset( $metadata['sizes'][ $size_name ] );
+		}
+		wp_update_attachment_metadata( $id, $metadata );
+
+		WP_CLI::log( "$progress Pruned thumbnails for $att_desc." );
 		++$successes;
 	}
 
@@ -1923,5 +2216,63 @@ class Media_Command extends WP_CLI_Command {
 
 		// @phpstan-ignore argument.type
 		wp_update_attachment_metadata( $id, $original_meta );
+	}
+
+	/**
+	 * Updates post content replacing old attachment URLs with new ones in a single query.
+	 *
+	 * Applies all replacements as nested REPLACE() calls so only one table scan is needed.
+	 *
+	 * @param array<string, string> $url_replacements Map of old URL => new URL.
+	 * @return void
+	 */
+	private function update_post_content_for_attachment( array $url_replacements ) {
+		global $wpdb;
+
+		if ( empty( $url_replacements ) ) {
+			return;
+		}
+
+		$replace_expr  = 'post_content';
+		$replace_args  = array();
+		$where_clauses = array();
+		$where_args    = array();
+
+		foreach ( $url_replacements as $old_url => $new_url ) {
+			$replace_expr    = "REPLACE($replace_expr, %s, %s)";
+			$replace_args[]  = $old_url;
+			$replace_args[]  = $new_url;
+			$where_clauses[] = 'post_content LIKE %s';
+			$where_args[]    = '%' . $wpdb->esc_like( $old_url ) . '%';
+		}
+
+		$where_sql = implode( ' OR ', $where_clauses );
+
+		// First, find the IDs of posts whose content will be updated so we can clear their object cache entries.
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$post_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT ID FROM {$wpdb->posts} WHERE post_type <> 'revision' AND ({$where_sql})",
+				...$where_args
+			)
+		);
+
+		$result = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$wpdb->posts} SET post_content = {$replace_expr} WHERE post_type <> 'revision' AND ({$where_sql})",
+				...array_merge( $replace_args, $where_args )
+			)
+		);
+		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		if ( false === $result ) {
+			WP_CLI::warning( 'Failed to update post content references for attachment.' );
+		} else {
+			if ( ! empty( $post_ids ) ) {
+				foreach ( $post_ids as $post_id ) {
+					clean_post_cache( (int) $post_id );
+				}
+			}
+			wp_cache_set( 'last_changed', microtime(), 'posts' );
+		}
 	}
 }
