@@ -1933,3 +1933,103 @@ Feature: Regenerate WordPress attachments
       """
       site_icon-270
       """
+
+  Scenario: Update post content references when regenerating a specific image size
+    Given download:
+      | path                        | url                                      |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.org/behat-data/canola.jpg  |
+    And a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'test1', 400, 400, true );
+      });
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="My imported attachment" --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+    And the wp-content/uploads/canola-400x400.jpg file should exist
+
+    # Get the full URL of the test1 thumbnail.
+    When I run `wp eval "echo wp_get_attachment_image_src( {ATTACHMENT_ID}, 'test1' )[0];"`
+    Then save STDOUT as {OLD_THUMBNAIL_URL}
+
+    # Create a post referencing the old thumbnail URL in post content.
+    When I run `wp post create --post_title="Test Post" --post_status=publish --post_content="{OLD_THUMBNAIL_URL}" --porcelain`
+    Then save STDOUT as {POST_ID}
+
+    # Confirm the old URL is in post content before regeneration.
+    When I run `wp post get {POST_ID} --field=post_content`
+    Then STDOUT should contain:
+      """
+      canola-400x400.jpg
+      """
+
+    # Change "test1" image size dimensions.
+    Given a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'test1', 350, 350, true );
+      });
+      """
+
+    # Regenerate "test1" without --update-attachment-refs - post content should be unchanged.
+    When I run `wp media regenerate {ATTACHMENT_ID} --image_size=test1 --yes`
+    Then STDOUT should contain:
+      """
+      1/1 Regenerated "test1" thumbnail for "My imported attachment"
+      """
+    And the wp-content/uploads/canola-350x350.jpg file should exist
+
+    When I run `wp post get {POST_ID} --field=post_content`
+    Then STDOUT should contain:
+      """
+      canola-400x400.jpg
+      """
+
+    # Change "test1" back to 400x400 so we can test --update-attachment-refs.
+    Given a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'test1', 400, 400, true );
+      });
+      """
+    When I run `wp media regenerate {ATTACHMENT_ID} --image_size=test1 --yes`
+    Then STDOUT should contain:
+      """
+      1/1 Regenerated "test1" thumbnail for "My imported attachment"
+      """
+    And the wp-content/uploads/canola-400x400.jpg file should exist
+
+    # Change "test1" to 350x350 and regenerate with --update-attachment-refs.
+    Given a wp-content/mu-plugins/media-settings.php file:
+      """
+      <?php
+      add_action( 'after_setup_theme', function(){
+        add_image_size( 'test1', 350, 350, true );
+      });
+      """
+    When I run `wp media regenerate {ATTACHMENT_ID} --image_size=test1 --update-attachment-refs --yes`
+    Then STDOUT should contain:
+      """
+      1/1 Regenerated "test1" thumbnail for "My imported attachment"
+      """
+    And STDOUT should contain:
+      """
+      Success: Regenerated 1 of 1 images.
+      """
+    And the wp-content/uploads/canola-350x350.jpg file should exist
+
+    # Confirm the post content was updated to use the new thumbnail URL.
+    When I run `wp post get {POST_ID} --field=post_content`
+    Then STDOUT should contain:
+      """
+      canola-350x350.jpg
+      """
+    And STDOUT should not contain:
+      """
+      canola-400x400.jpg
+      """

@@ -74,6 +74,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--delete-unknown]
 	 * : Only delete thumbnails for old unregistered image sizes.
 	 *
+	 * [--update-attachment-refs]
+	 * : Update references to regenerated thumbnails in post content.
+	 *
 	 * [--yes]
 	 * : Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
 	 *
@@ -123,7 +126,7 @@ class Media_Command extends WP_CLI_Command {
 	 *     Success: Regenerated 3 of 3 images.
 	 *
 	 * @param string[] $args Positional arguments.
-	 * @param array{image_size?: string|string[], 'skip-delete'?: bool, 'only-missing'?: bool, 'delete-unknown'?: bool, yes?: bool} $assoc_args Associative arguments.
+	 * @param array{image_size?: string|string[], 'skip-delete'?: bool, 'only-missing'?: bool, 'delete-unknown'?: bool, 'update-attachment-refs'?: bool, yes?: bool} $assoc_args Associative arguments.
 	 * @return void
 	 */
 	public function regenerate( $args, $assoc_args = array() ) {
@@ -172,6 +175,8 @@ class Media_Command extends WP_CLI_Command {
 			$skip_delete = false;
 		}
 
+		$update_attachment_refs = Utils\get_flag_value( $assoc_args, 'update-attachment-refs' );
+
 		$additional_mime_types = array();
 
 		if ( Utils\wp_version_compare( '4.7', '>=' ) ) {
@@ -212,7 +217,7 @@ class Media_Command extends WP_CLI_Command {
 				// @phpstan-ignore function.deprecated
 				Utils\wp_clear_object_cache();
 			}
-			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $number . '/' . $count, $successes, $errors, $skips );
+			$this->process_regeneration( $post_id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $update_attachment_refs, $number . '/' . $count, $successes, $errors, $skips );
 		}
 
 		if ( isset( $image_size_filters ) ) {
@@ -715,6 +720,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param bool $only_missing
 	 * @param bool $delete_unknown
 	 * @param string[] $image_sizes
+	 * @param bool $update_attachment_refs
 	 * @param string $progress
 	 * @param int $successes
 	 * @param int $errors
@@ -724,7 +730,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param-out int $skips
 	 * @return void
 	 */
-	private function process_regeneration( $id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $progress, &$successes, &$errors, &$skips ) {
+	private function process_regeneration( $id, $skip_delete, $only_missing, $delete_unknown, $image_sizes, $update_attachment_refs, $progress, &$successes, &$errors, &$skips ) {
 
 		$title = get_the_title( $id );
 		if ( '' === $title ) {
@@ -751,6 +757,20 @@ class Media_Command extends WP_CLI_Command {
 		$is_pdf = 'application/pdf' === get_post_mime_type( $id );
 
 		$original_meta = wp_get_attachment_metadata( $id );
+
+		$old_size_urls = array();
+		if ( $update_attachment_refs && is_array( $original_meta ) && ! empty( $original_meta['sizes'] ) ) {
+			$attachment_url = wp_get_attachment_url( $id );
+			if ( $attachment_url ) {
+				$dir_url        = trailingslashit( dirname( $attachment_url ) );
+				$sizes_to_track = $image_sizes ?: array_keys( $original_meta['sizes'] );
+				foreach ( $sizes_to_track as $size ) {
+					if ( ! empty( $original_meta['sizes'][ $size ]['file'] ) ) {
+						$old_size_urls[ $size ] = $dir_url . $original_meta['sizes'][ $size ]['file'];
+					}
+				}
+			}
+		}
 
 		if ( $delete_unknown ) {
 			$this->delete_unknown_image_sizes( $id, $fullsizepath );
@@ -846,6 +866,31 @@ class Media_Command extends WP_CLI_Command {
 
 			WP_CLI::log( "$progress Regenerated thumbnails for $att_desc." );
 		}
+
+		if ( $update_attachment_refs && ! empty( $old_size_urls ) && is_array( $metadata ) && ! empty( $metadata['sizes'] ) ) {
+			$attachment_url = wp_get_attachment_url( $id );
+			if ( $attachment_url ) {
+				$dir_url = trailingslashit( dirname( $attachment_url ) );
+				/**
+				 * @var array<string, array<string, mixed>> $new_sizes
+				 */
+				$new_sizes = is_array( $metadata['sizes'] ) ? $metadata['sizes'] : array();
+				foreach ( $old_size_urls as $size => $old_url ) {
+					$size_data = $new_sizes[ $size ] ?? null;
+					if ( ! is_array( $size_data ) || empty( $size_data['file'] ) ) {
+						continue;
+					}
+					/**
+					 * @var array{file: string} $size_data
+					 */
+					$new_url = $dir_url . $size_data['file'];
+					if ( $old_url !== $new_url ) {
+						$this->update_post_content_for_attachment( $old_url, $new_url );
+					}
+				}
+			}
+		}
+
 		++$successes;
 	}
 
@@ -1761,5 +1806,27 @@ class Media_Command extends WP_CLI_Command {
 
 		// @phpstan-ignore argument.type
 		wp_update_attachment_metadata( $id, $original_meta );
+	}
+
+	/**
+	 * Updates post content replacing an old attachment URL with a new one.
+	 *
+	 * @param string $old_url Old thumbnail URL to search for.
+	 * @param string $new_url New thumbnail URL to replace with.
+	 * @return void
+	 */
+	private function update_post_content_for_attachment( $old_url, $new_url ) {
+		global $wpdb;
+		$result = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$wpdb->posts} SET post_content = REPLACE(post_content, %s, %s) WHERE post_content LIKE %s",
+				$old_url,
+				$new_url,
+				'%' . $wpdb->esc_like( $old_url ) . '%'
+			)
+		);
+		if ( false === $result ) {
+			WP_CLI::warning( sprintf( 'Failed to update post content references from "%s" to "%s".', $old_url, $new_url ) );
+		}
 	}
 }
