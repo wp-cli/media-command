@@ -426,7 +426,7 @@ class Media_Command extends WP_CLI_Command {
 					++$errors;
 					continue;
 				}
-				$name = (string) strtok( Utils\basename( $file ), '?' );
+				$name = (string) explode( '?', Utils\basename( $file ), 2 )[0];
 			}
 
 			if ( ! empty( $assoc_args['file_name'] ) ) {
