@@ -721,10 +721,10 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 * Searches the `_wp_attached_file` post meta, which stores the path relative to
 	 * the uploads directory (e.g. '2026/03/image.jpg' or just 'image.jpg'). Also
-	 * checks `_wp_original_image_file` (absolute path, WP 5.3+) to handle images
-	 * that were scaled down on upload (stored as 'image-scaled.jpg') but whose
-	 * original filename is still 'image.jpg'. Matches the first attachment found
-	 * when multiple files share the same basename across different subdirectories.
+	 * checks for the WP 5.3+ big-image scaled variant (e.g. 'image-scaled.jpg') so
+	 * that re-importing a large file that was scaled on first import is correctly
+	 * detected as a duplicate. Matches the first attachment found when multiple files
+	 * share the same basename across different upload subdirectories.
 	 *
 	 * @param string $basename Filename basename to search for (e.g. 'image.jpg').
 	 * @return int|false Attachment ID if found, false otherwise.
@@ -732,12 +732,21 @@ class Media_Command extends WP_CLI_Command {
 	private function find_duplicate_attachment( $basename ) {
 		global $wpdb;
 
-		$slash_basename = '/' . $basename;
+		// WP 5.3+ big-image scaling renames 'image.jpg' → 'image-scaled.jpg' and
+		// stores the scaled name in _wp_attached_file, so search for both variants.
+		$ext             = pathinfo( $basename, PATHINFO_EXTENSION );
+		$name            = pathinfo( $basename, PATHINFO_FILENAME );
+		$scaled_basename = $name . '-scaled' . ( $ext ? '.' . $ext : '' );
+
+		$slash_basename        = '/' . $basename;
+		$slash_scaled_basename = '/' . $scaled_basename;
 
 		if ( function_exists( 'mb_strlen' ) ) {
-			$slash_basename_length = mb_strlen( $slash_basename, 'UTF-8' );
+			$slash_basename_length        = mb_strlen( $slash_basename, 'UTF-8' );
+			$slash_scaled_basename_length = mb_strlen( $slash_scaled_basename, 'UTF-8' );
 		} else {
-			$slash_basename_length = strlen( $slash_basename );
+			$slash_basename_length        = strlen( $slash_basename );
+			$slash_scaled_basename_length = strlen( $slash_scaled_basename );
 		}
 
 		$result = $wpdb->get_var(
@@ -748,12 +757,20 @@ class Media_Command extends WP_CLI_Command {
 				     ON p.ID = pm.post_id
 				 WHERE p.post_type = 'attachment'
 				   AND p.post_status != 'trash'
-				   AND pm.meta_key IN ('_wp_attached_file', '_wp_original_image_file')
-				   AND ( pm.meta_value = %s OR RIGHT(pm.meta_value, %d) = %s )
+				   AND pm.meta_key = '_wp_attached_file'
+				   AND (
+				       pm.meta_value = %s
+				       OR RIGHT(pm.meta_value, %d) = %s
+				       OR pm.meta_value = %s
+				       OR RIGHT(pm.meta_value, %d) = %s
+				   )
 				 LIMIT 1",
 				$basename,
 				$slash_basename_length,
-				$slash_basename
+				$slash_basename,
+				$scaled_basename,
+				$slash_scaled_basename_length,
+				$slash_scaled_basename
 			)
 		);
 
