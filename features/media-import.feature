@@ -309,7 +309,7 @@ Feature: Manage WordPress attachments
     When I run `cat {CACHE_DIR}/codeispoetry.png | wp media import - --file_name=my-image.png --porcelain`
     Then save STDOUT as {ATTACHMENT_ID}
 
-    When I run `wp post get {ATTACHMENT_ID} --field=name`
+    When I run `wp post get {ATTACHMENT_ID} --field=post_name`
     Then STDOUT should be:
       """
       my-image-png
