@@ -252,7 +252,7 @@ registered are kept by default because they cannot be regenerated; use
 Regenerates thumbnails for one or more attachments.
 
 ~~~
-wp media regenerate [<attachment-id>...] [--image_size=<image_size>...] [--skip-delete] [--only-missing] [--delete-unknown] [--yes]
+wp media regenerate [<attachment-id>...] [--image_size=<image_size>...] [--skip-delete] [--only-missing] [--delete-unknown] [--update-attachment-refs] [--yes]
 ~~~
 
 **OPTIONS**
@@ -271,6 +271,9 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>...] [--skip-
 
 	[--delete-unknown]
 		Only delete thumbnails for old unregistered image sizes.
+
+	[--update-attachment-refs]
+		Update references to regenerated thumbnails in post content.
 
 	[--yes]
 		Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
