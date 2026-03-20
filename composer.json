@@ -38,6 +38,7 @@
             "media",
             "media fix-orientation",
             "media import",
+            "media prune",
             "media regenerate",
             "media image-size"
         ]
