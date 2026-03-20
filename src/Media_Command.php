@@ -649,6 +649,24 @@ class Media_Command extends WP_CLI_Command {
 			&& is_array( $old_metadata )
 		) {
 			$this->remove_old_images( $old_metadata, $old_fullsizepath, array() );
+
+			// Also delete the previous full-size file itself to avoid leaving an orphan.
+			if ( $old_fullsizepath !== $new_file_path && file_exists( $old_fullsizepath ) ) {
+				@unlink( $old_fullsizepath );
+			}
+
+			// For big-image scaling (WP 5.3+), delete the original image if present in metadata.
+			if ( ! empty( $old_metadata['original_image'] ) && ! empty( $old_metadata['file'] ) ) {
+				$uploads = wp_get_upload_dir();
+				if ( ! empty( $uploads['basedir'] ) ) {
+					$dirname              = dirname( $old_metadata['file'] );
+					$original_image_rel   = ( '.' === $dirname || '/' === $dirname ) ? $old_metadata['original_image'] : $dirname . '/' . $old_metadata['original_image'];
+					$original_image_abspath = $uploads['basedir'] . '/' . $original_image_rel;
+					if ( $original_image_abspath !== $new_file_path && file_exists( $original_image_abspath ) ) {
+						@unlink( $original_image_abspath );
+					}
+				}
+			}
 		}
 
 		// Update the attachment's MIME type.
