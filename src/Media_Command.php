@@ -652,7 +652,9 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			if ( empty( $post_array['post_title'] ) ) {
-				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Path::basename( $file ) );
+				// For STDIN imports, use the generated filename instead of the '-' argument
+				$title_source             = ( '-' === $file ) ? $name : $file;
+				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Path::basename( $title_source ) );
 			}
 
 			if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
