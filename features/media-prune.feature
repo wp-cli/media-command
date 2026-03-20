@@ -58,7 +58,7 @@ Feature: Prune WordPress attachment thumbnails
     And the wp-content/uploads/canola-150x150.jpg file should not exist
     And the wp-content/uploads/canola-300x225.jpg file should not exist
 
-    And I run `wp post meta get {LARGE_ATTACHMENT_ID} _wp_attachment_metadata --format=json`
+    When I run `wp post meta get {LARGE_ATTACHMENT_ID} _wp_attachment_metadata --format=json`
     Then STDOUT should not contain:
       """
       "thumbnail"
@@ -123,7 +123,7 @@ Feature: Prune WordPress attachment thumbnails
       """
     And the wp-content/uploads/large-image-200x200.jpg file should exist
 
-    And I run `wp post meta get {LARGE_ATTACHMENT_ID} _wp_attachment_metadata --format=json`
+    When I run `wp post meta get {LARGE_ATTACHMENT_ID} _wp_attachment_metadata --format=json`
     Then STDOUT should contain:
       """
       "abandoned_size"
@@ -160,7 +160,7 @@ Feature: Prune WordPress attachment thumbnails
       """
     And the wp-content/uploads/large-image-200x200.jpg file should not exist
 
-    And I run `wp post meta get {LARGE_ATTACHMENT_ID} _wp_attachment_metadata --format=json`
+    When I run `wp post meta get {LARGE_ATTACHMENT_ID} _wp_attachment_metadata --format=json`
     Then STDOUT should not contain:
       """
       "abandoned_size"
