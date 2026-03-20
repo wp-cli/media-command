@@ -634,6 +634,9 @@ class Media_Command extends WP_CLI_Command {
 		$uploaded = wp_handle_sideload( $file_array, array( 'test_form' => false ) );
 
 		if ( isset( $uploaded['error'] ) ) {
+			if ( isset( $tempfile ) && is_string( $tempfile ) && file_exists( $tempfile ) ) {
+				unlink( $tempfile );
+			}
 			WP_CLI::error( "Failed to process file '{$orig_filename}': {$uploaded['error']}" );
 		}
 
