@@ -52,6 +52,14 @@ wp media
     1/1 Fixing orientation for "Portrait_6" (ID 63).
     Success: Fixed 1 of 1 images.
 
+    # Remove all generated thumbnails, without confirmation.
+    $ wp media prune --yes
+    Found 3 images to prune.
+    1/3 Pruned thumbnails for "Sydney Harbor Bridge" (ID 760).
+    2/3 Pruned thumbnails for "Boardwalk" (ID 757).
+    3/3 Pruned thumbnails for "Sunburst Over River" (ID 756).
+    Success: Pruned 3 of 3 images.
+
 
 
 ### wp media fix-orientation
@@ -180,6 +188,62 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
     # Get the URL for an attachment after import.
     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --porcelain | xargs -I {} wp post list --post__in={} --field=url --post_type=attachment
     http://wordpress-develop.dev/wp-header-logo/
+
+
+
+### wp media prune
+
+Removes all generated image files for one or more attachments.
+
+~~~
+wp media prune [<attachment-id>...] [--image_size=<image_size>...] [--remove-abandoned] [--yes]
+~~~
+
+Generated image files for registered sizes can be recreated with
+`wp media regenerate`. Thumbnails for image sizes that are no longer
+registered are kept by default because they cannot be regenerated; use
+`--remove-abandoned` to remove them as well.
+
+**OPTIONS**
+
+	[<attachment-id>...]
+		One or more IDs of the attachments to prune.
+
+	[--image_size=<image_size>...]
+		Name of the image size to remove. Repeat the flag to specify multiple. Only thumbnails of specified image size(s) will be removed, thumbnails of other image sizes will not.
+
+	[--remove-abandoned]
+		Also remove thumbnails for image sizes that are no longer registered.
+
+	[--yes]
+		Answer yes to the confirmation message. Confirmation only shows when no IDs passed as arguments.
+
+**EXAMPLES**
+
+    # Remove all generated thumbnails for all images, without confirmation.
+    $ wp media prune --yes
+    Found 3 images to prune.
+    1/3 Pruned thumbnails for "Sydney Harbor Bridge" (ID 760).
+    2/3 Pruned thumbnails for "Boardwalk" (ID 757).
+    3/3 Pruned thumbnails for "Sunburst Over River" (ID 756).
+    Success: Pruned 3 of 3 images.
+
+    # Remove only the "large" thumbnails for all images.
+    $ wp media prune --image_size=large
+    Do you really want to prune the "large" image size for all images? [y/n] y
+    Found 3 images to prune.
+    1/3 Pruned thumbnails for "Sydney Harbor Bridge" (ID 760).
+    2/3 Pruned thumbnails for "Boardwalk" (ID 757).
+    3/3 Pruned thumbnails for "Sunburst Over River" (ID 756).
+    Success: Pruned 3 of 3 images.
+
+    # Remove all thumbnails including those for unregistered sizes.
+    $ wp media prune --remove-abandoned --yes
+    Found 3 images to prune.
+    1/3 Pruned thumbnails for "Sydney Harbor Bridge" (ID 760).
+    2/3 Pruned thumbnails for "Boardwalk" (ID 757).
+    3/3 Pruned thumbnails for "Sunburst Over River" (ID 756).
+    Success: Pruned 3 of 3 images.
 
 
 
@@ -336,6 +400,10 @@ Once you’ve done a bit of searching and discovered there isn’t an open or fi
 Want to contribute a new feature? Please first [open a new issue](https://github.com/wp-cli/media-command/issues/new) to discuss whether the feature is a good fit for the project.
 
 Once you've decided to commit the time to seeing your pull request through, [please follow our guidelines for creating a pull request](https://make.wordpress.org/cli/handbook/pull-requests/) to make sure it's a pleasant experience. See "[Setting up](https://make.wordpress.org/cli/handbook/pull-requests/#setting-up)" for details specific to working on this package locally.
+
+### License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Support
 
