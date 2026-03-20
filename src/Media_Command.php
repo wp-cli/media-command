@@ -1035,6 +1035,7 @@ class Media_Command extends WP_CLI_Command {
 		$registered_sizes = get_intermediate_image_sizes();
 		$dir_path         = dirname( $fullsizepath ) . '/';
 		$sizes_to_prune   = array();
+		$failed_delete    = false;
 
 		foreach ( $metadata['sizes'] as $size_name => $size_meta ) {
 			// The 'full' size is not an intermediate size and should never be pruned.
@@ -1064,16 +1065,22 @@ class Media_Command extends WP_CLI_Command {
 				continue;
 			}
 
-			if ( file_exists( $intermediate_path ) ) {
-				unlink( $intermediate_path );
+			if ( file_exists( $intermediate_path ) && ! unlink( $intermediate_path ) ) {
+				WP_CLI::warning( "Could not delete thumbnail file '{$size_meta['file']}' for $att_desc." );
+				$failed_delete = true;
+				continue;
 			}
 
 			$sizes_to_prune[] = $size_name;
 		}
 
 		if ( empty( $sizes_to_prune ) ) {
-			WP_CLI::log( "$progress No thumbnails to prune for $att_desc." );
-			++$skips;
+			if ( $failed_delete ) {
+				++$errors;
+			} else {
+				WP_CLI::log( "$progress No thumbnails to prune for $att_desc." );
+				++$skips;
+			}
 			return;
 		}
 
