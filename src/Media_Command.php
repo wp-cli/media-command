@@ -740,7 +740,15 @@ class Media_Command extends WP_CLI_Command {
 
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND (meta_value = %s OR RIGHT(meta_value, %d) = %s) LIMIT 1",
+				"SELECT p.ID
+				 FROM {$wpdb->posts} p
+				 INNER JOIN {$wpdb->postmeta} pm
+				     ON p.ID = pm.post_id
+				 WHERE p.post_type = 'attachment'
+				   AND p.post_status != 'trash'
+				   AND pm.meta_key = '_wp_attached_file'
+				   AND ( pm.meta_value = %s OR RIGHT(pm.meta_value, %d) = %s )
+				 LIMIT 1",
 				$basename,
 				$slash_basename_length,
 				$slash_basename
