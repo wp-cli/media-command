@@ -312,9 +312,8 @@ Feature: Manage WordPress attachments
     When I run `wp post get {ATTACHMENT_ID} --field=post_name`
     Then STDOUT should be:
       """
-      my-image-png
+      my-image
       """
-    # Note: WordPress sanitizes the post_name (slug) by converting dots to hyphens
 
     When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
     Then STDOUT should contain:
