@@ -534,17 +534,38 @@ class Media_Command extends WP_CLI_Command {
 				}
 
 				// Read from STDIN and save to a temporary file
-				$stdin_content = file_get_contents( 'php://stdin' );
-				if ( false === $stdin_content || empty( $stdin_content ) ) {
-					WP_CLI::warning( 'Unable to import file from STDIN. Reason: No input provided.' );
+				// Stream STDIN directly to temp file to avoid memory issues with large files
+				$stdin_handle = fopen( 'php://stdin', 'rb' );
+				if ( false === $stdin_handle ) {
+					WP_CLI::warning( 'Unable to import file from STDIN. Reason: Could not open STDIN.' );
 					++$errors;
 					continue;
 				}
 
 				// Create a temporary file to store STDIN content
 				$tempfile = wp_tempnam( 'wp-media-import-' );
-				if ( false === file_put_contents( $tempfile, $stdin_content ) ) {
+				if ( false === $tempfile ) {
+					fclose( $stdin_handle );
+					WP_CLI::warning( 'Unable to import file from STDIN. Reason: Could not create temporary file.' );
+					++$errors;
+					continue;
+				}
+
+				$temp_handle = fopen( $tempfile, 'wb' );
+				if ( false === $temp_handle ) {
+					fclose( $stdin_handle );
 					WP_CLI::warning( 'Unable to import file from STDIN. Reason: Could not write to temporary file.' );
+					++$errors;
+					continue;
+				}
+
+				// Stream data from STDIN to temp file
+				$bytes_copied = stream_copy_to_stream( $stdin_handle, $temp_handle );
+				fclose( $stdin_handle );
+				fclose( $temp_handle );
+
+				if ( false === $bytes_copied || 0 === $bytes_copied ) {
+					WP_CLI::warning( 'Unable to import file from STDIN. Reason: No input provided.' );
 					++$errors;
 					continue;
 				}
