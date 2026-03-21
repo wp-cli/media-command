@@ -34,6 +34,11 @@ wp media
     Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as featured image.
     Success: Imported 1 of 1 images.
 
+    # Import an image from STDIN.
+    $ curl http://example.com/image.jpg | wp media import -
+    Imported file 'STDIN' as attachment ID 1754.
+    Success: Imported 1 of 1 items.
+
     # List all registered image sizes
     $ wp media image-size
     +---------------------------+-------+--------+-------+
@@ -113,6 +118,7 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
 		Path to file or files to be imported. Supports the glob(3) capabilities of the current shell.
 		    If file is recognized as a URL (for example, with a scheme of http or ftp), the file will be
 		    downloaded to a temp file before being sideloaded.
+		    Use '-' to read file data from STDIN.
 
 	[--post_id=<post_id>]
 		ID of the post to attach the imported files to.
@@ -188,6 +194,11 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
     # Get the URL for an attachment after import.
     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --porcelain | xargs -I {} wp post list --post__in={} --field=url --post_type=attachment
     http://wordpress-develop.dev/wp-header-logo/
+
+    # Import an image from STDIN.
+    $ curl http://example.com/image.jpg | wp media import - --title="From STDIN"
+    Imported file 'STDIN' as attachment ID 1756.
+    Success: Imported 1 of 1 items.
 
 
 
