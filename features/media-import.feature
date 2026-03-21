@@ -316,6 +316,15 @@ Feature: Manage WordPress attachments
       """
     # Note: WordPress sanitizes the post_name (slug) by converting dots to hyphens
 
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should contain:
+      """
+      my-image.png
+      """
+    And STDOUT should not contain:
+      """
+      my-image.png.png
+      """
   Scenario: Fail to import from STDIN when no input provided
     When I try `wp media import - </dev/null`
     Then STDERR should contain:
