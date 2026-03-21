@@ -21,6 +21,11 @@ use WP_CLI\Path;
  *     Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as featured image.
  *     Success: Imported 1 of 1 images.
  *
+ *     # Import an image from STDIN.
+ *     $ curl http://example.com/image.jpg | wp media import -
+ *     Imported file 'STDIN' as attachment ID 1754.
+ *     Success: Imported 1 of 1 items.
+ *
  *     # List all registered image sizes
  *     $ wp media image-size
  *     +---------------------------+-------+--------+-------+
@@ -377,6 +382,7 @@ class Media_Command extends WP_CLI_Command {
 	 * : Path to file or files to be imported. Supports the glob(3) capabilities of the current shell.
 	 *     If file is recognized as a URL (for example, with a scheme of http or ftp), the file will be
 	 *     downloaded to a temp file before being sideloaded.
+	 *     Use '-' to read file data from STDIN.
 	 *
 	 * [--post_id=<post_id>]
 	 * : ID of the post to attach the imported files to.
@@ -453,6 +459,11 @@ class Media_Command extends WP_CLI_Command {
 	 *     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --porcelain | xargs -I {} wp post list --post__in={} --field=url --post_type=attachment
 	 *     http://wordpress-develop.dev/wp-header-logo/
 	 *
+	 *     # Import an image from STDIN.
+	 *     $ curl http://example.com/image.jpg | wp media import - --title="From STDIN"
+	 *     Imported file 'STDIN' as attachment ID 1756.
+	 *     Success: Imported 1 of 1 items.
+	 *
 	 * @param string[] $args Positional arguments.
 	 * @param array{post_id?: string, post_name?: string, file_name?: string, title?: string, caption?: string, alt?: string, desc?: string, 'skip-copy'?: bool, 'destination-dir'?: string, 'preserve-filetime'?: bool, featured_image?: bool, porcelain?: bool|string} $assoc_args Associative arguments.
 	 * @return void
@@ -514,41 +525,109 @@ class Media_Command extends WP_CLI_Command {
 				Utils\wp_clear_object_cache();
 			}
 
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- parse_url will only be used in absence of wp_parse_url.
-			$is_file_remote = function_exists( 'wp_parse_url' ) ? wp_parse_url( $file, PHP_URL_HOST ) : parse_url( $file, PHP_URL_HOST );
-			$orig_filename  = $file;
-			$file_time      = '';
-
-			if ( empty( $is_file_remote ) ) {
-				if ( ! file_exists( $file ) ) {
-					WP_CLI::warning( "Unable to import file '$file'. Reason: File doesn't exist." );
+			// Handle STDIN input
+			if ( '-' === $file ) {
+				if ( ! Utils\has_stdin() ) {
+					WP_CLI::warning( 'Unable to import file from STDIN. Reason: No input provided.' );
 					++$errors;
 					continue;
 				}
-				if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
-					$tempfile = $file;
-				} else {
-					$tempfile = $this->make_copy( $file );
-				}
-				$name = Path::basename( $file );
 
-				if ( Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
-					$file_time = @filemtime( $file );
+				// Read from STDIN and save to a temporary file
+				// Stream STDIN directly to temp file to avoid memory issues with large files
+				$stdin_handle = fopen( 'php://stdin', 'rb' );
+				if ( false === $stdin_handle ) {
+					WP_CLI::warning( 'Unable to import file from STDIN. Reason: Could not open STDIN.' );
+					++$errors;
+					continue;
 				}
+
+				// Create a temporary file to store STDIN content
+				$tempfile = wp_tempnam( 'wp-media-import-' );
+				if ( false === $tempfile ) {
+					fclose( $stdin_handle );
+					WP_CLI::warning( 'Unable to import file from STDIN. Reason: Could not create temporary file.' );
+					++$errors;
+					continue;
+				}
+
+				$temp_handle = fopen( $tempfile, 'wb' );
+				if ( false === $temp_handle ) {
+					fclose( $stdin_handle );
+					WP_CLI::warning( 'Unable to import file from STDIN. Reason: Could not write to temporary file.' );
+					++$errors;
+					continue;
+				}
+
+				// Stream data from STDIN to temp file
+				$bytes_copied = stream_copy_to_stream( $stdin_handle, $temp_handle );
+				fclose( $stdin_handle );
+				fclose( $temp_handle );
+
+				if ( false === $bytes_copied || 0 === $bytes_copied ) {
+					WP_CLI::warning( 'Unable to import file from STDIN. Reason: No input provided.' );
+					++$errors;
+					continue;
+				}
+
+				// Determine file extension from content
+				$mimetype = mime_content_type( $tempfile );
+
+				// Map MIME type to extension
+				$ext = '';
+				if ( $mimetype && function_exists( 'wp_get_mime_types' ) ) {
+					$mime_types = wp_get_mime_types();
+					foreach ( $mime_types as $exts => $mime ) {
+						if ( $mime === $mimetype ) {
+							$ext_array = explode( '|', $exts );
+							$ext       = '.' . $ext_array[0];
+							break;
+						}
+					}
+				}
+
+				// Generate filename with proper extension
+				$name = 'stdin-' . time() . $ext;
+
+				$orig_filename = 'STDIN';
+				$file_time     = '';
 			} else {
-				$tempfile = download_url( $file );
-				if ( is_wp_error( $tempfile ) ) {
-					WP_CLI::warning(
-						sprintf(
-							"Unable to import file '%s'. Reason: %s",
-							$file,
-							implode( ', ', $tempfile->get_error_messages() )
-						)
-					);
-					++$errors;
-					continue;
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- parse_url will only be used in absence of wp_parse_url.
+				$is_file_remote = function_exists( 'wp_parse_url' ) ? wp_parse_url( $file, PHP_URL_HOST ) : parse_url( $file, PHP_URL_HOST );
+				$orig_filename  = $file;
+				$file_time      = '';
+
+				if ( empty( $is_file_remote ) ) {
+					if ( ! file_exists( $file ) ) {
+						WP_CLI::warning( "Unable to import file '$file'. Reason: File doesn't exist." );
+						++$errors;
+						continue;
+					}
+					if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
+						$tempfile = $file;
+					} else {
+						$tempfile = $this->make_copy( $file );
+					}
+					$name = Path::basename( $file );
+
+					if ( Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
+						$file_time = @filemtime( $file );
+					}
+				} else {
+					$tempfile = download_url( $file );
+					if ( is_wp_error( $tempfile ) ) {
+						WP_CLI::warning(
+							sprintf(
+								"Unable to import file '%s'. Reason: %s",
+								$file,
+								implode( ', ', $tempfile->get_error_messages() )
+							)
+						);
+						++$errors;
+						continue;
+					}
+					$name = (string) strtok( Path::basename( $file ), '?' );
 				}
-				$name = (string) strtok( Path::basename( $file ), '?' );
 			}
 
 			if ( ! empty( $assoc_args['file_name'] ) ) {
@@ -594,7 +673,9 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			if ( empty( $post_array['post_title'] ) ) {
-				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Path::basename( $file ) );
+				// For STDIN imports, use the generated filename instead of the '-' argument
+				$title_source             = ( '-' === $file ) ? $name : $file;
+				$post_array['post_title'] = preg_replace( '/\.[^.]+$/', '', Path::basename( $title_source ) );
 			}
 
 			if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
@@ -2167,7 +2248,10 @@ class Media_Command extends WP_CLI_Command {
 
 		$extension = pathinfo( $basename, PATHINFO_EXTENSION );
 
-		return $slug . '.' . $extension;
+		// Strip any extension from the slug to prevent double extensions
+		$slug_without_ext = preg_replace( '/\.[^.]+$/', '', $slug );
+
+		return $slug_without_ext . '.' . $extension;
 	}
 
 	/**
