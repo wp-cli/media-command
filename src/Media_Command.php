@@ -461,7 +461,7 @@ class Media_Command extends WP_CLI_Command {
 	 *
 	 *     # Import an image from STDIN.
 	 *     $ curl http://example.com/image.jpg | wp media import - --title="From STDIN"
-	 *     Imported file from STDIN as attachment ID 1756.
+	 *     Imported file 'STDIN' as attachment ID 1756.
 	 *     Success: Imported 1 of 1 items.
 	 *
 	 * @param string[] $args Positional arguments.
