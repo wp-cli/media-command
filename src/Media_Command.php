@@ -2065,7 +2065,10 @@ class Media_Command extends WP_CLI_Command {
 
 		$extension = pathinfo( $basename, PATHINFO_EXTENSION );
 
-		return $slug . '.' . $extension;
+		// Strip any extension from the slug to prevent double extensions
+		$slug_without_ext = preg_replace( '/\.[^.]+$/', '', $slug );
+
+		return $slug_without_ext . '.' . $extension;
 	}
 
 	/**
