@@ -13,7 +13,7 @@ This package implements the following commands:
 
 ### wp media
 
-Imports files as attachments, regenerates thumbnails, or lists registered image sizes.
+Imports files as attachments, regenerates thumbnails, replaces existing attachment files, or lists registered image sizes.
 
 ~~~
 wp media
@@ -33,6 +33,11 @@ wp media
     $ wp media import ~/Downloads/image.png --post_id=123 --title="A downloaded picture" --featured_image
     Imported file '/home/person/Downloads/image.png' as attachment ID 1753 and attached to post 123 as featured image.
     Success: Imported 1 of 1 images.
+
+    # Import an image from STDIN.
+    $ curl http://example.com/image.jpg | wp media import -
+    Imported file 'STDIN' as attachment ID 1754.
+    Success: Imported 1 of 1 items.
 
     # List all registered image sizes
     $ wp media image-size
@@ -113,6 +118,7 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
 		Path to file or files to be imported. Supports the glob(3) capabilities of the current shell.
 		    If file is recognized as a URL (for example, with a scheme of http or ftp), the file will be
 		    downloaded to a temp file before being sideloaded.
+		    Use '-' to read file data from STDIN.
 
 	[--post_id=<post_id>]
 		ID of the post to attach the imported files to.
@@ -188,6 +194,11 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
     # Get the URL for an attachment after import.
     $ wp media import http://s.wordpress.org/style/images/wp-header-logo.png --porcelain | xargs -I {} wp post list --post__in={} --field=url --post_type=attachment
     http://wordpress-develop.dev/wp-header-logo/
+
+    # Import an image from STDIN.
+    $ curl http://example.com/image.jpg | wp media import - --title="From STDIN"
+    Imported file 'STDIN' as attachment ID 1756.
+    Success: Imported 1 of 1 items.
 
 
 
@@ -322,6 +333,46 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>...] [--skip-
     2/3 No "large", "medium" thumbnail regeneration needed for "Boardwalk" (ID 757).
     3/3 Regenerated "large", "medium" thumbnails for "Sunburst Over River" (ID 756).
     Success: Regenerated 3 of 3 images.
+
+
+
+### wp media replace
+
+Replaces the file for an existing attachment while preserving its identity.
+
+~~~
+wp media replace <attachment-id> <file> [--skip-delete] [--porcelain]
+~~~
+
+**OPTIONS**
+
+	<attachment-id>
+		ID of the attachment whose file is to be replaced.
+
+	<file>
+		Path to the replacement file. Supports local paths and URLs.
+
+	[--skip-delete]
+		Skip deletion of old thumbnail files after replacement.
+
+	[--porcelain]
+		Output just the attachment ID after replacement.
+
+**EXAMPLES**
+
+    # Replace an attachment file with a local file.
+    $ wp media replace 123 ~/new-image.jpg
+    Replaced file for attachment ID 123 with '/home/user/new-image.jpg'.
+    Success: Replaced 1 of 1 images.
+
+    # Replace an attachment file with a file from a URL.
+    $ wp media replace 123 'http://example.com/image.jpg'
+    Replaced file for attachment ID 123 with 'http://example.com/image.jpg'.
+    Success: Replaced 1 of 1 images.
+
+    # Replace and output just the attachment ID.
+    $ wp media replace 123 ~/new-image.jpg --porcelain
+    123
 
 
 
