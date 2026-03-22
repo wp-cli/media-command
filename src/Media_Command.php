@@ -4,7 +4,7 @@ use WP_CLI\Utils;
 use WP_CLI\Path;
 
 /**
- * Imports files as attachments, regenerates thumbnails, or lists registered image sizes.
+ * Imports files as attachments, regenerates thumbnails, replaces existing attachment files, or lists registered image sizes.
  *
  * ## EXAMPLES
  *
@@ -772,6 +772,168 @@ class Media_Command extends WP_CLI_Command {
 			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors );
 		} elseif ( $errors ) {
 			WP_CLI::halt( 1 );
+		}
+	}
+
+	/**
+	 * Replaces the file for an existing attachment while preserving its identity.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <attachment-id>
+	 * : ID of the attachment whose file is to be replaced.
+	 *
+	 * <file>
+	 * : Path to the replacement file. Supports local paths and URLs.
+	 *
+	 * [--skip-delete]
+	 * : Skip deletion of old thumbnail files after replacement.
+	 *
+	 * [--porcelain]
+	 * : Output just the attachment ID after replacement.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # Replace an attachment file with a local file.
+	 *     $ wp media replace 123 ~/new-image.jpg
+	 *     Replaced file for attachment ID 123 with '/home/user/new-image.jpg'.
+	 *     Success: Replaced 1 of 1 images.
+	 *
+	 *     # Replace an attachment file with a file from a URL.
+	 *     $ wp media replace 123 'http://example.com/image.jpg'
+	 *     Replaced file for attachment ID 123 with 'http://example.com/image.jpg'.
+	 *     Success: Replaced 1 of 1 images.
+	 *
+	 *     # Replace and output just the attachment ID.
+	 *     $ wp media replace 123 ~/new-image.jpg --porcelain
+	 *     123
+	 *
+	 * @param string[] $args Positional arguments.
+	 * @param array{'skip-delete'?: bool, porcelain?: bool} $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public function replace( $args, $assoc_args = array() ) {
+		$attachment_id = (int) $args[0];
+		$file          = $args[1];
+
+		// Validate attachment exists.
+		$attachment = get_post( $attachment_id );
+		if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
+			WP_CLI::error( "Invalid attachment ID {$attachment_id}." );
+		}
+
+		// Handle remote vs local file (same pattern as import).
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- parse_url will only be used in absence of wp_parse_url.
+		$is_file_remote = function_exists( 'wp_parse_url' ) ? wp_parse_url( $file, PHP_URL_HOST ) : parse_url( $file, PHP_URL_HOST );
+		$orig_filename  = $file;
+
+		if ( empty( $is_file_remote ) ) {
+			if ( ! file_exists( $file ) ) {
+				WP_CLI::error( "Unable to replace attachment {$attachment_id} with file '{$file}'. Reason: File doesn't exist." );
+			}
+			$tempfile = $this->make_copy( $file );
+			$name     = Path::basename( $file );
+		} else {
+			$tempfile = download_url( $file );
+			if ( is_wp_error( $tempfile ) ) {
+				WP_CLI::error(
+					sprintf(
+						"Unable to replace attachment %d with file '%s'. Reason: %s",
+						$attachment_id,
+						$file,
+						implode( ', ', $tempfile->get_error_messages() )
+					)
+				);
+			}
+			$name = (string) strtok( Path::basename( $file ), '?' );
+		}
+
+		// Get old metadata before replacement for cleanup.
+		$old_fullsizepath = $this->get_attached_file( $attachment_id );
+		$old_metadata     = wp_get_attachment_metadata( $attachment_id );
+
+		// Move the temp file into the uploads directory.
+		$file_array = array(
+			'name'     => $name,
+			'tmp_name' => $tempfile,
+		);
+
+		$uploaded = wp_handle_sideload( $file_array, array( 'test_form' => false ) );
+
+		if ( isset( $uploaded['error'] ) ) {
+			if ( isset( $tempfile ) && is_string( $tempfile ) && file_exists( $tempfile ) ) {
+				unlink( $tempfile );
+			}
+			WP_CLI::error( "Failed to process file '{$orig_filename}': {$uploaded['error']}" );
+		}
+
+		$new_file_path = $uploaded['file'];
+		$new_mime_type = $uploaded['type'];
+
+		// Delete old thumbnail files unless asked to skip.
+		if ( ! Utils\get_flag_value( $assoc_args, 'skip-delete' )
+			&& false !== $old_fullsizepath
+			&& is_array( $old_metadata )
+		) {
+			$this->remove_old_images( $old_metadata, $old_fullsizepath, array() );
+
+			// Also delete the previous full-size file itself to avoid leaving an orphan.
+			if ( $old_fullsizepath !== $new_file_path && file_exists( $old_fullsizepath ) ) {
+				@unlink( $old_fullsizepath );
+			}
+
+			// For big-image scaling (WP 5.3+), delete the original image if present in metadata.
+			$original_image = isset( $old_metadata['original_image'] ) ? (string) $old_metadata['original_image'] : '';
+			if ( '' !== $original_image && ! empty( $old_metadata['file'] ) ) {
+				$uploads = wp_get_upload_dir();
+				if ( ! empty( $uploads['basedir'] ) ) {
+					$dirname                = dirname( $old_metadata['file'] );
+					$original_image_rel     = ( '.' === $dirname || '/' === $dirname ) ? $original_image : $dirname . '/' . $original_image;
+					$original_image_abspath = $uploads['basedir'] . '/' . $original_image_rel;
+					if ( $original_image_abspath !== $new_file_path && file_exists( $original_image_abspath ) ) {
+						@unlink( $original_image_abspath );
+					}
+				}
+			}
+		}
+
+		// Update the attachment's MIME type.
+		$updated = wp_update_post(
+			array(
+				'ID'             => $attachment_id,
+				'post_mime_type' => $new_mime_type,
+			),
+			true
+		);
+		if ( is_wp_error( $updated ) ) {
+			WP_CLI::warning(
+				sprintf( 'Failed to update MIME type for attachment %d: %s', $attachment_id, $updated->get_error_message() )
+			);
+		}
+
+		// Update the attached file path.
+		update_attached_file( $attachment_id, $new_file_path );
+
+		// Generate and update new attachment metadata.
+		$new_metadata = wp_generate_attachment_metadata( $attachment_id, $new_file_path );
+		if ( is_array( $new_metadata ) && ! empty( $new_metadata ) ) {
+			wp_update_attachment_metadata( $attachment_id, $new_metadata );
+		} else {
+			WP_CLI::warning(
+				sprintf(
+					'Failed to generate new attachment metadata for attachment ID %d. Existing metadata has been preserved.',
+					$attachment_id
+				)
+			);
+		}
+
+		if ( Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
+			WP_CLI::line( (string) $attachment_id );
+		} else {
+			WP_CLI::log(
+				sprintf( "Replaced file for attachment ID %d with '%s'.", $attachment_id, $orig_filename )
+			);
+			Utils\report_batch_operation_results( 'attachment', 'replace', 1, 1, 0 );
 		}
 	}
 
