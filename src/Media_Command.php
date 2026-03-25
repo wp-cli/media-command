@@ -1492,7 +1492,7 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			/**
-			 * @var array{sizes: array<string, array<string, mixed>>} $metadata
+			 * @var array{width: int, height: int, file: string, image_meta: array, filesize: int, sizes: non-empty-array<string, array<string, mixed>>} $metadata
 			 */
 
 			// Filter metadata and attachment_sizes to only the applicable requested sizes.
