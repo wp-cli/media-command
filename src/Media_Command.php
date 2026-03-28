@@ -422,6 +422,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--featured_image]
 	 * : If set, set the imported image as the Featured Image of the post it is attached to.
 	 *
+	 * [--skip-duplicates]
+	 * : If set, media files that have already been imported will be skipped.
+	 *
 	 * [--porcelain[=<field>]]
 	 * : Output a single field for each imported image. Defaults to attachment ID when used as flag.
 	 * ---
@@ -465,7 +468,7 @@ class Media_Command extends WP_CLI_Command {
 	 *     Success: Imported 1 of 1 items.
 	 *
 	 * @param string[] $args Positional arguments.
-	 * @param array{post_id?: string, post_name?: string, file_name?: string, title?: string, caption?: string, alt?: string, desc?: string, 'skip-copy'?: bool, 'destination-dir'?: string, 'preserve-filetime'?: bool, featured_image?: bool, porcelain?: bool|string} $assoc_args Associative arguments.
+	 * @param array{post_id?: string, post_name?: string, file_name?: string, title?: string, caption?: string, alt?: string, desc?: string, 'skip-copy'?: bool, 'destination-dir'?: string, 'preserve-filetime'?: bool, featured_image?: bool, 'skip-duplicates'?: bool, porcelain?: bool|string} $assoc_args Associative arguments.
 	 * @return void
 	 */
 	public function import( $args, $assoc_args = array() ) {
@@ -518,6 +521,7 @@ class Media_Command extends WP_CLI_Command {
 		$number    = 0;
 		$successes = 0;
 		$errors    = 0;
+		$skips     = 0;
 		foreach ( $args as $file ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
@@ -603,6 +607,16 @@ class Media_Command extends WP_CLI_Command {
 						++$errors;
 						continue;
 					}
+					if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
+						$existing = $this->find_duplicate_attachment( Path::basename( $file ) );
+						if ( false !== $existing ) {
+							if ( ! $porcelain ) {
+								WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
+							}
+							++$skips;
+							continue;
+						}
+					}
 					if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
 						$tempfile = $file;
 					} else {
@@ -614,6 +628,16 @@ class Media_Command extends WP_CLI_Command {
 						$file_time = @filemtime( $file );
 					}
 				} else {
+					if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
+						$existing = $this->find_duplicate_attachment( (string) explode( '?', Path::basename( $file ), 2 )[0] );
+						if ( false !== $existing ) {
+							if ( ! $porcelain ) {
+								WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
+							}
+							++$skips;
+							continue;
+						}
+					}
 					$tempfile = download_url( $file );
 					if ( is_wp_error( $tempfile ) ) {
 						WP_CLI::warning(
@@ -626,7 +650,7 @@ class Media_Command extends WP_CLI_Command {
 						++$errors;
 						continue;
 					}
-					$name = (string) strtok( Path::basename( $file ), '?' );
+					$name = (string) explode( '?', Path::basename( $file ), 2 )[0];
 				}
 			}
 
@@ -769,7 +793,7 @@ class Media_Command extends WP_CLI_Command {
 
 		// Report the result of the operation
 		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
-			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors );
+			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors, Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ? $skips : null );
 		} elseif ( $errors ) {
 			WP_CLI::halt( 1 );
 		}
@@ -1079,6 +1103,67 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		return $filename;
+	}
+
+	/**
+	 * Finds an existing attachment whose basename matches the given filename.
+	 *
+	 * Searches the `_wp_attached_file` post meta, which stores the path relative to
+	 * the uploads directory (e.g. '2026/03/image.jpg' or just 'image.jpg'). Also
+	 * checks for the WP 5.3+ big-image scaled variant (e.g. 'image-scaled.jpg') so
+	 * that re-importing a large file that was scaled on first import is correctly
+	 * detected as a duplicate. Matches the first attachment found when multiple files
+	 * share the same basename across different upload subdirectories.
+	 *
+	 * @param string $basename Filename basename to search for (e.g. 'image.jpg').
+	 * @return int|false Attachment ID if found, false otherwise.
+	 */
+	private function find_duplicate_attachment( $basename ) {
+		global $wpdb;
+
+		// WP 5.3+ big-image scaling renames 'image.jpg' → 'image-scaled.jpg' and
+		// stores the scaled name in _wp_attached_file, so search for both variants.
+		$ext             = pathinfo( $basename, PATHINFO_EXTENSION );
+		$name            = pathinfo( $basename, PATHINFO_FILENAME );
+		$scaled_basename = $name . '-scaled' . ( $ext ? '.' . $ext : '' );
+
+		$slash_basename        = '/' . $basename;
+		$slash_scaled_basename = '/' . $scaled_basename;
+
+		if ( function_exists( 'mb_strlen' ) ) {
+			$slash_basename_length        = mb_strlen( $slash_basename, 'UTF-8' );
+			$slash_scaled_basename_length = mb_strlen( $slash_scaled_basename, 'UTF-8' );
+		} else {
+			$slash_basename_length        = strlen( $slash_basename );
+			$slash_scaled_basename_length = strlen( $slash_scaled_basename );
+		}
+
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT p.ID
+				 FROM {$wpdb->posts} p
+				 INNER JOIN {$wpdb->postmeta} pm
+				     ON p.ID = pm.post_id
+				 WHERE p.post_type = 'attachment'
+				   AND p.post_status != 'trash'
+				   AND pm.meta_key = '_wp_attached_file'
+				   AND (
+				       pm.meta_value = %s
+				       OR RIGHT(pm.meta_value, %d) = %s
+				       OR pm.meta_value = %s
+				       OR RIGHT(pm.meta_value, %d) = %s
+				   )
+				 LIMIT 1",
+				$basename,
+				$slash_basename_length,
+				$slash_basename,
+				$scaled_basename,
+				$slash_scaled_basename_length,
+				$slash_scaled_basename
+			)
+		);
+
+		return $result ? (int) $result : false;
 	}
 
 	/**
