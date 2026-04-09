@@ -1146,7 +1146,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      1/1 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {ATTACHMENT_ID})
+      1/1 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {ATTACHMENT_ID}): no editor available for image/svg+xml.
       """
     And STDOUT should not contain:
       """
@@ -1166,7 +1166,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      1/1 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {ATTACHMENT_ID})
+      1/1 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {ATTACHMENT_ID}): no editor available for image/svg+xml.
       """
     And STDOUT should not contain:
       """
@@ -1213,7 +1213,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      /2 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      /2 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}): no editor available for application/pdf.
       """
     And STDOUT should contain:
       """
@@ -1237,7 +1237,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      /2 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      /2 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}): no editor available for application/pdf.
       """
     And STDOUT should contain:
       """
@@ -1286,7 +1286,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      /1 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      /1 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}): no editor available for application/pdf.
       """
     And STDOUT should not contain:
       """
@@ -1371,7 +1371,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      /1 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID})
+      /1 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}): no editor available for application/pdf.
       """
     And STDOUT should not contain:
       """
@@ -1470,7 +1470,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      1/1 Skipped thumbnail regeneration for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}).
+      1/1 Skipped thumbnail regeneration for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}): no editor available for image/bmp.
       """
     And STDOUT should contain:
       """
@@ -1529,7 +1529,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      1/1 Skipped thumbnail regeneration for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}).
+      1/1 Skipped thumbnail regeneration for "My imported BMP attachment" (ID {BMP_ATTACHMENT_ID}): no editor available for image/bmp.
       """
     And STDOUT should contain:
       """
@@ -1621,7 +1621,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}): no editor available for image/svg+xml.
       """
     And STDOUT should contain:
       """
@@ -1653,11 +1653,11 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}): no editor available for image/svg+xml.
       """
     And STDOUT should contain:
       """
-      /4 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
+      /4 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}): no editor available for application/pdf.
       """
     And STDOUT should contain:
       """
@@ -1683,11 +1683,11 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}): no editor available for image/svg+xml.
       """
     And STDOUT should contain:
       """
-      /4 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}).
+      /4 Skipped thumbnail regeneration for "My imported PDF attachment" (ID {PDF_ATTACHMENT_ID}): no editor available for application/pdf.
       """
     And STDOUT should contain:
       """
@@ -1716,7 +1716,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}): no editor available for image/svg+xml.
       """
     And STDOUT should contain:
       """
@@ -1765,7 +1765,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDOUT should contain:
       """
-      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}).
+      /4 Skipped thumbnail regeneration for "My imported SVG attachment" (ID {SVG_ATTACHMENT_ID}): no editor available for image/svg+xml.
       """
     And STDOUT should contain:
       """
