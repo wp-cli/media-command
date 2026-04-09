@@ -1167,7 +1167,7 @@ class Media_Command extends WP_CLI_Command {
 		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_sizes, $skip_delete, $skip_it );
 
 		if ( $skip_it ) {
-			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc: $skip_it." );
+			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc: $skip_it" );
 			++$skips;
 			return;
 		}
@@ -1450,7 +1450,7 @@ class Media_Command extends WP_CLI_Command {
 				WP_CLI::warning( sprintf( '%s (ID %d)', $attachment_sizes->get_error_message(), $att_id ) );
 			}
 			$mime_type = get_post_mime_type( $att_id );
-			$skip_it   = sprintf( 'no editor available for %s', $mime_type ? $mime_type : 'this file type' );
+			$skip_it   = sprintf( 'no editor available for %s.', $mime_type ? $mime_type : 'this file type' );
 			WP_CLI::debug( sprintf( 'Skipping attachment %d: %s.', $att_id, $skip_it ), 'media' );
 			return false;
 		}
@@ -1483,7 +1483,7 @@ class Media_Command extends WP_CLI_Command {
 			$filtered_sizes = array_intersect_key( $attachment_sizes, array_flip( $image_sizes ) );
 
 			if ( empty( $filtered_sizes ) ) {
-				WP_CLI::debug( sprintf( 'Skipping attachment %d: no requested sizes apply to this attachment.', $att_id ), 'media' );
+				WP_CLI::debug( sprintf( 'Not regenerating attachment %d: no requested sizes apply to this attachment.', $att_id ), 'media' );
 				return false;
 			}
 
