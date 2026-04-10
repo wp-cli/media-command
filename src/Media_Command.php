@@ -571,7 +571,7 @@ class Media_Command extends WP_CLI_Command {
 				}
 
 				// Determine file extension from content
-				$mimetype = mime_content_type( $tempfile );
+				$mimetype = function_exists( 'mime_content_type' ) ? mime_content_type( $tempfile ) : '';
 
 				// Map MIME type to extension
 				$ext = '';
