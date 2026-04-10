@@ -325,9 +325,7 @@ Feature: Manage WordPress attachments
       my-image.png.png
       """
   Scenario: Fail to import from STDIN when no input provided
-    Given an empty.txt file:
-      """
-      """
+    When I run `php -r "file_put_contents('empty.txt', '');"`
     And I try `wp media import - < empty.txt`
     Then STDERR should contain:
       """
