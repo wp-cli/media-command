@@ -4,10 +4,10 @@ Feature: Manage WordPress attachments
     Given a WP install
 
   Scenario: Import media from remote URL
-    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --post_id=1`
+    When I run `wp media import 'http://wp-cli.github.io/behat-data/codeispoetry.png' --post_id=1`
     Then STDOUT should contain:
       """
-      Imported file 'http://wp-cli.org/behat-data/codeispoetry.png'
+      Imported file 'http://wp-cli.github.io/behat-data/codeispoetry.png'
       """
     And STDOUT should contain:
       """
@@ -26,7 +26,7 @@ Feature: Manage WordPress attachments
       """
 
   Scenario: Import media from remote URL and use input file as attachment name
-    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --file_name=abc`
+    When I run `wp media import 'http://wp-cli.github.io/behat-data/codeispoetry.png' --file_name=abc`
     Then STDOUT should contain:
       """
       file name abc.png
@@ -57,7 +57,7 @@ Feature: Manage WordPress attachments
   Scenario: Import a file as attachment from a local image
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --post_id=1 --featured_image`
     Then STDOUT should contain:
@@ -74,7 +74,7 @@ Feature: Manage WordPress attachments
   Scenario: Import a file as attachment from a local image and preserve the file modified time.
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     And I run `TZ=UTC touch -t 8001031305 {CACHE_DIR}/large-image.jpg`
     And I run `wp option update gmt_offset -5`
 
@@ -96,7 +96,7 @@ Feature: Manage WordPress attachments
   Scenario: Import a file as an attachment but porcelain style
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported attachment" --caption="My fabulous caption" --post_name="My post name" --porcelain`
     Then save STDOUT as {ATTACHMENT_ID}
@@ -122,7 +122,7 @@ Feature: Manage WordPress attachments
   Scenario: Import a file as attachment from a local image and leave it in it's current location
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --skip-copy`
@@ -141,7 +141,7 @@ Feature: Manage WordPress attachments
   Scenario: Import a file and use its filename as the title
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain`
     Then save STDOUT as {ATTACHMENT_ID}
@@ -155,7 +155,7 @@ Feature: Manage WordPress attachments
   Scenario: Import a file and persist its original metadata
     Given download:
       | path                         | url                                              |
-      | {CACHE_DIR}/canola.jpg       | http://wp-cli.org/behat-data/canola.jpg          |
+      | {CACHE_DIR}/canola.jpg       | http://wp-cli.github.io/behat-data/canola.jpg          |
 
     When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
     Then save STDOUT as {ATTACHMENT_ID}
@@ -173,7 +173,7 @@ Feature: Manage WordPress attachments
       """
 
   Scenario: Make sure WordPress receives the slashed data it expects
-    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --post_id=1 --title='My\Title' --caption='Caption\Here' --alt='Alt\Here' --desc='Desc\Here' --porcelain`
+    When I run `wp media import 'http://wp-cli.github.io/behat-data/codeispoetry.png' --post_id=1 --title='My\Title' --caption='Caption\Here' --alt='Alt\Here' --desc='Desc\Here' --porcelain`
     Then save STDOUT as {ATTACHMENT_ID}
 
     When I run `wp post get {ATTACHMENT_ID} --format=csv --fields=post_title,post_excerpt,post_content`
@@ -199,16 +199,16 @@ Feature: Manage WordPress attachments
   Scenario: Import multiple images
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
 
-    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg`
+    When I run `wp media import 'http://wp-cli.github.io/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg`
     Then STDOUT should contain:
       """
       Success: Imported 2 of 2 items.
       """
 
   Scenario: Fail to import one image but continue trying the next
-    When I try `wp media import gobbledygook.png 'http://wp-cli.org/behat-data/codeispoetry.png'`
+    When I try `wp media import gobbledygook.png 'http://wp-cli.github.io/behat-data/codeispoetry.png'`
     Then STDERR should contain:
       """
       Error: Only imported 1 of 2 items.
@@ -235,7 +235,7 @@ Feature: Manage WordPress attachments
   Scenario: Return upload URL after importing a single valid file
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain=url`
     Then STDOUT should contain:
@@ -251,10 +251,10 @@ Feature: Manage WordPress attachments
   Scenario: Return upload URL after importing a multiple valid files
     Given download:
       | path                                | url                                                  |
-      | {CACHE_DIR}/large-image.jpg         | http://wp-cli.org/behat-data/large-image.jpg         |
-      | {CACHE_DIR}/audio-with-no-cover.mp3 | http://wp-cli.org/behat-data/audio-with-no-cover.mp3 |
+      | {CACHE_DIR}/large-image.jpg         | http://wp-cli.github.io/behat-data/large-image.jpg         |
+      | {CACHE_DIR}/audio-with-no-cover.mp3 | http://wp-cli.github.io/behat-data/audio-with-no-cover.mp3 |
 
-    When I run `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg {CACHE_DIR}/audio-with-no-cover.mp3 --porcelain=url`
+    When I run `wp media import 'http://wp-cli.github.io/behat-data/codeispoetry.png' {CACHE_DIR}/large-image.jpg {CACHE_DIR}/audio-with-no-cover.mp3 --porcelain=url`
     Then STDOUT should contain:
       """
       https://example.com/wp-content/uploads/
@@ -281,7 +281,7 @@ Feature: Manage WordPress attachments
       """
 
   Scenario: Errors when invalid --porcelain flag is applied.
-    When I try `wp media import 'http://wp-cli.org/behat-data/codeispoetry.png' --porcelain=invalid`
+    When I try `wp media import 'http://wp-cli.github.io/behat-data/codeispoetry.png' --porcelain=invalid`
     Then STDERR should be:
       """
       Error: Invalid value for <porcelain>: invalid. Expected flag or 'url'.
@@ -290,7 +290,7 @@ Feature: Manage WordPress attachments
   Scenario: Import media from STDIN
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/codeispoetry.png | http://wp-cli.org/behat-data/codeispoetry.png     |
+      | {CACHE_DIR}/codeispoetry.png | http://wp-cli.github.io/behat-data/codeispoetry.png     |
 
     When I run `cat {CACHE_DIR}/codeispoetry.png | wp media import - --title="From STDIN" --porcelain`
     Then save STDOUT as {ATTACHMENT_ID}
@@ -304,7 +304,7 @@ Feature: Manage WordPress attachments
   Scenario: Import media from STDIN with file_name
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/codeispoetry.png | http://wp-cli.org/behat-data/codeispoetry.png     |
+      | {CACHE_DIR}/codeispoetry.png | http://wp-cli.github.io/behat-data/codeispoetry.png     |
 
     When I run `cat {CACHE_DIR}/codeispoetry.png | wp media import - --file_name=my-image.png --porcelain`
     Then save STDOUT as {ATTACHMENT_ID}
@@ -336,7 +336,7 @@ Feature: Manage WordPress attachments
   Scenario: Upload files into a custom directory, relative to ABSPATH, when --destination-dir flag is applied.
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     When I run `wp media import --destination-dir="foo" {CACHE_DIR}/large-image.jpg --porcelain=url`
 
     Then STDOUT should not contain:
@@ -352,7 +352,7 @@ Feature: Manage WordPress attachments
   Scenario: Upload files into a custom directory, not relative to ABSPATH, when --destination-dir flag is applied.
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     When I run `wp media import --destination-dir="{RUN_DIR}/foo" {CACHE_DIR}/large-image.jpg --porcelain=url`
 
     Then STDOUT should not contain:
