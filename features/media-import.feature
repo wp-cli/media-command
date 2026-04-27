@@ -216,10 +216,10 @@ Feature: Manage WordPress attachments
     And the return code should be 1
 
   Scenario: Fail when download_url() fails
-    When I try `wp media import 'http://wp-cli.org/404'`
+    When I try `wp media import 'http://example.com/404'`
     Then STDERR should be:
       """
-      Warning: Unable to import file 'http://wp-cli.org/404'. Reason: Not Found
+      Warning: Unable to import file 'http://example.com/404'. Reason: Not Found
       Error: No items imported.
       """
     And the return code should be 1
