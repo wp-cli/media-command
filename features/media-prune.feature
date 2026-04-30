@@ -16,8 +16,8 @@ Feature: Prune WordPress attachment thumbnails
   Scenario: Prune all thumbnails for all images
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
-      | {CACHE_DIR}/canola.jpg      | http://wp-cli.org/behat-data/canola.jpg      |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg      |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My large attachment" --porcelain`
@@ -72,7 +72,7 @@ Feature: Prune WordPress attachment thumbnails
   Scenario: Prune a specific image size
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My large attachment" --porcelain`
@@ -96,7 +96,7 @@ Feature: Prune WordPress attachment thumbnails
   Scenario: Prune does not remove abandoned (unregistered) thumbnails by default
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -133,7 +133,7 @@ Feature: Prune WordPress attachment thumbnails
   Scenario: Prune removes abandoned thumbnails with --remove-abandoned
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php

@@ -16,9 +16,9 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate all images default behavior
     Given download:
       | path                             | url                                               |
-      | {CACHE_DIR}/large-image.jpg      | http://wp-cli.org/behat-data/large-image.jpg      |
-      | {CACHE_DIR}/canola.jpg           | http://wp-cli.org/behat-data/canola.jpg           |
-      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
+      | {CACHE_DIR}/large-image.jpg      | http://wp-cli.github.io/behat-data/large-image.jpg      |
+      | {CACHE_DIR}/canola.jpg           | http://wp-cli.github.io/behat-data/canola.jpg           |
+      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.github.io/behat-data/white-150-square.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
@@ -86,9 +86,9 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate all images default behavior (pre-WP-5.3)
     Given download:
       | path                             | url                                               |
-      | {CACHE_DIR}/large-image.jpg      | http://wp-cli.org/behat-data/large-image.jpg      |
-      | {CACHE_DIR}/canola.jpg           | http://wp-cli.org/behat-data/canola.jpg           |
-      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
+      | {CACHE_DIR}/large-image.jpg      | http://wp-cli.github.io/behat-data/large-image.jpg      |
+      | {CACHE_DIR}/canola.jpg           | http://wp-cli.github.io/behat-data/canola.jpg           |
+      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.github.io/behat-data/white-150-square.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
@@ -149,7 +149,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Delete existing thumbnails when media is regenerated
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -181,7 +181,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Skip deletion of existing thumbnails when media is regenerated
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -214,8 +214,8 @@ Feature: Regenerate WordPress attachments
   Scenario: Delete existing thumbnails when media including PDF is regenerated
     Given download:
       | path                              | url                                                   |
-      | {CACHE_DIR}/large-image.jpg       | http://wp-cli.org/behat-data/large-image.jpg          |
-      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf    |
+      | {CACHE_DIR}/large-image.jpg       | http://wp-cli.github.io/behat-data/large-image.jpg          |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.github.io/behat-data/minimal-us-letter.pdf    |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -262,8 +262,8 @@ Feature: Regenerate WordPress attachments
   Scenario: Skip deletion of existing thumbnails when media including PDF is regenerated
     Given download:
       | path                              | url                                                   |
-      | {CACHE_DIR}/large-image.jpg       | http://wp-cli.org/behat-data/large-image.jpg          |
-      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf    |
+      | {CACHE_DIR}/large-image.jpg       | http://wp-cli.github.io/behat-data/large-image.jpg          |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.github.io/behat-data/minimal-us-letter.pdf    |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -309,7 +309,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Provide helpful error messages when media can't be regenerated
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -337,7 +337,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Only regenerate images which are missing sizes
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -454,7 +454,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate images which are missing globally-defined image sizes
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported attachment" --porcelain`
@@ -502,7 +502,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Only regenerate images that are missing if the size should exist
     Given download:
       | path                   | url                                         |
-      | {CACHE_DIR}/canola.jpg | http://wp-cli.org/behat-data/canola.jpg     |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg     |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -537,7 +537,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Only regenerate PDF previews that are missing if the size should exist
     Given download:
       | path                              | url                                                   |
-      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf    |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.github.io/behat-data/minimal-us-letter.pdf    |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -579,7 +579,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Only regenerate images that are missing if it has thumbnails
     Given download:
       | path                             | url                                               |
-      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.org/behat-data/white-150-square.jpg |
+      | {CACHE_DIR}/white-150-square.jpg | http://wp-cli.github.io/behat-data/white-150-square.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/white-150-square.jpg --title="My imported attachment" --porcelain`
@@ -603,7 +603,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate a specific image size
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/canola.jpg      | http://wp-cli.org/behat-data/canola.jpg      |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg      |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -836,7 +836,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerating a specific image size should not regenerate the scaled version of big images
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported attachment" --porcelain`
@@ -873,7 +873,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerating only-missing sizes on WP 5.3+ uses wp_update_image_subsizes and does not recreate the scaled version
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported attachment" --porcelain`
@@ -917,7 +917,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate a specific image size for a PDF attachment
     Given download:
       | path                              | url                                                   |
-      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf    |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.github.io/behat-data/minimal-us-letter.pdf    |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -1039,7 +1039,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate multiple specific image sizes
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/canola.jpg      | http://wp-cli.org/behat-data/canola.jpg      |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg      |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -1182,8 +1182,8 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerating PDFs when thumbnails disabled should be marked as skipped and not produce PHP notices
     Given download:
       | path                              | url                                                |
-      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf |
-      | {CACHE_DIR}/canola.jpg            | http://wp-cli.org/behat-data/canola.jpg            |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.github.io/behat-data/minimal-us-letter.pdf |
+      | {CACHE_DIR}/canola.jpg            | http://wp-cli.github.io/behat-data/canola.jpg            |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -1257,7 +1257,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerating PDFs when thumbnails enabled on import but disabled on regeneration
     Given download:
       | path                              | url                                                |
-      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.github.io/behat-data/minimal-us-letter.pdf |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -1322,7 +1322,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerating PDFs when thumbnails disabled on import but enabled on regeneration
     Given download:
       | path                              | url                                                |
-      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.org/behat-data/minimal-us-letter.pdf |
+      | {CACHE_DIR}/minimal-us-letter.pdf | http://wp-cli.github.io/behat-data/minimal-us-letter.pdf |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -1389,8 +1389,8 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerating video with thumbnail
     Given download:
       | path                                        | url                                                          |
-      | {CACHE_DIR}/video-400x300-with-cover.mp4    | http://wp-cli.org/behat-data/video-400x300-with-cover.mp4    |
-      | {CACHE_DIR}/video-400x300-with-no-cover.mp4 | http://wp-cli.org/behat-data/video-400x300-with-no-cover.mp4 |
+      | {CACHE_DIR}/video-400x300-with-cover.mp4    | http://wp-cli.github.io/behat-data/video-400x300-with-cover.mp4    |
+      | {CACHE_DIR}/video-400x300-with-no-cover.mp4 | http://wp-cli.github.io/behat-data/video-400x300-with-no-cover.mp4 |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/video-400x300-with-cover.mp4 --title="My imported video with cover attachment" --porcelain`
@@ -1434,7 +1434,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate image uploaded with no sizes metadata
     Given download:
       | path                             | url                                               |
-      | {CACHE_DIR}/white-160-square.bmp | http://wp-cli.org/behat-data/white-160-square.bmp |
+      | {CACHE_DIR}/white-160-square.bmp | http://wp-cli.github.io/behat-data/white-160-square.bmp |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -1565,9 +1565,9 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerating melange with batch results: regenerated (and not needing regeneration), skipped, failed
     Given download:
       | path                                     | url                                                       |
-      | {CACHE_DIR}/canola.jpg                   | http://wp-cli.org/behat-data/canola.jpg                   |
-      | {CACHE_DIR}/minimal-us-letter.pdf        | http://wp-cli.org/behat-data/minimal-us-letter.pdf        |
-      | {CACHE_DIR}/video-400x300-with-cover.mp4 | http://wp-cli.org/behat-data/video-400x300-with-cover.mp4 |
+      | {CACHE_DIR}/canola.jpg                   | http://wp-cli.github.io/behat-data/canola.jpg                   |
+      | {CACHE_DIR}/minimal-us-letter.pdf        | http://wp-cli.github.io/behat-data/minimal-us-letter.pdf        |
+      | {CACHE_DIR}/video-400x300-with-cover.mp4 | http://wp-cli.github.io/behat-data/video-400x300-with-cover.mp4 |
     And an svg.svg file:
       """
       <?xml version="1.0" encoding="utf-8"?>
@@ -1801,7 +1801,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate a large image that was edited by the user preserves the edits
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My imported large attachment" --porcelain`
@@ -1861,7 +1861,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Only delete missing image sizes
     Given download:
       | path                        | url                                              |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg     |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
@@ -1898,7 +1898,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Regenerate site-icon attachment preserves site-icon-specific image sizes
     Given download:
       | path                        | url                                          |
-      | {CACHE_DIR}/large-image.jpg | http://wp-cli.org/behat-data/large-image.jpg |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/large-image.jpg --title="My site icon" --porcelain`
@@ -1937,7 +1937,7 @@ Feature: Regenerate WordPress attachments
   Scenario: Update post content references when regenerating a specific image size
     Given download:
       | path                        | url                                      |
-      | {CACHE_DIR}/canola.jpg      | http://wp-cli.org/behat-data/canola.jpg  |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg  |
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
