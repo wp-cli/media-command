@@ -575,7 +575,7 @@ class Media_Command extends WP_CLI_Command {
 				}
 
 				// Determine file extension from content
-				$mimetype = mime_content_type( $tempfile );
+				$mimetype = function_exists( 'mime_content_type' ) ? mime_content_type( $tempfile ) : '';
 
 				// Map MIME type to extension
 				$ext = '';
@@ -1252,7 +1252,7 @@ class Media_Command extends WP_CLI_Command {
 		$needs_regeneration = $this->needs_regeneration( $id, $fullsizepath, $is_pdf, $image_sizes, $skip_delete, $skip_it );
 
 		if ( $skip_it ) {
-			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc." );
+			WP_CLI::log( "$progress Skipped $thumbnail_desc regeneration for $att_desc: $skip_it" );
 			++$skips;
 			return;
 		}
@@ -1514,8 +1514,8 @@ class Media_Command extends WP_CLI_Command {
 	 * @param bool $is_pdf
 	 * @param string[] $image_sizes
 	 * @param bool $skip_delete
-	 * @param bool $skip_it
-	 * @param-out bool $skip_it
+	 * @param string|false $skip_it Reason string if skipping, false otherwise.
+	 * @param-out string|false $skip_it
 	 * @return bool
 	 */
 	private function needs_regeneration( $att_id, $fullsizepath, $is_pdf, $image_sizes, $skip_delete, &$skip_it ) {
@@ -1534,7 +1534,9 @@ class Media_Command extends WP_CLI_Command {
 			if ( ! $is_pdf && is_array( $metadata ) && ! empty( $metadata['sizes'] ) ) {
 				WP_CLI::warning( sprintf( '%s (ID %d)', $attachment_sizes->get_error_message(), $att_id ) );
 			}
-			$skip_it = true;
+			$mime_type = get_post_mime_type( $att_id );
+			$skip_it   = sprintf( 'no editor available for %s.', $mime_type ? $mime_type : 'this file type' );
+			WP_CLI::debug( sprintf( 'Skipping attachment %d: %s.', $att_id, $skip_it ), 'media' );
 			return false;
 		}
 
@@ -1566,6 +1568,7 @@ class Media_Command extends WP_CLI_Command {
 			$filtered_sizes = array_intersect_key( $attachment_sizes, array_flip( $image_sizes ) );
 
 			if ( empty( $filtered_sizes ) ) {
+				WP_CLI::debug( sprintf( 'Not regenerating attachment %d: no requested sizes apply to this attachment.', $att_id ), 'media' );
 				return false;
 			}
 
@@ -1577,7 +1580,7 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			/**
-			 * @var array{sizes: array<string, array<string, mixed>>} $metadata
+			 * @var array{width: int, height: int, file: string, image_meta: array, filesize: int, sizes: non-empty-array<string, array<string, mixed>>} $metadata
 			 */
 
 			// Filter metadata and attachment_sizes to only the applicable requested sizes.
@@ -1586,6 +1589,7 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		if ( $this->image_sizes_differ( $attachment_sizes, $metadata['sizes'] ) ) {
+			WP_CLI::debug( sprintf( 'Regenerating attachment %d: image sizes have changed.', $att_id ), 'media' );
 			return true;
 		}
 
@@ -1604,9 +1608,12 @@ class Media_Command extends WP_CLI_Command {
 			}
 
 			if ( ! file_exists( $intermediate_path ) ) {
+				WP_CLI::debug( sprintf( 'Regenerating attachment %d: missing thumbnail file "%s".', $att_id, $size_info['file'] ), 'media' );
 				return true;
 			}
 		}
+
+		WP_CLI::debug( sprintf( 'Attachment %d: all thumbnails up to date.', $att_id ), 'media' );
 		return false;
 	}
 
