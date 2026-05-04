@@ -1119,51 +1119,42 @@ class Media_Command extends WP_CLI_Command {
 	 * @return int|false Attachment ID if found, false otherwise.
 	 */
 	private function find_duplicate_attachment( $basename ) {
-		global $wpdb;
-
 		// WP 5.3+ big-image scaling renames 'image.jpg' → 'image-scaled.jpg' and
 		// stores the scaled name in _wp_attached_file, so search for both variants.
 		$ext             = pathinfo( $basename, PATHINFO_EXTENSION );
 		$name            = pathinfo( $basename, PATHINFO_FILENAME );
 		$scaled_basename = $name . '-scaled' . ( $ext ? '.' . $ext : '' );
 
-		$slash_basename        = '/' . $basename;
-		$slash_scaled_basename = '/' . $scaled_basename;
-
-		if ( function_exists( 'mb_strlen' ) ) {
-			$slash_basename_length        = mb_strlen( $slash_basename, 'UTF-8' );
-			$slash_scaled_basename_length = mb_strlen( $slash_scaled_basename, 'UTF-8' );
-		} else {
-			$slash_basename_length        = strlen( $slash_basename );
-			$slash_scaled_basename_length = strlen( $slash_scaled_basename );
+		// Build OR meta query clauses matching exact basename or year/month-prefixed paths.
+		$meta_clauses = array( 'relation' => 'OR' );
+		foreach ( array( $basename, $scaled_basename ) as $variant ) {
+			$meta_clauses[] = array(
+				'key'     => '_wp_attached_file',
+				'value'   => $variant,
+				'compare' => '=',
+			);
+			$meta_clauses[] = array(
+				'key'     => '_wp_attached_file',
+				'value'   => '/' . $variant,
+				'compare' => 'LIKE',
+			);
 		}
 
-		$result = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT p.ID
-				 FROM {$wpdb->posts} p
-				 INNER JOIN {$wpdb->postmeta} pm
-				     ON p.ID = pm.post_id
-				 WHERE p.post_type = 'attachment'
-				   AND p.post_status != 'trash'
-				   AND pm.meta_key = '_wp_attached_file'
-				   AND (
-				       pm.meta_value = %s
-				       OR RIGHT(pm.meta_value, %d) = %s
-				       OR pm.meta_value = %s
-				       OR RIGHT(pm.meta_value, %d) = %s
-				   )
-				 LIMIT 1",
-				$basename,
-				$slash_basename_length,
-				$slash_basename,
-				$scaled_basename,
-				$slash_scaled_basename_length,
-				$slash_scaled_basename
+		$query = new \WP_Query(
+			array(
+				'post_type'              => 'attachment',
+				'post_status'            => 'any',
+				'posts_per_page'         => 1,
+				'meta_query'             => $meta_clauses, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				'fields'                 => 'ids',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
 			)
 		);
 
-		return $result ? (int) $result : false;
+		$posts = $query->posts;
+		return ! empty( $posts ) ? (int) $posts[0] : false;
 	}
 
 	/**
