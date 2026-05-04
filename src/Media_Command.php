@@ -1140,7 +1140,7 @@ class Media_Command extends WP_CLI_Command {
 			);
 		}
 
-		$query = new \WP_Query(
+		$posts = get_posts(
 			array(
 				'post_type'              => 'attachment',
 				'post_status'            => 'any',
@@ -1153,8 +1153,11 @@ class Media_Command extends WP_CLI_Command {
 			)
 		);
 
-		$posts = $query->posts;
-		return ! empty( $posts ) ? (int) $posts[0] : false;
+		if ( empty( $posts ) ) {
+			return false;
+		}
+
+		return $posts[0];
 	}
 
 	/**
