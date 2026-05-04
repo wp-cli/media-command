@@ -1699,16 +1699,7 @@ class Media_Command extends WP_CLI_Command {
 
 		// Adapted from wp_generate_attachment_metadata() in "wp-admin/includes/image.php".
 
-		if ( function_exists( 'wp_get_additional_image_sizes' ) ) {
-			$_wp_additional_image_sizes = wp_get_additional_image_sizes();
-		} else {
-			// For WP < 4.7.0.
-			global $_wp_additional_image_sizes;
-			if ( ! $_wp_additional_image_sizes ) {
-				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Used as a fallback for WordPress version less than 4.7.0 as function wp_get_additional_image_sizes didn't exist then.
-				$_wp_additional_image_sizes = array();
-			}
-		}
+		$_wp_additional_image_sizes = wp_get_additional_image_sizes();
 
 		$sizes = array();
 		foreach ( $intermediate_image_sizes as $s ) {
