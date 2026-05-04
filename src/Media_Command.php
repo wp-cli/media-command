@@ -607,8 +607,16 @@ class Media_Command extends WP_CLI_Command {
 						++$errors;
 						continue;
 					}
+					$src_basename = Path::basename( $file );
 					if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
-						$existing = $this->find_duplicate_attachment( Path::basename( $file ) );
+						$check_basename = $src_basename;
+						if ( ! empty( $assoc_args['file_name'] ) ) {
+							$resolved_name = $this->get_image_name( $src_basename, $assoc_args['file_name'] );
+							if ( ! empty( $resolved_name ) ) {
+								$check_basename = $resolved_name;
+							}
+						}
+						$existing = $this->find_duplicate_attachment( $check_basename );
 						if ( false !== $existing ) {
 							if ( ! $porcelain ) {
 								WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
@@ -622,14 +630,22 @@ class Media_Command extends WP_CLI_Command {
 					} else {
 						$tempfile = $this->make_copy( $file );
 					}
-					$name = Path::basename( $file );
+					$name = $src_basename;
 
 					if ( Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
 						$file_time = @filemtime( $file );
 					}
 				} else {
+					$src_basename = (string) explode( '?', Path::basename( $file ), 2 )[0];
 					if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
-						$existing = $this->find_duplicate_attachment( (string) explode( '?', Path::basename( $file ), 2 )[0] );
+						$check_basename = $src_basename;
+						if ( ! empty( $assoc_args['file_name'] ) ) {
+							$resolved_name = $this->get_image_name( $src_basename, $assoc_args['file_name'] );
+							if ( ! empty( $resolved_name ) ) {
+								$check_basename = $resolved_name;
+							}
+						}
+						$existing = $this->find_duplicate_attachment( $check_basename );
 						if ( false !== $existing ) {
 							if ( ! $porcelain ) {
 								WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
@@ -650,7 +666,7 @@ class Media_Command extends WP_CLI_Command {
 						++$errors;
 						continue;
 					}
-					$name = (string) explode( '?', Path::basename( $file ), 2 )[0];
+					$name = $src_basename;
 				}
 			}
 

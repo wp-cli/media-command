@@ -430,3 +430,54 @@ Feature: Manage WordPress attachments
       Success: Imported 1 of 2 items (1 skipped).
       """
     And the return code should be 0
+
+  @require-wp-5.3
+  Scenario: Skip importing a file that was stored with a scaled suffix by WP 5.3+
+    Given download:
+      | path                        | url                                                    |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+    And STDOUT should not be empty
+    And the wp-content/uploads/large-image-scaled.jpg file should exist
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --skip-duplicates`
+    Then STDOUT should contain:
+      """
+      Skipped importing file
+      """
+    And STDOUT should contain:
+      """
+      already exists as attachment ID {ATTACHMENT_ID}
+      """
+    And STDOUT should contain:
+      """
+      Success: Imported 0 of 1 items (1 skipped).
+      """
+    And the return code should be 0
+
+  Scenario: Skip importing a file when a custom --file_name was used in the original import
+    Given download:
+      | path                        | url                                                    |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg     |
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --file_name=custom --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+    And STDOUT should not be empty
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --file_name=custom --skip-duplicates`
+    Then STDOUT should contain:
+      """
+      Skipped importing file
+      """
+    And STDOUT should contain:
+      """
+      already exists as attachment ID {ATTACHMENT_ID}
+      """
+    And STDOUT should contain:
+      """
+      Success: Imported 0 of 1 items (1 skipped).
+      """
+    And the return code should be 0
