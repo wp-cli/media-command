@@ -109,7 +109,7 @@ wp media fix-orientation [<attachment-id>...] [--dry-run]
 Creates attachments from local files or URLs.
 
 ~~~
-wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--file_name=<name>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--destination-dir=<destination-dir>] [--preserve-filetime] [--featured_image] [--porcelain[=<field>]]
+wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--file_name=<name>] [--title=<title>] [--caption=<caption>] [--alt=<alt_text>] [--desc=<description>] [--skip-copy] [--destination-dir=<destination-dir>] [--preserve-filetime] [--featured_image] [--skip-duplicates] [--porcelain[=<field>]]
 ~~~
 
 **OPTIONS**
@@ -157,6 +157,9 @@ wp media import <file>... [--post_id=<post_id>] [--post_name=<post_name>] [--fil
 
 	[--featured_image]
 		If set, set the imported image as the Featured Image of the post it is attached to.
+
+	[--skip-duplicates]
+		If set, media files that have already been imported will be skipped.
 
 	[--porcelain[=<field>]]
 		Output a single field for each imported image. Defaults to attachment ID when used as flag.
