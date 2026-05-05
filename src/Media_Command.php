@@ -422,6 +422,9 @@ class Media_Command extends WP_CLI_Command {
 	 * [--featured_image]
 	 * : If set, set the imported image as the Featured Image of the post it is attached to.
 	 *
+	 * [--skip-duplicates]
+	 * : If set, media files that have already been imported will be skipped.
+	 *
 	 * [--porcelain[=<field>]]
 	 * : Output a single field for each imported image. Defaults to attachment ID when used as flag.
 	 * ---
@@ -465,7 +468,7 @@ class Media_Command extends WP_CLI_Command {
 	 *     Success: Imported 1 of 1 items.
 	 *
 	 * @param string[] $args Positional arguments.
-	 * @param array{post_id?: string, post_name?: string, file_name?: string, title?: string, caption?: string, alt?: string, desc?: string, 'skip-copy'?: bool, 'destination-dir'?: string, 'preserve-filetime'?: bool, featured_image?: bool, porcelain?: bool|string} $assoc_args Associative arguments.
+	 * @param array{post_id?: string, post_name?: string, file_name?: string, title?: string, caption?: string, alt?: string, desc?: string, 'skip-copy'?: bool, 'destination-dir'?: string, 'preserve-filetime'?: bool, featured_image?: bool, 'skip-duplicates'?: bool, porcelain?: bool|string} $assoc_args Associative arguments.
 	 * @return void
 	 */
 	public function import( $args, $assoc_args = array() ) {
@@ -518,6 +521,7 @@ class Media_Command extends WP_CLI_Command {
 		$number    = 0;
 		$successes = 0;
 		$errors    = 0;
+		$skips     = 0;
 		foreach ( $args as $file ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
@@ -603,17 +607,53 @@ class Media_Command extends WP_CLI_Command {
 						++$errors;
 						continue;
 					}
+					$src_basename = Path::basename( $file );
+					if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
+						$check_basename = $src_basename;
+						if ( ! empty( $assoc_args['file_name'] ) ) {
+							$resolved_name = $this->get_image_name( $src_basename, $assoc_args['file_name'] );
+							if ( ! empty( $resolved_name ) ) {
+								$check_basename = $resolved_name;
+							}
+						}
+						$existing = $this->find_duplicate_attachment( $check_basename );
+						if ( false !== $existing ) {
+							if ( ! $porcelain ) {
+								WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
+							}
+							++$skips;
+							continue;
+						}
+					}
 					if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) ) {
 						$tempfile = $file;
 					} else {
 						$tempfile = $this->make_copy( $file );
 					}
-					$name = Path::basename( $file );
+					$name = $src_basename;
 
 					if ( Utils\get_flag_value( $assoc_args, 'preserve-filetime' ) ) {
 						$file_time = @filemtime( $file );
 					}
 				} else {
+					$src_basename = (string) explode( '?', Path::basename( $file ), 2 )[0];
+					if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
+						$check_basename = $src_basename;
+						if ( ! empty( $assoc_args['file_name'] ) ) {
+							$resolved_name = $this->get_image_name( $src_basename, $assoc_args['file_name'] );
+							if ( ! empty( $resolved_name ) ) {
+								$check_basename = $resolved_name;
+							}
+						}
+						$existing = $this->find_duplicate_attachment( $check_basename );
+						if ( false !== $existing ) {
+							if ( ! $porcelain ) {
+								WP_CLI::log( "Skipped importing file '$orig_filename'. Reason: already exists as attachment ID $existing." );
+							}
+							++$skips;
+							continue;
+						}
+					}
 					$tempfile = download_url( $file );
 					if ( is_wp_error( $tempfile ) ) {
 						WP_CLI::warning(
@@ -626,7 +666,7 @@ class Media_Command extends WP_CLI_Command {
 						++$errors;
 						continue;
 					}
-					$name = (string) strtok( Path::basename( $file ), '?' );
+					$name = $src_basename;
 				}
 			}
 
@@ -769,7 +809,7 @@ class Media_Command extends WP_CLI_Command {
 
 		// Report the result of the operation
 		if ( ! Utils\get_flag_value( $assoc_args, 'porcelain' ) ) {
-			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors );
+			Utils\report_batch_operation_results( $noun, 'import', count( $args ), $successes, $errors, Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ? $skips : null );
 		} elseif ( $errors ) {
 			WP_CLI::halt( 1 );
 		}
@@ -1079,6 +1119,61 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		return $filename;
+	}
+
+	/**
+	 * Finds an existing attachment whose basename matches the given filename.
+	 *
+	 * Searches the `_wp_attached_file` post meta, which stores the path relative to
+	 * the uploads directory (e.g. '2026/03/image.jpg' or just 'image.jpg'). Also
+	 * checks for the WP 5.3+ big-image scaled variant (e.g. 'image-scaled.jpg') so
+	 * that re-importing a large file that was scaled on first import is correctly
+	 * detected as a duplicate. Matches the first attachment found when multiple files
+	 * share the same basename across different upload subdirectories.
+	 *
+	 * @param string $basename Filename basename to search for (e.g. 'image.jpg').
+	 * @return int|false Attachment ID if found, false otherwise.
+	 */
+	private function find_duplicate_attachment( $basename ) {
+		// WP 5.3+ big-image scaling renames 'image.jpg' → 'image-scaled.jpg' and
+		// stores the scaled name in _wp_attached_file, so search for both variants.
+		$ext             = pathinfo( $basename, PATHINFO_EXTENSION );
+		$name            = pathinfo( $basename, PATHINFO_FILENAME );
+		$scaled_basename = $name . '-scaled' . ( $ext ? '.' . $ext : '' );
+
+		// Build OR meta query clauses matching exact basename or year/month-prefixed paths.
+		$meta_clauses = array( 'relation' => 'OR' );
+		foreach ( array( $basename, $scaled_basename ) as $variant ) {
+			$meta_clauses[] = array(
+				'key'     => '_wp_attached_file',
+				'value'   => $variant,
+				'compare' => '=',
+			);
+			$meta_clauses[] = array(
+				'key'     => '_wp_attached_file',
+				'value'   => '/' . $variant,
+				'compare' => 'LIKE',
+			);
+		}
+
+		$posts = get_posts(
+			array(
+				'post_type'              => 'attachment',
+				'post_status'            => 'any',
+				'posts_per_page'         => 1,
+				'meta_query'             => $meta_clauses, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				'fields'                 => 'ids',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			)
+		);
+
+		if ( empty( $posts ) ) {
+			return false;
+		}
+
+		return $posts[0];
 	}
 
 	/**
@@ -1620,16 +1715,7 @@ class Media_Command extends WP_CLI_Command {
 
 		// Adapted from wp_generate_attachment_metadata() in "wp-admin/includes/image.php".
 
-		if ( function_exists( 'wp_get_additional_image_sizes' ) ) {
-			$_wp_additional_image_sizes = wp_get_additional_image_sizes();
-		} else {
-			// For WP < 4.7.0.
-			global $_wp_additional_image_sizes;
-			if ( ! $_wp_additional_image_sizes ) {
-				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Used as a fallback for WordPress version less than 4.7.0 as function wp_get_additional_image_sizes didn't exist then.
-				$_wp_additional_image_sizes = array();
-			}
-		}
+		$_wp_additional_image_sizes = wp_get_additional_image_sizes();
 
 		$sizes = array();
 		foreach ( $intermediate_image_sizes as $s ) {
