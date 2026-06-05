@@ -3087,7 +3087,7 @@ class Media_Command extends WP_CLI_Command {
 		$iterator = new RecursiveIteratorIterator(
 			new RecursiveDirectoryIterator(
 				$uploads_basedir,
-				FilesystemIterator::SKIP_DOTS | FilesystemIterator::FOLLOW_SYMLINKS
+				FilesystemIterator::SKIP_DOTS
 			),
 			RecursiveIteratorIterator::LEAVES_ONLY
 		);
