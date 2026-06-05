@@ -116,6 +116,11 @@ Feature: Find orphan WordPress media
     When I run `wp media import {CACHE_DIR}/large-image.jpg --post_id={POST_ID} --featured_image --title="Featured attachment" --porcelain`
     Then save STDOUT as {FEATURED_ATTACHMENT_ID}
 
+    # Attached to the post via post_parent only: no featured image, no content
+    # reference. Must still count as used.
+    When I run `wp media import {CACHE_DIR}/canola.jpg --post_id={POST_ID} --title="Attached attachment" --porcelain`
+    Then save STDOUT as {ATTACHED_ATTACHMENT_ID}
+
     When I run `wp media find-orphans --type=usage`
     Then STDOUT should contain:
       """
@@ -132,6 +137,10 @@ Feature: Find orphan WordPress media
     And STDOUT should not contain:
       """
       {FEATURED_ATTACHMENT_ID}
+      """
+    And STDOUT should not contain:
+      """
+      {ATTACHED_ATTACHMENT_ID}
       """
     And the return code should be 0
 

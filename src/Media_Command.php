@@ -2938,12 +2938,12 @@ class Media_Command extends WP_CLI_Command {
 			$used_ids[ (int) $thumbnail_id ] = true;
 		}
 
-		// Referenced by ID: attachment relationship (post_parent).
-		$parents = $wpdb->get_col(
-			"SELECT DISTINCT post_parent FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_parent > 0"
+		// Referenced by ID: attachments uploaded to a post (post_parent).
+		$attached_ids = $wpdb->get_col(
+			"SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_parent > 0"
 		);
-		foreach ( $parents as $parent_id ) {
-			$used_ids[ (int) $parent_id ] = true;
+		foreach ( $attached_ids as $attached_id ) {
+			$used_ids[ (int) $attached_id ] = true;
 		}
 
 		// Build a path -> attachment_id lookup ONCE (bulk query over _wp_attached_file),
