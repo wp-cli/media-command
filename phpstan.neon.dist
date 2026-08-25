@@ -36,4 +36,5 @@ parameters:
     # namesake behind a `wp_version_compare()` check, and reimplements it otherwise.
     -
       identifier: WPCompat.functionNotAvailable
+      message: '#^wp_get_registered_image_subsizes\(\) is only available since WordPress version 5\.3\.0\.$#'
       path: src/Media_Command.php
