@@ -10,3 +10,30 @@ parameters:
   treatPhpDocTypesAsCertain: false
   ignoreErrors:
     - identifier: missingType.iterableValue
+
+    # johnbillion/wp-compat checks every WordPress symbol against the WordPress 4.9
+    # baseline that wp-cli-tests configures. It only recognizes function_exists() and
+    # method_exists() guards, so it cannot see the `wp_version_compare()` checks used
+    # throughout this command.
+
+    # WordPress 6.0 only formalized the already documented `...$args` parameter of
+    # `apply_filters()` by adding it to the function signature. Additional arguments
+    # were collected through `func_get_args()` before that. The two
+    # `intermediate_image_sizes_advanced` calls are already split across a
+    # `wp_version_compare()` check for exactly this reason.
+    -
+      identifier: WPCompat.parameterNotAvailable.applyfilters.args
+      path: src/Media_Command.php
+
+    # The WordPress 6.0 change to `wp_generate_attachment_metadata()` added the
+    # `$filesize` value to the *returned array*. The `$file` parameter itself has been
+    # there since WordPress 2.1.
+    -
+      identifier: WPCompat.parameterNotAvailable.wpgenerateattachmentmetadata.file
+      path: src/Media_Command.php
+
+    # `Media_Command::wp_get_registered_image_subsizes()` only calls its WordPress 5.3
+    # namesake behind a `wp_version_compare()` check, and reimplements it otherwise.
+    -
+      identifier: WPCompat.functionNotAvailable
+      path: src/Media_Command.php
