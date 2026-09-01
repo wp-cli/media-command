@@ -48,10 +48,10 @@ Feature: List image sizes
         */
 
       add_action(
-        'after_setup_theme',
-        function () {
-          add_image_size( 'foo-bar-thumb', 50, 50, true );
-        }
+          'after_setup_theme',
+          function () {
+              add_image_size( 'foo-bar-thumb', 50, 50, true );
+          }
       );
       """
     And I try `wp plugin activate foo-bar.php`

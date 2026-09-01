@@ -100,9 +100,12 @@ Feature: Prune WordPress attachment thumbnails
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'abandoned_size', 200, 200, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'abandoned_size', 200, 200, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -137,9 +140,12 @@ Feature: Prune WordPress attachment thumbnails
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'abandoned_size', 200, 200, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'abandoned_size', 200, 200, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
