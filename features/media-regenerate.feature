@@ -153,9 +153,12 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 125, 125, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 125, 125, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -166,9 +169,12 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 200, 200, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 200, 200, true );
+          }
+      );
       """
     When I run `wp media regenerate --yes`
     Then STDOUT should contain:
@@ -185,9 +191,12 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 125, 125, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 125, 125, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -198,9 +207,12 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 200, 200, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 200, 200, true );
+          }
+      );
       """
     When I run `wp media regenerate --skip-delete --yes`
     Then STDOUT should contain:
@@ -219,13 +231,19 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 125, 125, true );
-        add_filter( 'fallback_intermediate_image_sizes', function( $fallback_sizes ){
-          $fallback_sizes[] = 'test1';
-          return $fallback_sizes;
-        });
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 125, 125, true );
+              add_filter(
+                  'fallback_intermediate_image_sizes',
+                  function ( $fallback_sizes ) {
+                      $fallback_sizes[] = 'test1';
+                      return $fallback_sizes;
+                  }
+              );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -240,13 +258,19 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 200, 200, true );
-        add_filter( 'fallback_intermediate_image_sizes', function( $fallback_sizes ){
-          $fallback_sizes[] = 'test1';
-          return $fallback_sizes;
-        });
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 200, 200, true );
+              add_filter(
+                  'fallback_intermediate_image_sizes',
+                  function ( $fallback_sizes ) {
+                      $fallback_sizes[] = 'test1';
+                      return $fallback_sizes;
+                  }
+              );
+          }
+      );
       """
     When I run `wp media regenerate --yes`
     Then STDOUT should contain:
@@ -267,13 +291,19 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 125, 125, true );
-        add_filter( 'fallback_intermediate_image_sizes', function( $fallback_sizes ){
-          $fallback_sizes[] = 'test1';
-          return $fallback_sizes;
-        });
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 125, 125, true );
+              add_filter(
+                  'fallback_intermediate_image_sizes',
+                  function ( $fallback_sizes ) {
+                      $fallback_sizes[] = 'test1';
+                      return $fallback_sizes;
+                  }
+              );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -288,13 +318,19 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 200, 200, true );
-        add_filter( 'fallback_intermediate_image_sizes', function( $fallback_sizes ){
-          $fallback_sizes[] = 'test1';
-          return $fallback_sizes;
-        });
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 200, 200, true );
+              add_filter(
+                  'fallback_intermediate_image_sizes',
+                  function ( $fallback_sizes ) {
+                      $fallback_sizes[] = 'test1';
+                      return $fallback_sizes;
+                  }
+              );
+          }
+      );
       """
     When I run `wp media regenerate --skip-delete --yes`
     Then STDOUT should contain:
@@ -313,9 +349,12 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 125, 125, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 125, 125, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -341,18 +380,24 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 125, 125, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 125, 125, true );
+          }
+      );
       // Handle WP < 4.4 when there was no dash before numbers (changeset 35276).
-      add_filter( 'wp_handle_upload', function ( $info, $upload_type = null ) {
-        if ( ( $new_file = str_replace( 'image1.jpg', 'image-1.jpg', $info['file'] ) ) !== $info['file'] ) {
-            rename( $info['file'], $new_file );
-            $info['file'] = $new_file;
-            $info['url'] = str_replace( 'image1.jpg', 'image-1.jpg', $info['url'] );
-        }
-        return $info;
-      } );
+      add_filter(
+          'wp_handle_upload',
+          function ( $info, $upload_type = null ) {
+              if ( ( $new_file = str_replace( 'image1.jpg', 'image-1.jpg', $info['file'] ) ) !== $info['file'] ) {
+                  rename( $info['file'], $new_file );
+                  $info['file'] = $new_file;
+                  $info['url'] = str_replace( 'image1.jpg', 'image-1.jpg', $info['url'] );
+              }
+              return $info;
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -407,9 +452,12 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 200, 200, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 200, 200, true );
+          }
+      );
       """
     Then the wp-content/uploads/large-image-125x125.jpg file should exist
     And the wp-content/uploads/large-image-1-125x125.jpg file should exist
@@ -464,9 +512,12 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 125, 125, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 125, 125, true );
+          }
+      );
       """
 
     When I run `wp media regenerate --only-missing --yes`
@@ -506,10 +557,13 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 500, 500, true ); // canola.jpg is 640x480.
-        add_image_size( 'test2', 400, 400, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 500, 500, true ); // canola.jpg is 640x480.
+              add_image_size( 'test2', 400, 400, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -541,15 +595,21 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 1100, 1100, true ); // minimal-us-letter.pdf is 1088x1408 at 128 dpi.
-        add_image_size( 'test2', 1000, 1000, true );
-        add_filter( 'fallback_intermediate_image_sizes', function( $fallback_sizes ){
-          $fallback_sizes[] = 'test1';
-          $fallback_sizes[] = 'test2';
-          return $fallback_sizes;
-        });
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 1100, 1100, true ); // minimal-us-letter.pdf is 1088x1408 at 128 dpi.
+              add_image_size( 'test2', 1000, 1000, true );
+              add_filter(
+                  'fallback_intermediate_image_sizes',
+                  function ( $fallback_sizes ) {
+                      $fallback_sizes[] = 'test1';
+                      $fallback_sizes[] = 'test2';
+                      return $fallback_sizes;
+                  }
+              );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -607,9 +667,12 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'too_big', 4000, 4000, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'too_big', 4000, 4000, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -623,10 +686,13 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 400, 400, true );
-        add_image_size( 'too_big', 4000, 4000, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 400, 400, true );
+              add_image_size( 'too_big', 4000, 4000, true );
+          }
+      );
       """
 
     # Run for "medium" size only if missing - nothing should happen.
@@ -750,10 +816,13 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 350, 350, true );
-        add_image_size( 'too_big', 4000, 4000, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 350, 350, true );
+              add_image_size( 'too_big', 4000, 4000, true );
+          }
+      );
       """
 
     # Regenerate "test1" image size only if missing (which also sets --skip-delete) - should be regenerated and 400x400 should still exist.
@@ -785,10 +854,13 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 380, 380, true );
-        add_image_size( 'too_big', 4000, 4000, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 380, 380, true );
+              add_image_size( 'too_big', 4000, 4000, true );
+          }
+      );
       """
 
     # Regenerate "test1" image size only if missing and with explicit --skip-delete - should be regenerated and 350x350 and 400x400 should still exist.
@@ -852,7 +924,12 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_filter( 'jpeg_quality', function() { return 1; } );
+      add_filter(
+          'jpeg_quality',
+          function () {
+              return 1;
+          }
+      );
       """
 
     # Regenerate only the medium size - scaled image should not be touched.
@@ -890,11 +967,19 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 400, 300, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 400, 300, true );
+          }
+      );
       // If the scaled image is regenerated, its checksum will differ because of this low quality.
-      add_filter( 'jpeg_quality', function() { return 1; } );
+      add_filter(
+          'jpeg_quality',
+          function () {
+              return 1;
+          }
+      );
       """
 
     When I run `wp media regenerate {ATTACHMENT_ID} --only-missing --yes`
@@ -921,14 +1006,20 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 400, 400, true );
-        add_image_size( 'not_in_fallback', 300, 300, true );
-        add_filter( 'fallback_intermediate_image_sizes', function( $fallback_sizes ){
-          $fallback_sizes[] = 'test1';
-          return $fallback_sizes;
-        });
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 400, 400, true );
+              add_image_size( 'not_in_fallback', 300, 300, true );
+              add_filter(
+                  'fallback_intermediate_image_sizes',
+                  function ( $fallback_sizes ) {
+                      $fallback_sizes[] = 'test1';
+                      return $fallback_sizes;
+                  }
+              );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1043,9 +1134,12 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'too_big', 4000, 4000, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'too_big', 4000, 4000, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1060,11 +1154,14 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 400, 400, true );
-        add_image_size( 'test2', 350, 350, true );
-        add_image_size( 'too_big', 4000, 4000, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 400, 400, true );
+              add_image_size( 'test2', 350, 350, true );
+              add_image_size( 'too_big', 4000, 4000, true );
+          }
+      );
       """
 
     # Regenerate both "test1" and "test2" sizes only if missing - both should be generated.
@@ -1128,9 +1225,18 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function () {
-        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['svg'] = 'image/svg+xml'; return $mimes; } );
-      } );
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_filter(
+                  'upload_mimes',
+                  function ( $mimes ) {
+                      $mimes['svg'] = 'image/svg+xml';
+                      return $mimes;
+                  }
+              );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1188,13 +1294,16 @@ Feature: Regenerate WordPress attachments
       """
       <?php
       // Disable PDF thumbnails.
-      add_filter( 'wp_image_editors', function ( $image_editors ) {
-          if ( false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
-            unset( $image_editors[ $idx ] );
-            $image_editors = array_values( $image_editors );
+      add_filter(
+          'wp_image_editors',
+          function ( $image_editors ) {
+              if ( false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+                  unset( $image_editors[ $idx ] );
+                  $image_editors = array_values( $image_editors );
+              }
+              return $image_editors;
           }
-          return $image_editors;
-      } );
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1262,13 +1371,16 @@ Feature: Regenerate WordPress attachments
       """
       <?php
       // Disable PDF thumbnails.
-      add_filter( 'wp_image_editors', function ( $image_editors ) {
-          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_PDF' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
-            unset( $image_editors[ $idx ] );
-            $image_editors = array_values( $image_editors );
+      add_filter(
+          'wp_image_editors',
+          function ( $image_editors ) {
+              if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_PDF' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+                  unset( $image_editors[ $idx ] );
+                  $image_editors = array_values( $image_editors );
+              }
+              return $image_editors;
           }
-          return $image_editors;
-      } );
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1327,13 +1439,16 @@ Feature: Regenerate WordPress attachments
       """
       <?php
       // Disable PDF thumbnails.
-      add_filter( 'wp_image_editors', function ( $image_editors ) {
-          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_PDF' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
-            unset( $image_editors[ $idx ] );
-            $image_editors = array_values( $image_editors );
+      add_filter(
+          'wp_image_editors',
+          function ( $image_editors ) {
+              if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_PDF' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+                  unset( $image_editors[ $idx ] );
+                  $image_editors = array_values( $image_editors );
+              }
+              return $image_editors;
           }
-          return $image_editors;
-      } );
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1439,21 +1554,38 @@ Feature: Regenerate WordPress attachments
       """
       <?php
       // Ensure BMPs are allowed.
-      add_action( 'after_setup_theme', function () {
-        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['bmp'] = 'image/bmp'; return $mimes; } );
-      } );
-      // Disable Imagick.
-      add_filter( 'wp_image_editors', function ( $image_editors ) {
-          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
-            unset( $image_editors[ $idx ] );
-            $image_editors = array_values( $image_editors );
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_filter(
+                  'upload_mimes',
+                  function ( $mimes ) {
+                      $mimes['bmp'] = 'image/bmp';
+                      return $mimes;
+                  }
+              );
           }
-          return $image_editors;
-      } );
+      );
+      // Disable Imagick.
+      add_filter(
+          'wp_image_editors',
+          function ( $image_editors ) {
+              if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+                  unset( $image_editors[ $idx ] );
+                  $image_editors = array_values( $image_editors );
+              }
+              return $image_editors;
+          }
+      );
       // Enable BMP as displayable image (for WP < 4.0).
-      add_filter( 'file_is_displayable_image', function ( $result, $path ) {
-          return $result ? $result : false !== strpos( $path, '.bmp' );
-      }, 10, 2 );
+      add_filter(
+          'file_is_displayable_image',
+          function ( $result, $path ) {
+              return $result ? $result : false !== strpos( $path, '.bmp' );
+          },
+          10,
+          2
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1503,21 +1635,38 @@ Feature: Regenerate WordPress attachments
       """
       <?php
       // Ensure BMPs are allowed.
-      add_action( 'after_setup_theme', function () {
-        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['bmp'] = 'image/bmp'; return $mimes; } );
-      } );
-      // Disable Imagick.
-      add_filter( 'wp_image_editors', function ( $image_editors ) {
-          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
-            unset( $image_editors[ $idx ] );
-            $image_editors = array_values( $image_editors );
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_filter(
+                  'upload_mimes',
+                  function ( $mimes ) {
+                      $mimes['bmp'] = 'image/bmp';
+                      return $mimes;
+                  }
+              );
           }
-          return $image_editors;
-      } );
+      );
+      // Disable Imagick.
+      add_filter(
+          'wp_image_editors',
+          function ( $image_editors ) {
+              if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_IMAGICK' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+                  unset( $image_editors[ $idx ] );
+                  $image_editors = array_values( $image_editors );
+              }
+              return $image_editors;
+          }
+      );
       // Disable BMP as displayable image.
-      add_filter( 'file_is_displayable_image', function ( $result, $path ) {
-          return $result ? false === strpos( $path, '.bmp' ) : $result;
-      }, 10, 2 );
+      add_filter(
+          'file_is_displayable_image',
+          function ( $result, $path ) {
+              return $result ? false === strpos( $path, '.bmp' ) : $result;
+          },
+          10,
+          2
+      );
       """
 
     # Try with no image editor available and get warning about no editor.
@@ -1576,17 +1725,29 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function () {
-        add_filter( 'upload_mimes', function ( $mimes ) { $mimes['svg'] = 'image/svg+xml'; return $mimes; } );
-      } );
-      // Disable PDF thumbnails.
-      add_filter( 'wp_image_editors', function ( $image_editors ) {
-          if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_PDF' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
-            unset( $image_editors[ $idx ] );
-            $image_editors = array_values( $image_editors );
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_filter(
+                  'upload_mimes',
+                  function ( $mimes ) {
+                      $mimes['svg'] = 'image/svg+xml';
+                      return $mimes;
+                  }
+              );
           }
-          return $image_editors;
-      } );
+      );
+      // Disable PDF thumbnails.
+      add_filter(
+          'wp_image_editors',
+          function ( $image_editors ) {
+              if ( ! getenv( 'WP_CLI_TEST_MEDIA_REGENERATE_PDF' ) && false !== ( $idx = array_search( 'WP_Image_Editor_Imagick', $image_editors, true ) ) ) {
+                  unset( $image_editors[ $idx ] );
+                  $image_editors = array_values( $image_editors );
+              }
+              return $image_editors;
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1817,23 +1978,23 @@ Feature: Regenerate WordPress attachments
       $id = (int) $args[0];
       $meta = wp_get_attachment_metadata( $id );
       $old_file = get_attached_file( $id );
-      $edited_file = preg_replace( "/(\.[^.]+)$/", "-e0000000000000$1", $old_file );
+      $edited_file = preg_replace( '/(\.[^.]+)$/', '-e0000000000000$1', $old_file );
       copy( $old_file, $edited_file );
       $edited_relative = _wp_relative_upload_path( $edited_file );
       update_post_meta( $id, '_wp_attached_file', $edited_relative );
       $backup = array();
       if ( ! empty( $meta['sizes'] ) ) {
-        foreach ( $meta['sizes'] as $size => $size_data ) {
-          $backup[ $size . '-orig' ] = $size_data;
-        }
+          foreach ( $meta['sizes'] as $size => $size_data ) {
+              $backup[ $size . '-orig' ] = $size_data;
+          }
       }
       if ( empty( $backup ) ) {
-        $backup['full-orig'] = array(
-          'file'      => wp_basename( $old_file ),
-          'width'     => isset( $meta['width'] ) ? $meta['width'] : 0,
-          'height'    => isset( $meta['height'] ) ? $meta['height'] : 0,
-          'mime-type' => get_post_mime_type( $id ),
-        );
+          $backup['full-orig'] = array(
+              'file'      => wp_basename( $old_file ),
+              'width'     => isset( $meta['width'] ) ? $meta['width'] : 0,
+              'height'    => isset( $meta['height'] ) ? $meta['height'] : 0,
+              'mime-type' => get_post_mime_type( $id ),
+          );
       }
       update_post_meta( $id, '_wp_attachment_backup_sizes', $backup );
       """
@@ -1865,9 +2026,12 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 125, 125, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 125, 125, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1878,9 +2042,12 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test2', 200, 200, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test2', 200, 200, true );
+          }
+      );
       """
     When I run `wp media regenerate --delete-unknown --yes`
     Then STDOUT should contain:
@@ -1941,9 +2108,12 @@ Feature: Regenerate WordPress attachments
     And a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 400, 400, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 400, 400, true );
+          }
+      );
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
@@ -1970,9 +2140,12 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 350, 350, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 350, 350, true );
+          }
+      );
       """
 
     # Regenerate "test1" without --update-attachment-refs - post content should be unchanged.
@@ -1993,9 +2166,12 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 400, 400, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 400, 400, true );
+          }
+      );
       """
     When I run `wp media regenerate {ATTACHMENT_ID} --image_size=test1 --yes`
     Then STDOUT should contain:
@@ -2008,9 +2184,12 @@ Feature: Regenerate WordPress attachments
     Given a wp-content/mu-plugins/media-settings.php file:
       """
       <?php
-      add_action( 'after_setup_theme', function(){
-        add_image_size( 'test1', 350, 350, true );
-      });
+      add_action(
+          'after_setup_theme',
+          function () {
+              add_image_size( 'test1', 350, 350, true );
+          }
+      );
       """
     When I run `wp media regenerate {ATTACHMENT_ID} --image_size=test1 --update-attachment-refs --yes`
     Then STDOUT should contain:
