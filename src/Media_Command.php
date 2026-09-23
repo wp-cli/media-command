@@ -501,9 +501,6 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		$porcelain = Utils\get_flag_value( $assoc_args, 'porcelain' );
-		if ( is_string( $porcelain ) && ! in_array( $porcelain, array( 'url' ), true ) ) {
-			WP_CLI::error( sprintf( 'Invalid value for <porcelain>: %s. Expected flag or \'url\'.', $porcelain ) );
-		}
 
 		if ( isset( $assoc_args['post_id'] ) ) {
 			if ( ! get_post( $assoc_args['post_id'] ) ) {

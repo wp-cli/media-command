@@ -284,7 +284,8 @@ Feature: Manage WordPress attachments
     When I try `wp media import 'http://wp-cli.github.io/behat-data/codeispoetry.png' --porcelain=invalid`
     Then STDERR should be:
       """
-      Error: Invalid value for <porcelain>: invalid. Expected flag or 'url'.
+      Error: Parameter errors:
+       Invalid value specified for 'porcelain' (Output a single field for each imported image. Defaults to attachment ID when used as flag.)
       """
 
   Scenario: Import media from STDIN
