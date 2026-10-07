@@ -178,18 +178,18 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
-		$skip_delete  = Utils\get_flag_value( $assoc_args, 'skip-delete' );
-		$only_missing = Utils\get_flag_value( $assoc_args, 'only-missing' );
+		$skip_delete  = Utils\get_flag_value( $assoc_args, 'skip-delete', false );
+		$only_missing = Utils\get_flag_value( $assoc_args, 'only-missing', false );
 		if ( $only_missing ) {
 			$skip_delete = true;
 		}
 
-		$delete_unknown = Utils\get_flag_value( $assoc_args, 'delete-unknown' );
+		$delete_unknown = Utils\get_flag_value( $assoc_args, 'delete-unknown', false );
 		if ( $delete_unknown ) {
 			$skip_delete = false;
 		}
 
-		$update_attachment_refs = Utils\get_flag_value( $assoc_args, 'update-attachment-refs' );
+		$update_attachment_refs = Utils\get_flag_value( $assoc_args, 'update-attachment-refs', false );
 
 		$additional_mime_types = array();
 
@@ -316,7 +316,7 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
-		$remove_abandoned = Utils\get_flag_value( $assoc_args, 'remove-abandoned' );
+		$remove_abandoned = Utils\get_flag_value( $assoc_args, 'remove-abandoned', false );
 
 		if ( empty( $args ) ) {
 			if ( $image_sizes ) {
@@ -910,7 +910,7 @@ class Media_Command extends WP_CLI_Command {
 		$new_mime_type = $uploaded['type'];
 
 		// Delete old thumbnail files unless asked to skip.
-		if ( ! Utils\get_flag_value( $assoc_args, 'skip-delete' )
+		if ( ! Utils\get_flag_value( $assoc_args, 'skip-delete', false )
 			&& false !== $old_fullsizepath
 			&& is_array( $old_metadata )
 		) {
@@ -2055,7 +2055,7 @@ class Media_Command extends WP_CLI_Command {
 		$images  = $this->get_images( $args );
 		$posts   = $images->posts;
 		$count   = $images->post_count;
-		$dry_run = Utils\get_flag_value( $assoc_args, 'dry-run' );
+		$dry_run = Utils\get_flag_value( $assoc_args, 'dry-run', false );
 
 		if ( ! $count || ! is_array( $posts ) ) {
 			WP_CLI::error( 'No images found.' );
