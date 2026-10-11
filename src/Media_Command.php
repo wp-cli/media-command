@@ -606,6 +606,13 @@ class Media_Command extends WP_CLI_Command {
 						++$errors;
 						continue;
 					}
+					// With --skip-copy the path is stored as-is, so a relative one would not resolve against the uploads directory.
+					if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) && ! Path::is_absolute( $file ) ) {
+						$absolute_file = realpath( $file );
+						if ( false !== $absolute_file ) {
+							$file = $absolute_file;
+						}
+					}
 					$src_basename = Path::basename( $file );
 					if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
 						$check_basename = $src_basename;
