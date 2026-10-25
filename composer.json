@@ -36,6 +36,7 @@
         "bundled": true,
         "commands": [
             "media",
+            "media find-orphans",
             "media fix-orientation",
             "media import",
             "media prune",
