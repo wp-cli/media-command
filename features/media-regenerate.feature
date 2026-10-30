@@ -2,7 +2,10 @@ Feature: Regenerate WordPress attachments
 
   Background:
     Given a WP install
-    And I try `wp theme install twentynineteen --activate`
+    And these installed and active themes:
+      """
+      twentynineteen
+      """
 
   Scenario: Regenerate all images while none exists
     When I try `wp media regenerate --yes`
