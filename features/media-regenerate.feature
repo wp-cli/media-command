@@ -225,7 +225,7 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/large-image-125x125.jpg file should exist
     And the wp-content/uploads/large-image-200x200.jpg file should exist
 
-  @require-wp-4.7.3 @require-extension-imagick
+  @require-wp-4.7.3 @require-extension-imagick @require-bin-gs
   Scenario: Delete existing thumbnails when media including PDF is regenerated
     Given download:
       | path                              | url                                                   |
@@ -285,7 +285,7 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/minimal-us-letter-pdf-125x125.jpg file should not exist
     And the wp-content/uploads/minimal-us-letter-pdf-200x200.jpg file should exist
 
-  @require-wp-4.7.3 @require-extension-imagick
+  @require-wp-4.7.3 @require-extension-imagick @require-bin-gs
   Scenario: Skip deletion of existing thumbnails when media including PDF is regenerated
     Given download:
       | path                              | url                                                   |
@@ -590,7 +590,7 @@ Feature: Regenerate WordPress attachments
     And the wp-content/uploads/canola-500x500.jpg file should not exist
     And the wp-content/uploads/canola-400x400.jpg file should exist
 
-  @require-wp-4.7.3 @require-extension-imagick
+  @require-wp-4.7.3 @require-extension-imagick @require-bin-gs
   Scenario: Only regenerate PDF previews that are missing if the size should exist
     Given download:
       | path                              | url                                                   |
@@ -1001,7 +1001,7 @@ Feature: Regenerate WordPress attachments
       {SCALED_CHECKSUM}
       """
 
-  @require-wp-4.7.3 @require-extension-imagick
+  @require-wp-4.7.3 @require-extension-imagick @require-bin-gs
   Scenario: Regenerate a specific image size for a PDF attachment
     Given download:
       | path                              | url                                                   |
@@ -1365,7 +1365,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should be empty
 
-  @require-wp-4.7.3 @require-extension-imagick
+  @require-wp-4.7.3 @require-extension-imagick @require-bin-gs
   Scenario: Regenerating PDFs when thumbnails enabled on import but disabled on regeneration
     Given download:
       | path                              | url                                                |
@@ -1433,7 +1433,7 @@ Feature: Regenerate WordPress attachments
       """
     And STDERR should be empty
 
-  @require-wp-4.7.3 @require-extension-imagick
+  @require-wp-4.7.3 @require-extension-imagick @require-bin-gs
   Scenario: Regenerating PDFs when thumbnails disabled on import but enabled on regeneration
     Given download:
       | path                              | url                                                |
@@ -1713,7 +1713,7 @@ Feature: Regenerate WordPress attachments
     # Note in this case regenerate is destructive.
     And the wp-content/uploads/white-160-square-150x150.bmp file should not exist
 
-  @require-wp-4.7.3 @require-extension-imagick
+  @require-wp-4.7.3 @require-extension-imagick @require-bin-gs
   Scenario: Regenerating melange with batch results: regenerated (and not needing regeneration), skipped, failed
     Given download:
       | path                                     | url                                                       |
