@@ -331,6 +331,24 @@ Feature: Replace WordPress attachment files
     And the return code should be 1
     And the wp-content/uploads/{OLD_FILE} file should exist
 
+  Scenario: Error when the attachment has no attached file
+    Given download:
+      | path                   | url                                          |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post meta delete {ATTACHMENT_ID} _wp_attached_file`
+
+    And I try `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/canola.jpg`
+    Then STDERR should contain:
+      """
+      Unable to determine the current file for attachment
+      """
+    And the return code should be 1
+
   Scenario: Replace an attachment file with a new file name when requested
     Given download:
       | path                        | url                                          |
