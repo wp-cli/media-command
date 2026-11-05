@@ -304,38 +304,32 @@ Feature: Replace WordPress attachment files
       """
     And the return code should be 1
 
-  Scenario: Replace a non-image attachment file in place
-    Given a document.txt file:
+  Scenario: Error when the replacement URL cannot be downloaded
+    Given download:
+      | path                   | url                                          |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+    And that HTTP requests to http://example.com/missing.jpg will respond with:
       """
-      Old content.
-      """
-    And a replacement.txt file:
-      """
-      New content.
+      HTTP/1.1 404
+      Content-Type: text/plain
+
+      Not Found
       """
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
-    When I run `wp media import document.txt --porcelain`
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
     Then save STDOUT as {ATTACHMENT_ID}
 
     When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
     Then save STDOUT as {OLD_FILE}
 
-    When I run `wp media replace {ATTACHMENT_ID} replacement.txt`
-    Then STDOUT should contain:
+    When I try `wp media replace {ATTACHMENT_ID} http://example.com/missing.jpg`
+    Then STDERR should contain:
       """
-      Success: Replaced 1 of 1 attachments.
+      Unable to replace attachment
       """
-
-    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
-    Then STDOUT should be:
-      """
-      {OLD_FILE}
-      """
-    And the wp-content/uploads/{OLD_FILE} file should contain:
-      """
-      New content.
-      """
+    And the return code should be 1
+    And the wp-content/uploads/{OLD_FILE} file should exist
 
   Scenario: Replace an attachment file with a new file name when requested
     Given download:
