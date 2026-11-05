@@ -304,6 +304,39 @@ Feature: Replace WordPress attachment files
       """
     And the return code should be 1
 
+  Scenario: Replace a non-image attachment file in place
+    Given a document.txt file:
+      """
+      Old content.
+      """
+    And a replacement.txt file:
+      """
+      New content.
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import document.txt --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then save STDOUT as {OLD_FILE}
+
+    When I run `wp media replace {ATTACHMENT_ID} replacement.txt`
+    Then STDOUT should contain:
+      """
+      Success: Replaced 1 of 1 attachments.
+      """
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      {OLD_FILE}
+      """
+    And the wp-content/uploads/{OLD_FILE} file should contain:
+      """
+      New content.
+      """
+
   Scenario: Replace an attachment file with a new file name when requested
     Given download:
       | path                        | url                                          |
