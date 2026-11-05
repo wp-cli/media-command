@@ -114,6 +114,7 @@ Feature: Replace WordPress attachment files
       """
     And the wp-content/uploads/{OLD_FILE} file should exist
 
+  @require-wp-5.3
   Scenario: Replace a scaled big image with another big image and keep its path
     Given download:
       | path                        | url                                          |
@@ -145,6 +146,7 @@ Feature: Replace WordPress attachment files
       3264x2448
       """
 
+  @require-wp-5.3
   Scenario: Replace a scaled big image with a smaller image and keep its path
     Given download:
       | path                        | url                                          |
@@ -237,6 +239,70 @@ Feature: Replace WordPress attachment files
       """
       Success: Replaced 1 of 1 attachments.
       """
+
+  Scenario: Reject a replacement with a file type WordPress does not allow
+    Given a replacement.php file:
+      """
+      <?php
+      echo 'not an image';
+      """
+    And download:
+      | path                   | url                                          |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I try `wp media replace {ATTACHMENT_ID} replacement.php`
+    Then STDERR should contain:
+      """
+      not allowed to upload this file type
+      """
+    And the return code should be 1
+
+  Scenario: Refuse an in-place replacement outside the uploads directory
+    Given download:
+      | path                   | url                                          |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post meta update {ATTACHMENT_ID} _wp_attached_file ../outside.jpg`
+
+    And I try `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/canola.jpg`
+    Then STDERR should contain:
+      """
+      The attachment path is outside the uploads directory.
+      """
+    And the return code should be 1
+
+  Scenario: Refuse a replacement rejected by the upload prefilter
+    Given download:
+      | path                   | url                                          |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    Given a wp-content/mu-plugins/reject-uploads.php file:
+      """
+      <?php
+      add_filter( 'wp_handle_upload_prefilter', function ( $file ) {
+          $file['error'] = 'Rejected by test filter.';
+          return $file;
+      } );
+      """
+
+    When I try `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/canola.jpg`
+    Then STDERR should contain:
+      """
+      Rejected by test filter.
+      """
+    And the return code should be 1
 
   Scenario: Replace an attachment file with a new file name when requested
     Given download:
