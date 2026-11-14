@@ -138,6 +138,25 @@ Feature: Manage WordPress attachments
     And the wp-content/uploads/large-image.jpg file should not exist
     And the return code should be 0
 
+  Scenario: Import a file with --skip-copy using a path relative to the current directory
+    Given download:
+      | path                          | url                                                  |
+      | {CACHE_DIR}/codeispoetry.png  | http://wp-cli.github.io/behat-data/codeispoetry.png  |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+    And I run `wp media import {CACHE_DIR}/codeispoetry.png`
+
+    When I run `wp media import wp-content/uploads/codeispoetry.png --skip-copy --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      codeispoetry.png
+      """
+
+    When I run `wp eval 'echo wp_get_attachment_url( {ATTACHMENT_ID} );'`
+    Then STDOUT should match #/wp-content/uploads/codeispoetry\.png$#
+
   Scenario: Import a file and use its filename as the title
     Given download:
       | path                        | url                                              |
