@@ -138,6 +138,53 @@ Feature: Manage WordPress attachments
     And the wp-content/uploads/large-image.jpg file should not exist
     And the return code should be 0
 
+  Scenario: Import a file with --skip-copy using a path relative to the current directory
+    Given download:
+      | path                          | url                                                  |
+      | {CACHE_DIR}/codeispoetry.png  | http://wp-cli.github.io/behat-data/codeispoetry.png  |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+    And I run `wp media import {CACHE_DIR}/codeispoetry.png`
+
+    When I run `wp media import wp-content/uploads/codeispoetry.png --skip-copy --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      codeispoetry.png
+      """
+
+    When I run `wp eval 'echo wp_get_attachment_url( {ATTACHMENT_ID} );'`
+    Then STDOUT should match #/wp-content/uploads/codeispoetry\.png$#
+
+    When I run `wp eval 'var_export( file_exists( get_attached_file( {ATTACHMENT_ID} ) ) );'`
+    Then STDOUT should be:
+      """
+      true
+      """
+
+  Scenario: Import a file with --skip-copy using a relative path through a symlinked uploads directory
+    Given download:
+      | path                          | url                                                  |
+      | {CACHE_DIR}/codeispoetry.png  | http://wp-cli.github.io/behat-data/codeispoetry.png  |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+    And I run `mkdir shared-uploads`
+    And I run `cp {CACHE_DIR}/codeispoetry.png shared-uploads/codeispoetry.png`
+    And I run `rm -rf wp-content/uploads`
+    And I run `ln -s ../shared-uploads wp-content/uploads`
+
+    When I run `wp media import wp-content/uploads/codeispoetry.png --skip-copy --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      codeispoetry.png
+      """
+
+    When I run `wp eval 'echo wp_get_attachment_url( {ATTACHMENT_ID} );'`
+    Then STDOUT should match #/wp-content/uploads/codeispoetry\.png$#
+
   Scenario: Import a file and use its filename as the title
     Given download:
       | path                        | url                                              |
