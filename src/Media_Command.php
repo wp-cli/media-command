@@ -608,10 +608,7 @@ class Media_Command extends WP_CLI_Command {
 					}
 					// With --skip-copy the path is stored as-is, so a relative one would not resolve against the uploads directory.
 					if ( Utils\get_flag_value( $assoc_args, 'skip-copy' ) && ! Path::is_absolute( $file ) ) {
-						$absolute_file = realpath( $file );
-						if ( false !== $absolute_file ) {
-							$file = $absolute_file;
-						}
+						$file = $this->get_absolute_path( $file );
 					}
 					$src_basename = Path::basename( $file );
 					if ( Utils\get_flag_value( $assoc_args, 'skip-duplicates' ) ) {
@@ -2333,6 +2330,36 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		return wp_get_attachment_url( $attachment_id );
+	}
+
+	/**
+	 * Makes a relative path to a local file absolute, for imports with --skip-copy.
+	 *
+	 * Only the directory part goes through realpath(). When it is inside the real uploads
+	 * directory, the configured uploads basedir is put back in front, so a symlinked uploads
+	 * directory (or a symlinked file in it) gives the same result as an absolute path.
+	 *
+	 * @param string $path Relative path to an existing file.
+	 * @return string
+	 */
+	private function get_absolute_path( $path ) {
+		$real_dir = realpath( dirname( $path ) );
+		if ( false === $real_dir ) {
+			return $path;
+		}
+		$real_dir = wp_normalize_path( $real_dir );
+		$absolute = trailingslashit( $real_dir ) . Path::basename( $path );
+
+		$basedir      = wp_get_upload_dir()['basedir'];
+		$real_basedir = realpath( $basedir );
+		if ( false !== $real_basedir ) {
+			$real_basedir = wp_normalize_path( $real_basedir );
+			if ( 0 === strpos( trailingslashit( $real_dir ), trailingslashit( $real_basedir ) ) ) {
+				$absolute = $basedir . substr( $absolute, strlen( $real_basedir ) );
+			}
+		}
+
+		return $absolute;
 	}
 
 	/**
