@@ -1134,11 +1134,21 @@ class Media_Command extends WP_CLI_Command {
 			return false;
 		}
 
-		if ( defined( 'FS_CHMOD_FILE' ) ) {
-			// chmod() can fail on read-only or non-POSIX mounts; failure is non-fatal.
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			@chmod( $temp, FS_CHMOD_FILE );
+		/*
+		 * tempnam() creates the file with mode 0600. Keep the mode of the file being
+		 * replaced, or derive it from the directory like wp_handle_sideload() does,
+		 * so the web server can still read the file.
+		 */
+		$perms = file_exists( $destination ) ? fileperms( $destination ) : false;
+		if ( false !== $perms ) {
+			$perms = $perms & 0777;
+		} else {
+			$stat  = stat( dirname( $destination ) );
+			$perms = $stat ? $stat['mode'] & 0000666 : 0644;
 		}
+		// chmod() can fail on read-only or non-POSIX mounts; failure is non-fatal.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@chmod( $temp, $perms );
 
 		// On most filesystems rename() replaces the destination atomically.
 		if ( @rename( $temp, $destination ) ) {

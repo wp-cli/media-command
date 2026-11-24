@@ -50,6 +50,29 @@ Feature: Replace WordPress attachment files
     And the wp-content/uploads/{OLD_FILE} file should exist
     And the wp-content/uploads/replacement.jpg file should not exist
 
+  Scenario: Keep the file permissions when replacing an attachment file in place
+    Given download:
+      | path                        | url                                          |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg      |
+      | {CACHE_DIR}/replacement.jpg | http://wp-cli.github.io/behat-data/canola.jpg      |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp eval 'chmod( get_attached_file( {ATTACHMENT_ID} ), 0644 );'`
+    And I run `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/replacement.jpg`
+    Then STDOUT should contain:
+      """
+      Success: Replaced 1 of 1 attachments.
+      """
+
+    When I run `wp eval 'clearstatcache(); echo decoct( fileperms( get_attached_file( {ATTACHMENT_ID} ) ) & 0777 );'`
+    Then STDOUT should be:
+      """
+      644
+      """
+
   Scenario: Replace an attachment file and keep its existing upload folder
     Given download:
       | path                        | url                                          |
