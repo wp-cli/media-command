@@ -25,9 +25,9 @@ Feature: Replace WordPress attachment files
 
   Scenario: Replace an attachment file and keep its existing file name
     Given download:
-      | path                        | url                                          |
-      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg      |
-      | {CACHE_DIR}/replacement.jpg | http://wp-cli.github.io/behat-data/canola.jpg      |
+      | path                        | url                                                     |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg           |
+      | {CACHE_DIR}/replacement.jpg | http://wp-cli.github.io/behat-data/white-150-square.jpg |
     And I run `wp option update uploads_use_yearmonth_folders 0`
 
     When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
@@ -49,6 +49,13 @@ Feature: Replace WordPress attachment files
       """
     And the wp-content/uploads/{OLD_FILE} file should exist
     And the wp-content/uploads/replacement.jpg file should not exist
+
+    # The file at the existing path must now hold the replacement's bytes.
+    When I run `wp eval '$s = getimagesize( get_attached_file( {ATTACHMENT_ID} ) ); echo $s[0] . "x" . $s[1];'`
+    Then STDOUT should be:
+      """
+      150x150
+      """
 
   Scenario: Keep the file permissions when replacing an attachment file in place
     Given download:
@@ -302,7 +309,7 @@ Feature: Replace WordPress attachment files
       """
     And the return code should be 1
 
-  Scenario: Refuse a replacement rejected by the upload prefilter
+  Scenario: Refuse a replacement rejected by the sideload prefilter
     Given download:
       | path                   | url                                          |
       | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
@@ -314,7 +321,7 @@ Feature: Replace WordPress attachment files
     Given a wp-content/mu-plugins/reject-uploads.php file:
       """
       <?php
-      add_filter( 'wp_handle_upload_prefilter', function ( $file ) {
+      add_filter( 'wp_handle_sideload_prefilter', function ( $file ) {
           $file['error'] = 'Rejected by test filter.';
           return $file;
       } );
@@ -371,6 +378,104 @@ Feature: Replace WordPress attachment files
       Unable to determine the current file for attachment
       """
     And the return code should be 1
+
+  Scenario: Repair an attachment without an attached file using a new file name
+    Given download:
+      | path                        | url                                                     |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg           |
+      | {CACHE_DIR}/replacement.jpg | http://wp-cli.github.io/behat-data/white-150-square.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post meta delete {ATTACHMENT_ID} _wp_attached_file`
+    And I run `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/replacement.jpg --new-file-name`
+    Then STDOUT should contain:
+      """
+      Success: Replaced 1 of 1 attachments.
+      """
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      replacement.jpg
+      """
+    And the wp-content/uploads/replacement.jpg file should exist
+
+  @require-wp-5.3
+  Scenario: Replace a previously rotated image and keep its path
+    Given download:
+      | path                        | url                                                     |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg           |
+      | {CACHE_DIR}/replacement.jpg | http://wp-cli.github.io/behat-data/white-150-square.jpg |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    # Mimic WordPress having auto-rotated the upload into a "-rotated" file.
+    When I run `wp eval '$id = {ATTACHMENT_ID}; $file = get_attached_file( $id ); $rotated = str_replace( ".jpg", "-rotated.jpg", $file ); copy( $file, $rotated ); update_attached_file( $id, $rotated ); $m = wp_get_attachment_metadata( $id ); $m["original_image"] = wp_basename( $file ); $m["file"] = _wp_relative_upload_path( $rotated ); wp_update_attachment_metadata( $id, $m );'`
+    And I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      canola-rotated.jpg
+      """
+
+    When I run `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/replacement.jpg`
+    Then STDOUT should contain:
+      """
+      Success: Replaced 1 of 1 attachments.
+      """
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      canola-rotated.jpg
+      """
+
+    # The existing URL must serve the replacement.
+    When I run `wp eval '$s = getimagesize( get_attached_file( {ATTACHMENT_ID} ) ); echo $s[0] . "x" . $s[1];'`
+    Then STDOUT should be:
+      """
+      150x150
+      """
+
+  @require-wp-5.3
+  Scenario: Keep the existing path and image sizes when only the filesize can be read
+    Given download:
+      | path                        | url                                                |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg      |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then save STDOUT as {OLD_FILE}
+
+    Given a wp-content/mu-plugins/read-error.php file:
+      """
+      <?php
+      add_filter( 'wp_generate_attachment_metadata', function ( $metadata, $id, $context ) {
+          return 'create' === $context ? array( 'filesize' => 123 ) : $metadata;
+      }, 10, 3 );
+      """
+
+    When I try `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/canola.jpg`
+    Then STDERR should contain:
+      """
+      Failed to generate new attachment metadata
+      """
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      {OLD_FILE}
+      """
+    And the wp-content/uploads/{OLD_FILE} file should exist
+    And the wp-content/uploads/large-image-1024x768.jpg file should exist
 
   Scenario: Replace an attachment file with a new file name when requested
     Given download:

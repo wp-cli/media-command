@@ -887,14 +887,17 @@ class Media_Command extends WP_CLI_Command {
 
 		// Resolve the attachment's current file before anything else so that a
 		// failure here does not leave a downloaded temporary file behind.
-		$old_attached_path = get_attached_file( $attachment_id );
-		if ( false === $old_attached_path || '' === $old_attached_path ) {
-			WP_CLI::error( "Unable to determine the current file for attachment {$attachment_id}." );
-		}
-		$old_original_path = $this->get_attached_file( $attachment_id );
-		$old_metadata      = wp_get_attachment_metadata( $attachment_id );
 		$preserve_path     = ! Utils\get_flag_value( $assoc_args, 'new-file-name', false );
 		$skip_delete       = (bool) Utils\get_flag_value( $assoc_args, 'skip-delete', false );
+		$old_attached_path = get_attached_file( $attachment_id );
+		$has_old_path      = is_string( $old_attached_path ) && '' !== $old_attached_path;
+		// An in-place replacement needs the current path; --new-file-name can repair an attachment without one.
+		if ( ! $has_old_path && $preserve_path ) {
+			WP_CLI::error( "Unable to determine the current file for attachment {$attachment_id}." );
+		}
+		$old_attached_path = $has_old_path ? (string) $old_attached_path : '';
+		$old_original_path = $has_old_path ? $this->get_attached_file( $attachment_id ) : false;
+		$old_metadata      = wp_get_attachment_metadata( $attachment_id );
 
 		// Handle remote vs local file (same pattern as import).
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- parse_url will only be used in absence of wp_parse_url.
@@ -973,9 +976,22 @@ class Media_Command extends WP_CLI_Command {
 
 		// Generate and update new attachment metadata.
 		$new_metadata = wp_generate_attachment_metadata( $attachment_id, $write_path );
-		if ( is_array( $new_metadata ) && ! empty( $new_metadata ) ) {
+
+		/*
+		 * On a read error WordPress returns only the filesize for an image. Treat that
+		 * like a failure when the previous file had full image metadata, so the old
+		 * sizes are not deleted and the attachment keeps its existing path.
+		 */
+		$metadata_incomplete = is_array( $new_metadata )
+			&& 1 === count( $new_metadata )
+			&& array_key_exists( 'filesize', $new_metadata )
+			&& 0 === strpos( $new_mime_type, 'image/' )
+			&& is_array( $old_metadata )
+			&& ! empty( $old_metadata['file'] );
+
+		if ( is_array( $new_metadata ) && ! empty( $new_metadata ) && ! $metadata_incomplete ) {
 			if ( $preserve_path ) {
-				$new_metadata = $this->reconcile_attachment_path( $attachment_id, $new_metadata, $old_attached_path );
+				$new_metadata = $this->reconcile_attachment_path( $attachment_id, $new_metadata, $old_attached_path, $write_path );
 			}
 			wp_update_attachment_metadata( $attachment_id, $new_metadata );
 
@@ -983,7 +999,13 @@ class Media_Command extends WP_CLI_Command {
 			if ( ! $skip_delete ) {
 				$keep_paths = $this->get_metadata_paths( $new_metadata );
 
-				if ( is_array( $old_metadata ) ) {
+				if ( $preserve_path ) {
+					// Never delete the file behind the attachment's existing URL, even if
+					// moving the replacement onto it failed.
+					$keep_paths[] = wp_normalize_path( $old_attached_path );
+				}
+
+				if ( is_array( $old_metadata ) && $has_old_path ) {
 					$this->remove_old_images( $old_metadata, $old_attached_path, array(), $keep_paths );
 				}
 
@@ -1001,6 +1023,11 @@ class Media_Command extends WP_CLI_Command {
 				}
 			}
 		} else {
+			if ( $preserve_path && $write_path !== $old_attached_path ) {
+				// Keep the attachment at its existing path, which the old metadata still describes.
+				update_attached_file( $attachment_id, $old_attached_path );
+			}
+
 			WP_CLI::warning(
 				sprintf(
 					'Failed to generate new attachment metadata for attachment ID %d. The file was replaced but its image sizes may be stale; run wp media regenerate to rebuild them.',
@@ -1073,7 +1100,10 @@ class Media_Command extends WP_CLI_Command {
 			WP_CLI::error( "Failed to process file '{$orig_filename}': The attachment path is outside the uploads directory." );
 		}
 
-		// Replicate the validation WordPress runs for a normal upload.
+		/*
+		 * Replicate the validation WordPress runs in wp_handle_sideload(), which is
+		 * what this command used before and still uses with --new-file-name.
+		 */
 		$file_data = array(
 			'name'     => $name,
 			'type'     => $new_mime_type,
@@ -1083,11 +1113,12 @@ class Media_Command extends WP_CLI_Command {
 		);
 
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling native WordPress hook.
-		$file_array = apply_filters( 'wp_handle_upload_prefilter', $file_data );
+		$file_array = apply_filters( 'wp_handle_sideload_prefilter', $file_data );
 
-		if ( ! empty( $file_array['error'] ) ) {
+		if ( is_array( $file_array ) && ! empty( $file_array['error'] ) ) {
 			@unlink( $tempfile );
-			WP_CLI::error( "Failed to process file '{$orig_filename}': {$file_array['error']}" );
+			$error = is_string( $file_array['error'] ) ? $file_array['error'] : 'The replacement was rejected.';
+			WP_CLI::error( "Failed to process file '{$orig_filename}': {$error}" );
 		}
 
 		if ( is_multisite() ) {
@@ -1171,8 +1202,13 @@ class Media_Command extends WP_CLI_Command {
 			return true;
 		}
 
-		@rename( $backup, $destination );
 		@unlink( $temp );
+
+		if ( ! @rename( $backup, $destination ) ) {
+			WP_CLI::warning(
+				sprintf( "Unable to restore '%s'. The original file was kept at '%s'.", $destination, $backup )
+			);
+		}
 
 		return false;
 	}
@@ -1241,20 +1277,23 @@ class Media_Command extends WP_CLI_Command {
 	 * threshold and point the attachment at it, which changes the attachment URL.
 	 * This method restores the attachment's existing path:
 	 *
-	 * - If the existing path already ends in "-scaled", the generated file is moved
-	 *   onto it so that URL is kept.
-	 * - If the existing path is not itself a "-scaled" variant, the full-resolution
-	 *   file is kept at that path and the generated "-scaled" sibling is discarded so
-	 *   that URL is kept.
+	 * - If the existing path is a file WordPress derived from the original (a
+	 *   "-scaled" or "-rotated" variant), the replacement was written to the
+	 *   original and the generated file is moved onto the existing path so that URL
+	 *   is kept.
+	 * - If the existing path is the file that was written, the full-resolution file
+	 *   is kept at that path and any generated "-scaled" sibling is discarded so that
+	 *   URL is kept.
 	 *
 	 * The full-resolution file is never deleted.
 	 *
 	 * @param int    $attachment_id  Attachment ID.
 	 * @param array  $metadata       Generated attachment metadata.
 	 * @param string $canonical_path Absolute path the attachment should keep.
+	 * @param string $write_path     Absolute path the replacement was written to.
 	 * @return array Updated attachment metadata.
 	 */
-	private function reconcile_attachment_path( $attachment_id, $metadata, $canonical_path ) {
+	private function reconcile_attachment_path( $attachment_id, $metadata, $canonical_path, $write_path ) {
 		$uploads = wp_get_upload_dir();
 		if ( empty( $uploads['basedir'] ) || empty( $metadata['file'] ) || ! is_string( $metadata['file'] ) ) {
 			return $metadata;
@@ -1282,9 +1321,10 @@ class Media_Command extends WP_CLI_Command {
 			return $metadata;
 		}
 
-		$canonical_is_scaled = 1 === preg_match( '#-scaled\.[^./\\\\]+$#', $canonical_path );
+		// The existing path is a derived variant when the replacement went to the original instead.
+		$canonical_is_derived = wp_normalize_path( $write_path ) !== $canonical_path;
 
-		if ( ! $canonical_is_scaled ) {
+		if ( ! $canonical_is_derived ) {
 			/*
 			 * WordPress created a "-scaled" sibling for a URL that is not itself a
 			 * scaled variant. Keep the full-resolution file at the original URL and
@@ -1302,11 +1342,20 @@ class Media_Command extends WP_CLI_Command {
 			return $metadata;
 		}
 
-		// The URL points at a "-scaled" file but the replacement was too small to
-		// be scaled. Move it onto the existing URL so links keep working.
+		/*
+		 * The URL points at a derived file, but WordPress did not recreate that exact
+		 * file for the replacement (for example, it was too small to be scaled, or
+		 * needed no rotation). Move the generated file onto the existing URL so links
+		 * keep working.
+		 */
 		if ( ! $this->atomic_replace( $generated_path, $canonical_path ) ) {
 			WP_CLI::warning(
-				sprintf( 'Unable to move the replacement file for attachment %d to its existing path.', $attachment_id )
+				sprintf(
+					"Unable to move the replacement file for attachment %d to its existing path '%s'. The attachment now uses '%s'.",
+					$attachment_id,
+					$canonical_path,
+					$generated_path
+				)
 			);
 
 			return $metadata;
@@ -1317,7 +1366,12 @@ class Media_Command extends WP_CLI_Command {
 
 		$metadata['file'] = $canonical_rel;
 		$metadata         = $this->set_file_dimensions( $metadata, $canonical_path );
-		unset( $metadata['original_image'] );
+
+		// Keep "original_image" only if it still names a separate full-resolution file.
+		if ( ! empty( $metadata['original_image'] ) && is_string( $metadata['original_image'] )
+			&& wp_normalize_path( dirname( $canonical_path ) . '/' . $metadata['original_image'] ) === $generated_path ) {
+			unset( $metadata['original_image'] );
+		}
 
 		update_attached_file( $attachment_id, $canonical_path );
 
