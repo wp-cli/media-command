@@ -2,7 +2,10 @@ Feature: Prune WordPress attachment thumbnails
 
   Background:
     Given a WP install
-    And I try `wp theme install twentynineteen --activate`
+    And these installed and active themes:
+      """
+      twentynineteen
+      """
 
   Scenario: Prune all images while none exists
     When I try `wp media prune --yes`
