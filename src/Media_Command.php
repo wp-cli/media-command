@@ -178,18 +178,18 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
-		$skip_delete  = Utils\get_flag_value( $assoc_args, 'skip-delete' );
-		$only_missing = Utils\get_flag_value( $assoc_args, 'only-missing' );
+		$skip_delete  = Utils\get_flag_value( $assoc_args, 'skip-delete', false );
+		$only_missing = Utils\get_flag_value( $assoc_args, 'only-missing', false );
 		if ( $only_missing ) {
 			$skip_delete = true;
 		}
 
-		$delete_unknown = Utils\get_flag_value( $assoc_args, 'delete-unknown' );
+		$delete_unknown = Utils\get_flag_value( $assoc_args, 'delete-unknown', false );
 		if ( $delete_unknown ) {
 			$skip_delete = false;
 		}
 
-		$update_attachment_refs = Utils\get_flag_value( $assoc_args, 'update-attachment-refs' );
+		$update_attachment_refs = Utils\get_flag_value( $assoc_args, 'update-attachment-refs', false );
 
 		$additional_mime_types = array();
 
@@ -198,9 +198,10 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		$images = $this->get_images( $args, $additional_mime_types );
+		$posts  = $images->posts;
 		$count  = $images->post_count;
 
-		if ( ! $count ) {
+		if ( ! $count || ! is_array( $posts ) ) {
 			WP_CLI::warning( 'No images found.' );
 			return;
 		}
@@ -225,7 +226,7 @@ class Media_Command extends WP_CLI_Command {
 		/**
 		 * @var int $post_id
 		 */
-		foreach ( $images->posts as $post_id ) {
+		foreach ( $posts as $post_id ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				// @phpstan-ignore function.deprecated
@@ -315,7 +316,7 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
-		$remove_abandoned = Utils\get_flag_value( $assoc_args, 'remove-abandoned' );
+		$remove_abandoned = Utils\get_flag_value( $assoc_args, 'remove-abandoned', false );
 
 		if ( empty( $args ) ) {
 			if ( $image_sizes ) {
@@ -338,9 +339,10 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		$images = $this->get_images( $args, $additional_mime_types );
+		$posts  = $images->posts;
 		$count  = $images->post_count;
 
-		if ( ! $count ) {
+		if ( ! $count || ! is_array( $posts ) ) {
 			WP_CLI::warning( 'No images found.' );
 			return;
 		}
@@ -361,7 +363,7 @@ class Media_Command extends WP_CLI_Command {
 		/**
 		 * @var int $post_id
 		 */
-		foreach ( $images->posts as $post_id ) {
+		foreach ( $posts as $post_id ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				// @phpstan-ignore function.deprecated
@@ -499,9 +501,6 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		$porcelain = Utils\get_flag_value( $assoc_args, 'porcelain' );
-		if ( is_string( $porcelain ) && ! in_array( $porcelain, array( 'url' ), true ) ) {
-			WP_CLI::error( sprintf( 'Invalid value for <porcelain>: %s. Expected flag or \'url\'.', $porcelain ) );
-		}
 
 		if ( isset( $assoc_args['post_id'] ) ) {
 			if ( ! get_post( $assoc_args['post_id'] ) ) {
@@ -911,7 +910,7 @@ class Media_Command extends WP_CLI_Command {
 		$new_mime_type = $uploaded['type'];
 
 		// Delete old thumbnail files unless asked to skip.
-		if ( ! Utils\get_flag_value( $assoc_args, 'skip-delete' )
+		if ( ! Utils\get_flag_value( $assoc_args, 'skip-delete', false )
 			&& false !== $old_fullsizepath
 			&& is_array( $old_metadata )
 		) {
@@ -1861,7 +1860,7 @@ class Media_Command extends WP_CLI_Command {
 	 * @param int $id
 	 * @param array $new_metadata
 	 * @param string[] $image_sizes
-	 * @param array{sizes: array<string, mixed>}|false $metadata
+	 * @param array{sizes?: array<string, mixed>}|false $metadata
 	 * @return string[] The sizes that were actually regenerated.
 	 */
 	private function update_attachment_metadata_for_image_size( $id, $new_metadata, $image_sizes, $metadata ) {
@@ -2054,10 +2053,11 @@ class Media_Command extends WP_CLI_Command {
 		}
 
 		$images  = $this->get_images( $args );
+		$posts   = $images->posts;
 		$count   = $images->post_count;
-		$dry_run = Utils\get_flag_value( $assoc_args, 'dry-run' );
+		$dry_run = Utils\get_flag_value( $assoc_args, 'dry-run', false );
 
-		if ( ! $count ) {
+		if ( ! $count || ! is_array( $posts ) ) {
 			WP_CLI::error( 'No images found.' );
 		}
 
@@ -2068,7 +2068,7 @@ class Media_Command extends WP_CLI_Command {
 		/**
 		 * @var int $post_id
 		 */
-		foreach ( $images->posts as $post_id ) {
+		foreach ( $posts as $post_id ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				// @phpstan-ignore function.deprecated
