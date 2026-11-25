@@ -144,6 +144,52 @@ Feature: Find orphan WordPress media
       """
     And the return code should be 0
 
+  Scenario: Do not report the site icon or custom logo as unused
+    Given download:
+      | path                   | url                                           |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="Site icon" --porcelain`
+    Then save STDOUT as {ICON_ID}
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="Custom logo" --porcelain`
+    Then save STDOUT as {LOGO_ID}
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="Unused attachment" --porcelain`
+    Then save STDOUT as {UNUSED_ID}
+
+    When I run `wp option update site_icon {ICON_ID}`
+    And I run `wp eval 'set_theme_mod( "custom_logo", {LOGO_ID} );'`
+    And I run `wp media find-orphans --type=usage --format=ids`
+    Then STDOUT should be:
+      """
+      {UNUSED_ID}
+      """
+
+  Scenario: List only attachment IDs with --format=ids
+    Given download:
+      | path                   | url                                           |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+    And a wp-content/uploads/stray-image.jpg file:
+      """
+      not a real image, just a stray file on disk
+      """
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `rm wp-content/uploads/canola.jpg`
+    And I run `wp media find-orphans --type=database --format=ids`
+    Then STDOUT should be:
+      """
+      {ATTACHMENT_ID}
+      """
+    And STDERR should be empty
+
+    When I run `wp media find-orphans --type=filesystem --format=ids`
+    Then STDOUT should be empty
+    And STDERR should be empty
+
   Scenario: Output orphans as valid JSON
     Given download:
       | path                   | url                                           |

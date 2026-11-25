@@ -2538,9 +2538,9 @@ class Media_Command extends WP_CLI_Command {
 	 * * issue
 	 * * path
 	 *
-	 * Note: `--format=ids` only emits a value for candidates that carry an
-	 * attachment ID (`database`, `usage`). For `filesystem`/`thumbnails`
-	 * candidates it emits an empty line; prefer `--field=file` for those.
+	 * Note: `--format=ids` only lists candidates that carry an attachment ID
+	 * (`database`, `usage`). `filesystem` and `thumbnails` candidates are left
+	 * out; use `--fields=path --format=csv` for those.
 	 *
 	 * ## EXAMPLES
 	 *
@@ -2633,10 +2633,16 @@ class Media_Command extends WP_CLI_Command {
 			return;
 		}
 
-		$fields_raw = Utils\get_flag_value( $assoc_args, 'fields' );
-		$fields     = null === $fields_raw ? $allowed_fields : explode( ',', $fields_raw );
+		if ( 'ids' === $format ) {
+			// The ids format prints plain values, so only candidates with an attachment ID can be listed.
+			$ids = array_values( array_filter( wp_list_pluck( $candidates, 'attachment_id' ) ) );
+			Utils\format_items( $format, $ids, array( 'attachment_id' ) );
+		} else {
+			$fields_raw = Utils\get_flag_value( $assoc_args, 'fields' );
+			$fields     = null === $fields_raw ? $allowed_fields : explode( ',', $fields_raw );
 
-		Utils\format_items( $format, $candidates, $fields );
+			Utils\format_items( $format, $candidates, $fields );
+		}
 
 		if ( Utils\get_flag_value( $assoc_args, 'error-on-orphans', false ) && count( $candidates ) > 0 ) {
 			WP_CLI::halt( 1 );
@@ -2938,6 +2944,13 @@ class Media_Command extends WP_CLI_Command {
 			$used_ids[ (int) $thumbnail_id ] = true;
 		}
 
+		// Referenced by ID: the site icon and the theme's custom logo.
+		foreach ( array( get_option( 'site_icon' ), get_theme_mod( 'custom_logo' ) ) as $site_image_id ) {
+			if ( is_numeric( $site_image_id ) && (int) $site_image_id > 0 ) {
+				$used_ids[ (int) $site_image_id ] = true;
+			}
+		}
+
 		// Referenced by ID: attachments uploaded to a post (post_parent).
 		$attached_ids = $wpdb->get_col(
 			"SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_parent > 0"
@@ -3089,7 +3102,9 @@ class Media_Command extends WP_CLI_Command {
 				$uploads_basedir,
 				FilesystemIterator::SKIP_DOTS
 			),
-			RecursiveIteratorIterator::LEAVES_ONLY
+			RecursiveIteratorIterator::LEAVES_ONLY,
+			// Skip subdirectories that cannot be opened instead of aborting the scan.
+			RecursiveIteratorIterator::CATCH_GET_CHILD
 		);
 
 		// Resolve the uploads root once so symlinked entries that escape it (or loop)
