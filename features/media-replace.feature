@@ -520,6 +520,121 @@ Feature: Replace WordPress attachment files
     And the wp-content/uploads/{OLD_FILE} file should exist
     And the wp-content/uploads/large-image-1024x768.jpg file should exist
 
+    # WordPress stored metadata for the replacement before the filter ran; the old metadata must be restored.
+    When I run `wp eval '$m = wp_get_attachment_metadata( {ATTACHMENT_ID} ); echo $m["file"] . " " . $m["width"] . "x" . $m["height"];'`
+    Then STDOUT should be:
+      """
+      {OLD_FILE} 2560x1920
+      """
+
+  @require-wp-5.3
+  Scenario: Keep the existing path and metadata when generation fails after WordPress scaled the replacement
+    Given download:
+      | path                        | url                                                |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg      |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    Given a wp-content/mu-plugins/read-error.php file:
+      """
+      <?php
+      add_filter( 'wp_generate_attachment_metadata', function ( $metadata, $id, $context ) {
+          return 'create' === $context ? array( 'filesize' => 123 ) : $metadata;
+      }, 10, 3 );
+      """
+
+    When I try `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/large-image.jpg`
+    Then STDERR should contain:
+      """
+      Failed to generate new attachment metadata
+      """
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      canola.jpg
+      """
+
+    When I run `wp eval '$m = wp_get_attachment_metadata( {ATTACHMENT_ID} ); echo $m["file"] . " " . $m["width"] . "x" . $m["height"];'`
+    Then STDOUT should be:
+      """
+      canola.jpg 640x480
+      """
+
+  Scenario: Replace an attachment file with the file returned by the sideload prefilter
+    Given download:
+      | path                   | url                                           |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    Given a wp-content/mu-plugins/shrink.php file:
+      """
+      <?php
+      add_filter( 'wp_handle_sideload_prefilter', function ( $file ) {
+          $editor = wp_get_image_editor( $file['tmp_name'] );
+          $editor->resize( 100, 100 );
+          $saved = $editor->save( get_temp_dir() . 'wp-cli-shrunk.jpg', 'image/jpeg' );
+          $file['tmp_name'] = $saved['path'];
+          return $file;
+      } );
+      """
+
+    When I run `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/canola.jpg`
+    Then STDOUT should contain:
+      """
+      Success: Replaced 1 of 1 attachments.
+      """
+
+    When I run `wp eval '$s = getimagesize( get_attached_file( {ATTACHMENT_ID} ) ); echo $s[0] . "x" . $s[1];'`
+    Then STDOUT should be:
+      """
+      100x75
+      """
+
+  @require-wp-5.8
+  Scenario: Keep the file type of a scaled image path when WordPress converts the replacement
+    Given download:
+      | path                        | url                                                |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg      |
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    Given a wp-content/mu-plugins/webp.php file:
+      """
+      <?php
+      add_filter( 'image_editor_output_format', function ( $formats ) {
+          $formats['image/jpeg'] = 'image/webp';
+          return $formats;
+      } );
+      """
+
+    When I run `wp media replace {ATTACHMENT_ID} {CACHE_DIR}/canola.jpg`
+    Then STDOUT should contain:
+      """
+      Success: Replaced 1 of 1 attachments.
+      """
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      large-image-scaled.jpg
+      """
+    And the wp-content/uploads/large-image.webp file should not exist
+
+    When I run `wp eval 'echo wp_get_image_mime( get_attached_file( {ATTACHMENT_ID} ) );'`
+    Then STDOUT should be:
+      """
+      image/jpeg
+      """
+
   Scenario: Replace an attachment file with a new file name when requested
     Given download:
       | path                        | url                                          |

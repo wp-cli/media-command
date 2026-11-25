@@ -1023,9 +1023,16 @@ class Media_Command extends WP_CLI_Command {
 				}
 			}
 		} else {
-			if ( $preserve_path && $write_path !== $old_attached_path ) {
-				// Keep the attachment at its existing path, which the old metadata still describes.
+			if ( $preserve_path ) {
+				/*
+				 * Keep the attachment at its existing path with the old metadata. WordPress
+				 * may already have stored new metadata, or pointed the attachment at a
+				 * generated "-scaled" file, before the incomplete result was returned.
+				 */
 				update_attached_file( $attachment_id, $old_attached_path );
+				if ( is_array( $old_metadata ) ) {
+					wp_update_attachment_metadata( $attachment_id, $old_metadata );
+				}
 			}
 
 			WP_CLI::warning(
@@ -1063,6 +1070,40 @@ class Media_Command extends WP_CLI_Command {
 	 * @return string The MIME type of the replacement file.
 	 */
 	private function replace_file_in_place( $tempfile, $name, $write_path, $old_path, $old_mime_type, $orig_filename ) {
+		/*
+		 * Replicate the validation WordPress runs in wp_handle_sideload(), which is
+		 * what this command used before and still uses with --new-file-name. Like
+		 * WordPress, run the prefilter first and continue with the file it returns.
+		 */
+		$file_data = array(
+			'name'     => $name,
+			'type'     => (string) wp_check_filetype( $name )['type'],
+			'tmp_name' => $tempfile,
+			'error'    => 0,
+			'size'     => (int) @filesize( $tempfile ),
+		);
+
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling native WordPress hook.
+		$file_array = apply_filters( 'wp_handle_sideload_prefilter', $file_data );
+
+		if ( is_array( $file_array ) && ! empty( $file_array['error'] ) ) {
+			@unlink( $tempfile );
+			$error = is_string( $file_array['error'] ) ? $file_array['error'] : 'The replacement was rejected.';
+			WP_CLI::error( "Failed to process file '{$orig_filename}': {$error}" );
+		}
+
+		// A filter may hand back a processed copy of the file under a new name.
+		if ( is_array( $file_array ) && ! empty( $file_array['tmp_name'] ) && is_string( $file_array['tmp_name'] ) && $file_array['tmp_name'] !== $tempfile ) {
+			@unlink( $tempfile );
+			$tempfile = $file_array['tmp_name'];
+			if ( ! is_file( $tempfile ) ) {
+				WP_CLI::error( "Failed to process file '{$orig_filename}': The file returned by the wp_handle_sideload_prefilter filter does not exist." );
+			}
+		}
+		if ( is_array( $file_array ) && ! empty( $file_array['name'] ) && is_string( $file_array['name'] ) ) {
+			$name = $file_array['name'];
+		}
+
 		$wp_filetype = wp_check_filetype_and_ext( $tempfile, $name );
 		if ( empty( $wp_filetype['type'] ) || empty( $wp_filetype['ext'] ) ) {
 			@unlink( $tempfile );
@@ -1098,27 +1139,6 @@ class Media_Command extends WP_CLI_Command {
 		if ( ! $this->is_within_uploads( $write_path ) ) {
 			@unlink( $tempfile );
 			WP_CLI::error( "Failed to process file '{$orig_filename}': The attachment path is outside the uploads directory." );
-		}
-
-		/*
-		 * Replicate the validation WordPress runs in wp_handle_sideload(), which is
-		 * what this command used before and still uses with --new-file-name.
-		 */
-		$file_data = array(
-			'name'     => $name,
-			'type'     => $new_mime_type,
-			'tmp_name' => $tempfile,
-			'error'    => 0,
-			'size'     => (int) @filesize( $tempfile ),
-		);
-
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Calling native WordPress hook.
-		$file_array = apply_filters( 'wp_handle_sideload_prefilter', $file_data );
-
-		if ( is_array( $file_array ) && ! empty( $file_array['error'] ) ) {
-			@unlink( $tempfile );
-			$error = is_string( $file_array['error'] ) ? $file_array['error'] : 'The replacement was rejected.';
-			WP_CLI::error( "Failed to process file '{$orig_filename}': {$error}" );
 		}
 
 		if ( is_multisite() ) {
@@ -1348,7 +1368,7 @@ class Media_Command extends WP_CLI_Command {
 		 * needed no rotation). Move the generated file onto the existing URL so links
 		 * keep working.
 		 */
-		if ( ! $this->atomic_replace( $generated_path, $canonical_path ) ) {
+		if ( ! $this->move_into_format( $generated_path, $canonical_path ) ) {
 			WP_CLI::warning(
 				sprintf(
 					"Unable to move the replacement file for attachment %d to its existing path '%s'. The attachment now uses '%s'.",
@@ -1376,6 +1396,54 @@ class Media_Command extends WP_CLI_Command {
 		update_attached_file( $attachment_id, $canonical_path );
 
 		return $metadata;
+	}
+
+	/**
+	 * Puts a generated image file at a path, keeping the file type of that path.
+	 *
+	 * When an `image_editor_output_format` mapping made WordPress save the
+	 * generated file in another format (for example a WebP for a JPEG), the image
+	 * is converted back, because the existing URL keeps its file extension.
+	 *
+	 * @param string $source      Path to the generated file.
+	 * @param string $destination Path the file should be stored at.
+	 * @return bool Whether the destination was replaced.
+	 */
+	private function move_into_format( $source, $destination ) {
+		$source_ext      = strtolower( pathinfo( $source, PATHINFO_EXTENSION ) );
+		$destination_ext = strtolower( pathinfo( $destination, PATHINFO_EXTENSION ) );
+		if ( $source_ext === $destination_ext ) {
+			return $this->atomic_replace( $source, $destination );
+		}
+
+		$filetype = wp_check_filetype( $destination );
+		$editor   = wp_get_image_editor( $source );
+		if ( empty( $filetype['type'] ) || is_wp_error( $editor ) ) {
+			return false;
+		}
+
+		$mime_type = $filetype['type'];
+
+		// Save in the format of the destination, ignoring any output format mapping for it.
+		$keep_format = static function ( $formats ) use ( $mime_type ) {
+			if ( is_array( $formats ) ) {
+				unset( $formats[ $mime_type ] );
+			}
+			return $formats;
+		};
+		add_filter( 'image_editor_output_format', $keep_format, PHP_INT_MAX );
+		$temp  = dirname( $destination ) . '/' . uniqid( 'wp-cli-replace-' ) . '.' . $destination_ext;
+		$saved = $editor->save( $temp, $mime_type );
+		remove_filter( 'image_editor_output_format', $keep_format, PHP_INT_MAX );
+
+		if ( is_wp_error( $saved ) || empty( $saved['path'] ) ) {
+			return false;
+		}
+
+		$replaced = $this->atomic_replace( $saved['path'], $destination );
+		@unlink( $saved['path'] );
+
+		return $replaced;
 	}
 
 	/**
