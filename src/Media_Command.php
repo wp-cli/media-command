@@ -881,7 +881,7 @@ class Media_Command extends WP_CLI_Command {
 
 		// Validate attachment exists.
 		$attachment = get_post( $attachment_id );
-		if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
+		if ( ! $attachment instanceof WP_Post || 'attachment' !== $attachment->post_type ) {
 			WP_CLI::error( "Invalid attachment ID {$attachment_id}." );
 		}
 
@@ -1395,8 +1395,22 @@ class Media_Command extends WP_CLI_Command {
 		// The file was validated as an image before it was written here.
 		$imagesize = getimagesize( $path );
 		if ( is_array( $imagesize ) ) {
-			$metadata['width']  = (int) $imagesize[0];
-			$metadata['height'] = (int) $imagesize[1];
+			$width  = (int) $imagesize[0];
+			$height = (int) $imagesize[1];
+
+			/*
+			 * A file kept as uploaded may still carry an EXIF orientation that turns it
+			 * by 90 degrees when displayed. WordPress records the displayed dimensions,
+			 * so swap them to match.
+			 */
+			$image_meta  = wp_read_image_metadata( $path );
+			$orientation = is_array( $image_meta ) && isset( $image_meta['orientation'] ) && is_numeric( $image_meta['orientation'] ) ? (int) $image_meta['orientation'] : 1;
+			if ( $orientation >= 5 && $orientation <= 8 ) {
+				list( $width, $height ) = array( $height, $width );
+			}
+
+			$metadata['width']  = $width;
+			$metadata['height'] = $height;
 		}
 
 		return $metadata;

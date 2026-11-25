@@ -442,6 +442,49 @@ Feature: Replace WordPress attachment files
       """
 
   @require-wp-5.3
+  Scenario: Record the displayed dimensions of a replacement with an EXIF orientation
+    Given download:
+      | path                   | url                                           |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+    And a add-orientation.php file:
+      """
+      <?php
+      // Insert an EXIF segment with orientation 6 (rotate 90 degrees clockwise) after the JPEG SOI marker.
+      $jpeg = file_get_contents( $args[0] );
+      $exif = "Exif\0\0MM\0\x2a\0\0\0\x08\0\x01\x01\x12\0\x03\0\0\0\x01\0\x06\0\0\0\0\0\0";
+      file_put_contents( $args[1], substr( $jpeg, 0, 2 ) . "\xff\xe1" . pack( 'n', strlen( $exif ) + 2 ) . $exif . substr( $jpeg, 2 ) );
+      """
+    And I run `wp option update uploads_use_yearmonth_folders 0`
+
+    When I run `wp eval-file add-orientation.php {CACHE_DIR}/canola.jpg {RUN_DIR}/rotated.jpg`
+    And I run `wp eval 'echo wp_read_image_metadata( "{RUN_DIR}/rotated.jpg" )["orientation"];'`
+    Then STDOUT should be:
+      """
+      6
+      """
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp media replace {ATTACHMENT_ID} {RUN_DIR}/rotated.jpg`
+    Then STDOUT should contain:
+      """
+      Success: Replaced 1 of 1 attachments.
+      """
+
+    When I run `wp post meta get {ATTACHMENT_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      canola.jpg
+      """
+
+    When I run `wp eval '$m = wp_get_attachment_metadata( {ATTACHMENT_ID} ); echo $m["width"] . "x" . $m["height"];'`
+    Then STDOUT should be:
+      """
+      480x640
+      """
+
+  @require-wp-5.3
   Scenario: Keep the existing path and image sizes when only the filesize can be read
     Given download:
       | path                        | url                                                |
