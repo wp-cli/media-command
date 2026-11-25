@@ -4,7 +4,10 @@ Feature: List image sizes
   Scenario: Basic usage
     Given a WP install
     # Differing themes can have differing default image sizes. Let's stick to one.
-    And I try `wp theme install twentynineteen --activate`
+    And these installed and active themes:
+      """
+      twentynineteen
+      """
 
     When I run `wp media image-size`
     Then STDOUT should be a table containing rows:
@@ -32,7 +35,10 @@ Feature: List image sizes
   Scenario: Basic usage with plugin which registers custom image size
     Given a WP install
     # Differing themes can have differing default image sizes. Let's stick to one.
-    And I try `wp theme install twentynineteen --activate`
+    And these installed and active themes:
+      """
+      twentynineteen
+      """
     And a wp-content/plugins/foo-bar.php file:
       """
       <?php
@@ -48,10 +54,10 @@ Feature: List image sizes
         */
 
       add_action(
-        'after_setup_theme',
-        function () {
-          add_image_size( 'foo-bar-thumb', 50, 50, true );
-        }
+          'after_setup_theme',
+          function () {
+              add_image_size( 'foo-bar-thumb', 50, 50, true );
+          }
       );
       """
     And I try `wp plugin activate foo-bar.php`
@@ -82,7 +88,10 @@ Feature: List image sizes
   Scenario: Basic usage (pre-WP-5.3)
     Given a WP install
     # Differing themes can have differing default image sizes. Let's stick to one.
-    And I try `wp theme install twentynineteen --activate`
+    And these installed and active themes:
+      """
+      twentynineteen
+      """
 
     When I run `wp media image-size`
     Then STDOUT should be a table containing rows:
