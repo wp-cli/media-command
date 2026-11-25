@@ -1431,6 +1431,8 @@ class Media_Command extends WP_CLI_Command {
 			}
 			return $formats;
 		};
+		// Before WordPress 5.8 there is no output format mapping, so the filter is never applied and nothing needs undoing.
+		// @phpstan-ignore WPCompat.filterNotAvailable.imageeditoroutputformat
 		add_filter( 'image_editor_output_format', $keep_format, PHP_INT_MAX );
 		$temp  = dirname( $destination ) . '/' . uniqid( 'wp-cli-replace-' ) . '.' . $destination_ext;
 		$saved = $editor->save( $temp, $mime_type );
