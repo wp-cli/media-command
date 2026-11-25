@@ -2588,11 +2588,14 @@ class Media_Command extends WP_CLI_Command {
 			WP_CLI::error( sprintf( 'Could not resolve the uploads directory: %s', $uploads['error'] ) );
 		}
 		$uploads_basedir = $uploads['basedir'];
-		if ( ! is_dir( $uploads_basedir ) || ! is_readable( $uploads_basedir ) ) {
-			WP_CLI::error( sprintf( 'The uploads directory is not readable: %s', $uploads_basedir ) );
-		}
 
 		$types_to_run = null === $type ? $allowed_types : array( $type );
+
+		// Only the filesystem and thumbnails detectors walk the uploads directory.
+		$walks_uploads = array_intersect( $types_to_run, array( 'filesystem', 'thumbnails' ) );
+		if ( ! empty( $walks_uploads ) && ( ! is_dir( $uploads_basedir ) || ! is_readable( $uploads_basedir ) ) ) {
+			WP_CLI::error( sprintf( 'The uploads directory is not readable: %s', $uploads_basedir ) );
+		}
 
 		$candidates = array();
 		foreach ( $types_to_run as $type_to_run ) {
@@ -2674,7 +2677,7 @@ class Media_Command extends WP_CLI_Command {
 		/**
 		 * @var int $attachment_id
 		 */
-		foreach ( $query->posts as $attachment_id ) {
+		foreach ( $query->posts ?? array() as $attachment_id ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				// @phpstan-ignore function.deprecated
@@ -2688,7 +2691,20 @@ class Media_Command extends WP_CLI_Command {
 
 			$known[ $this->normalize_relative_path( $attached_file ) ] = true;
 
-			$subdir   = ltrim( dirname( $attached_file ), './' );
+			$subdir = ltrim( dirname( $attached_file ), './' );
+
+			// Files kept by the image editor so that an edited image can be restored.
+			$backup_sizes = get_post_meta( $attachment_id, '_wp_attachment_backup_sizes', true );
+			if ( is_array( $backup_sizes ) ) {
+				foreach ( $backup_sizes as $backup_size ) {
+					if ( ! is_array( $backup_size ) || empty( $backup_size['file'] ) || ! is_string( $backup_size['file'] ) ) {
+						continue;
+					}
+					$relative = '' === $subdir ? $backup_size['file'] : $subdir . '/' . $backup_size['file'];
+					$known[ $this->normalize_relative_path( $relative ) ] = true;
+				}
+			}
+
 			$metadata = wp_get_attachment_metadata( $attachment_id );
 			if ( ! is_array( $metadata ) ) {
 				continue;
@@ -2794,7 +2810,7 @@ class Media_Command extends WP_CLI_Command {
 		/**
 		 * @var int $attachment_id
 		 */
-		foreach ( $query->posts as $attachment_id ) {
+		foreach ( $query->posts ?? array() as $attachment_id ) {
 			++$number;
 			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
 				// @phpstan-ignore function.deprecated
@@ -2984,6 +3000,46 @@ class Media_Command extends WP_CLI_Command {
 			}
 		}
 
+		// Also index the pre-"-scaled" original image and every declared size, which
+		// are named after the original rather than after `_wp_attached_file`.
+		$metadata_rows = $wpdb->get_results(
+			"SELECT pm.post_id, pm.meta_value, af.meta_value AS attached_file FROM {$wpdb->postmeta} pm
+			INNER JOIN {$wpdb->postmeta} af ON af.post_id = pm.post_id AND af.meta_key = '_wp_attached_file'
+			WHERE pm.meta_key = '_wp_attachment_metadata'"
+		);
+		foreach ( $metadata_rows as $metadata_row ) {
+			$attachment_id = (int) $metadata_row->post_id;
+			if ( ! isset( $id_set[ $attachment_id ] ) || ! is_string( $metadata_row->attached_file ) || '' === $metadata_row->attached_file ) {
+				continue;
+			}
+			$metadata = maybe_unserialize( $metadata_row->meta_value );
+			if ( ! is_array( $metadata ) ) {
+				continue;
+			}
+
+			$aliases = array();
+			if ( ! empty( $metadata['original_image'] ) && is_string( $metadata['original_image'] ) ) {
+				$aliases[] = $metadata['original_image'];
+			}
+			if ( ! empty( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ) {
+				foreach ( $metadata['sizes'] as $size ) {
+					if ( is_array( $size ) && ! empty( $size['file'] ) && is_string( $size['file'] ) ) {
+						$aliases[] = $size['file'];
+					}
+				}
+			}
+
+			$subdir = ltrim( dirname( $metadata_row->attached_file ), './' );
+			foreach ( $aliases as $alias ) {
+				$relative = $this->normalize_relative_path( '' === $subdir ? $alias : $subdir . '/' . $alias );
+				foreach ( array( $relative, $this->strip_size_suffix( $relative ) ) as $alias_path ) {
+					if ( ! isset( $path_to_id[ $alias_path ] ) ) {
+						$path_to_id[ $alias_path ] = $attachment_id;
+					}
+				}
+			}
+		}
+
 		// Resolve the uploads base URL once and match attachment URLs in content via a
 		// single regex per post.
 		$baseurl     = rtrim( $uploads_baseurl, '/' );
@@ -3031,6 +3087,8 @@ class Media_Command extends WP_CLI_Command {
 
 			if ( '' !== $baseurl && preg_match_all( $url_pattern, $content, $matches ) ) {
 				foreach ( $matches[1] as $captured_path ) {
+					// Drop any query string or fragment, e.g. "photo.jpg?download=1".
+					$captured_path  = (string) preg_replace( '/[?#].*$/s', '', $captured_path );
 					$candidate_path = $this->normalize_relative_path( $captured_path );
 					if ( isset( $path_to_id[ $candidate_path ] ) ) {
 						$used_ids[ $path_to_id[ $candidate_path ] ] = true;

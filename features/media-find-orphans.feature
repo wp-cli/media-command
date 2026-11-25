@@ -190,6 +190,80 @@ Feature: Find orphan WordPress media
     Then STDOUT should be empty
     And STDERR should be empty
 
+  Scenario: Detect attachments with missing files when the uploads directory is gone
+    Given download:
+      | path                   | url                                           |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `rm -rf wp-content/uploads`
+    And I run `wp media find-orphans --type=database --format=ids`
+    Then STDOUT should be:
+      """
+      {ATTACHMENT_ID}
+      """
+    And the wp-content/uploads directory should not exist
+
+    When I try `wp media find-orphans --type=filesystem`
+    Then STDERR should contain:
+      """
+      Error: The uploads directory is not readable
+      """
+    And the return code should be 1
+
+  Scenario: Do not report files kept by the image editor for restoring an image
+    Given download:
+      | path                   | url                                           |
+      | {CACHE_DIR}/canola.jpg | http://wp-cli.github.io/behat-data/canola.jpg |
+    And a wp-content/uploads/canola-original.jpg file:
+      """
+      kept by the image editor
+      """
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {ATTACHMENT_ID}
+
+    When I run `wp eval 'update_post_meta( {ATTACHMENT_ID}, "_wp_attachment_backup_sizes", array( "full-orig" => array( "width" => 640, "height" => 480, "file" => "canola-original.jpg" ) ) );'`
+    And I run `wp media find-orphans --type=filesystem`
+    Then STDOUT should contain:
+      """
+      Success: No orphan media found.
+      """
+
+  @require-wp-5.3
+  Scenario: Resolve content links to the original image and links with a query string
+    Given download:
+      | path                        | url                                                |
+      | {CACHE_DIR}/large-image.jpg | http://wp-cli.github.io/behat-data/large-image.jpg |
+      | {CACHE_DIR}/canola.jpg      | http://wp-cli.github.io/behat-data/canola.jpg      |
+
+    When I run `wp media import {CACHE_DIR}/large-image.jpg --porcelain`
+    Then save STDOUT as {SCALED_ID}
+
+    When I run `wp post meta get {SCALED_ID} _wp_attached_file`
+    Then STDOUT should be:
+      """
+      large-image-scaled.jpg
+      """
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --porcelain`
+    Then save STDOUT as {QUERY_ID}
+
+    When I run `wp media import {CACHE_DIR}/canola.jpg --title="Unused attachment" --porcelain`
+    Then save STDOUT as {UNUSED_ID}
+
+    When I run `wp eval 'echo wp_get_upload_dir()["baseurl"];'`
+    Then save STDOUT as {BASEURL}
+
+    When I run `wp post create --post_title="Links" --post_status=publish --post_content='<a href="{BASEURL}/large-image.jpg">original</a> <a href="{BASEURL}/canola.jpg?download=1#top">download</a>'`
+    And I run `wp media find-orphans --type=usage --format=ids`
+    Then STDOUT should be:
+      """
+      {UNUSED_ID}
+      """
+
   Scenario: Output orphans as valid JSON
     Given download:
       | path                   | url                                           |
