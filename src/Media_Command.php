@@ -2452,4 +2452,803 @@ class Media_Command extends WP_CLI_Command {
 			wp_cache_set( 'last_changed', microtime(), 'posts' );
 		}
 	}
+
+	/**
+	 * Finds orphaned media: files and records that are inconsistent between the
+	 * media library, the uploads filesystem, and actual usage in content.
+	 *
+	 * This command is non-destructive: it never deletes, moves, or modifies any
+	 * file or record. It reports *candidates*, classified by type:
+	 *
+	 * - `filesystem`: files present in the uploads directory but absent from the
+	 *   media library.
+	 * - `database`: registered attachments whose original file is missing from disk.
+	 * - `thumbnails`: generated thumbnails whose parent attachment no longer exists.
+	 * - `usage`: attachments that do not appear to be referenced in content
+	 *   (conservative detection; see the filter below).
+	 *
+	 * A media file may legitimately be referenced by a theme, plugin, page builder,
+	 * CSS, serialized data, or an external system. This command can never guarantee
+	 * with certainty that a media file is unused; treat the output as candidates.
+	 *
+	 * The `usage` detector can be extended without modifying core: hook into the
+	 * `wp_cli_media_find_orphans_used_ids` filter to declare additional reference
+	 * sources (postmeta, ACF, page builders, serialized data).
+	 *
+	 *     add_filter(
+	 *         'wp_cli_media_find_orphans_used_ids',
+	 *         function ( $used_ids, $context ) {
+	 *             // $context = array( 'post_ids' => int[], 'attachment_ids' => int[] ).
+	 *             return $used_ids;
+	 *         },
+	 *         10,
+	 *         2
+	 *     );
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--type=<type>]
+	 * : Restrict the scan to a single orphan type. Defaults to all types.
+	 * ---
+	 * options:
+	 *   - filesystem
+	 *   - database
+	 *   - thumbnails
+	 *   - usage
+	 * ---
+	 *
+	 * [--format=<format>]
+	 * : Render output in a particular format.
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 *   - csv
+	 *   - yaml
+	 *   - ids
+	 *   - count
+	 * ---
+	 *
+	 * [--fields=<fields>]
+	 * : Limit the output to specific fields. Defaults to all fields.
+	 *
+	 * [--include-thumbnails]
+	 * : Include generated thumbnails in the filesystem scan. By default, files
+	 * matching the thumbnail pattern (-WxH.ext) are skipped so they are not
+	 * reported as filesystem orphans.
+	 *
+	 * [--limit=<number>]
+	 * : Limit the number of candidates reported, after aggregation. Use 0 for no
+	 * limit.
+	 * ---
+	 * default: 0
+	 * ---
+	 *
+	 * [--error-on-orphans]
+	 * : Exit with a non-zero status code (1) when at least one candidate is found.
+	 *
+	 * ## AVAILABLE FIELDS
+	 *
+	 * These fields will be displayed by default for each candidate:
+	 *
+	 * * type
+	 * * attachment_id
+	 * * file
+	 * * issue
+	 * * path
+	 *
+	 * Note: `--format=ids` only emits a value for candidates that carry an
+	 * attachment ID (`database`, `usage`). For `filesystem`/`thumbnails`
+	 * candidates it emits an empty line; prefer `--field=file` for those.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # Find all orphan media candidates.
+	 *     $ wp media find-orphans
+	 *     +------------+---------------+---------------+--------------------------------------+-----------------------+
+	 *     | type       | attachment_id | file          | issue                                | path                  |
+	 *     +------------+---------------+---------------+--------------------------------------+-----------------------+
+	 *     | filesystem |               | image-old.jpg | File on disk not in media library    | 2023/04/image-old.jpg |
+	 *     | database   | 1542          | banner.jpg    | Attachment file missing from disk    | 2022/11/banner.jpg    |
+	 *     | usage      | 2189          | photo.jpg     | Attachment appears unused in content | 2021/08/photo.jpg     |
+	 *     +------------+---------------+---------------+--------------------------------------+-----------------------+
+	 *
+	 *     # Count attachments whose file is missing from disk.
+	 *     $ wp media find-orphans --type=database --format=count
+	 *     1
+	 *
+	 *     # Fail (exit code 1) in CI when any orphan is found.
+	 *     $ wp media find-orphans --error-on-orphans
+	 *
+	 * @subcommand find-orphans
+	 *
+	 * @param string[] $args Positional arguments.
+	 * @param array{type?: string, format?: string, fields?: string, 'include-thumbnails'?: bool, limit?: string, 'error-on-orphans'?: bool} $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public function find_orphans( $args, $assoc_args = array() ) {
+		$allowed_types  = array( 'filesystem', 'database', 'thumbnails', 'usage' );
+		$allowed_fields = array( 'type', 'attachment_id', 'file', 'issue', 'path' );
+
+		// Valid --type values are enforced by the command synopsis (options list).
+		$type = Utils\get_flag_value( $assoc_args, 'type' );
+
+		$limit_raw = Utils\get_flag_value( $assoc_args, 'limit', 0 );
+		if ( ! is_numeric( $limit_raw ) || (string) (int) $limit_raw !== (string) $limit_raw || (int) $limit_raw < 0 ) {
+			WP_CLI::error( 'The --limit value must be an integer greater than or equal to 0.' );
+		}
+		$limit = (int) $limit_raw;
+
+		$format             = Utils\get_flag_value( $assoc_args, 'format', 'table' );
+		$include_thumbnails = (bool) Utils\get_flag_value( $assoc_args, 'include-thumbnails', false );
+
+		$uploads = wp_get_upload_dir();
+		if ( ! empty( $uploads['error'] ) ) {
+			WP_CLI::error( sprintf( 'Could not resolve the uploads directory: %s', $uploads['error'] ) );
+		}
+		$uploads_basedir = $uploads['basedir'];
+		if ( ! is_dir( $uploads_basedir ) || ! is_readable( $uploads_basedir ) ) {
+			WP_CLI::error( sprintf( 'The uploads directory is not readable: %s', $uploads_basedir ) );
+		}
+
+		$types_to_run = null === $type ? $allowed_types : array( $type );
+
+		$candidates = array();
+		foreach ( $types_to_run as $type_to_run ) {
+			switch ( $type_to_run ) {
+				case 'filesystem':
+					$candidates = array_merge(
+						$candidates,
+						$this->detect_filesystem_orphans( $uploads_basedir, $include_thumbnails )
+					);
+					break;
+				case 'database':
+					$candidates = array_merge(
+						$candidates,
+						$this->detect_database_orphans()
+					);
+					break;
+				case 'thumbnails':
+					$candidates = array_merge(
+						$candidates,
+						$this->detect_thumbnail_orphans( $uploads_basedir )
+					);
+					break;
+				case 'usage':
+					$candidates = array_merge(
+						$candidates,
+						$this->detect_usage_orphans()
+					);
+					break;
+			}
+		}
+
+		if ( $limit > 0 && count( $candidates ) > $limit ) {
+			$candidates = array_slice( $candidates, 0, $limit );
+		}
+
+		if ( empty( $candidates ) && 'table' === $format ) {
+			WP_CLI::success( 'No orphan media found.' );
+			return;
+		}
+
+		$fields_raw = Utils\get_flag_value( $assoc_args, 'fields' );
+		$fields     = null === $fields_raw ? $allowed_fields : explode( ',', $fields_raw );
+
+		Utils\format_items( $format, $candidates, $fields );
+
+		if ( Utils\get_flag_value( $assoc_args, 'error-on-orphans', false ) && count( $candidates ) > 0 ) {
+			WP_CLI::halt( 1 );
+		}
+	}
+
+	/**
+	 * Builds the set of upload-relative file paths known to the media library.
+	 *
+	 * Includes original files (`_wp_attached_file`), every declared size
+	 * (`_wp_attachment_metadata['sizes'][*]['file']`), and the WP 5.3+
+	 * `original_image` when present.
+	 *
+	 * @return array<string,bool> Map of upload-relative paths to true.
+	 */
+	private function get_known_library_paths() {
+		$query = new WP_Query(
+			array(
+				'post_type'              => 'attachment',
+				'post_status'            => 'any',
+				'posts_per_page'         => -1,
+				'fields'                 => 'ids',
+				'update_post_term_cache' => false,
+			)
+		);
+
+		$known  = array();
+		$number = 0;
+		/**
+		 * @var int $attachment_id
+		 */
+		foreach ( $query->posts as $attachment_id ) {
+			++$number;
+			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				// @phpstan-ignore function.deprecated
+				Utils\wp_clear_object_cache();
+			}
+
+			$attached_file = get_post_meta( $attachment_id, '_wp_attached_file', true );
+			if ( ! is_string( $attached_file ) || '' === $attached_file ) {
+				continue;
+			}
+
+			$known[ $this->normalize_relative_path( $attached_file ) ] = true;
+
+			$subdir   = ltrim( dirname( $attached_file ), './' );
+			$metadata = wp_get_attachment_metadata( $attachment_id );
+			if ( ! is_array( $metadata ) ) {
+				continue;
+			}
+
+			$original_image = isset( $metadata['original_image'] ) ? (string) $metadata['original_image'] : '';
+			if ( '' !== $original_image ) {
+				$relative = '' === $subdir ? $original_image : $subdir . '/' . $original_image;
+				$known[ $this->normalize_relative_path( $relative ) ] = true;
+			}
+
+			if ( ! empty( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ) {
+				/**
+				 * @var array<string, array<string, mixed>> $sizes
+				 */
+				$sizes = $metadata['sizes'];
+				foreach ( $sizes as $size ) {
+					if ( empty( $size['file'] ) || ! is_string( $size['file'] ) ) {
+						continue;
+					}
+					$relative = '' === $subdir ? $size['file'] : $subdir . '/' . $size['file'];
+					$known[ $this->normalize_relative_path( $relative ) ] = true;
+				}
+			}
+		}
+
+		return $known;
+	}
+
+	/**
+	 * Detects files present on disk in the uploads directory but absent from the
+	 * media library.
+	 *
+	 * @param string $uploads_basedir    Absolute path to the uploads root.
+	 * @param bool   $include_thumbnails Whether to include generated thumbnails.
+	 * @return array<int,array<string,string>> Candidate rows.
+	 */
+	private function detect_filesystem_orphans( $uploads_basedir, $include_thumbnails ) {
+		$known              = $this->get_known_library_paths();
+		$allowed_extensions = $this->get_allowed_media_extensions();
+		$ignored_prefixes   = $this->get_ignored_path_prefixes();
+		$candidates         = array();
+
+		foreach ( $this->iterate_upload_files( $uploads_basedir ) as $absolute_path ) {
+			$relative = $this->absolute_to_relative_path( $absolute_path, $uploads_basedir );
+			if ( null === $relative ) {
+				continue;
+			}
+
+			// Skip generated/cache subdirectories (e.g. elementor/, cache/).
+			if ( $this->is_ignored_path( $relative, $ignored_prefixes ) ) {
+				continue;
+			}
+
+			// Restrict to known media file extensions so plugin-generated files
+			// (e.g. elementor/css/*.css, *.woff2, index.html) are not reported.
+			$extension = strtolower( pathinfo( $relative, PATHINFO_EXTENSION ) );
+			if ( '' === $extension || ! isset( $allowed_extensions[ $extension ] ) ) {
+				continue;
+			}
+
+			if ( ! $include_thumbnails && $this->is_thumbnail_filename( basename( $relative ) ) ) {
+				continue;
+			}
+
+			if ( isset( $known[ $relative ] ) ) {
+				continue;
+			}
+
+			$candidates[] = array(
+				'type'          => 'filesystem',
+				'attachment_id' => '',
+				'file'          => basename( $relative ),
+				'issue'         => 'File on disk not in media library',
+				'path'          => $relative,
+			);
+		}
+
+		return $candidates;
+	}
+
+	/**
+	 * Detects attachments whose original file is missing from disk.
+	 *
+	 * @return array<int,array<string,string>> Candidate rows.
+	 */
+	private function detect_database_orphans() {
+		$uploads         = wp_get_upload_dir();
+		$uploads_basedir = isset( $uploads['basedir'] ) && is_string( $uploads['basedir'] ) ? $uploads['basedir'] : '';
+
+		$query = new WP_Query(
+			array(
+				'post_type'              => 'attachment',
+				'post_status'            => 'any',
+				'posts_per_page'         => -1,
+				'fields'                 => 'ids',
+				'update_post_term_cache' => false,
+			)
+		);
+
+		$candidates = array();
+		$number     = 0;
+		/**
+		 * @var int $attachment_id
+		 */
+		foreach ( $query->posts as $attachment_id ) {
+			++$number;
+			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				// @phpstan-ignore function.deprecated
+				Utils\wp_clear_object_cache();
+			}
+
+			$file = $this->get_attached_file( $attachment_id );
+			if ( false !== $file && '' !== $file && file_exists( $file ) ) {
+				continue;
+			}
+
+			$attached_file = get_post_meta( $attachment_id, '_wp_attached_file', true );
+			$relative      = is_string( $attached_file ) ? $this->normalize_relative_path( $attached_file ) : '';
+
+			// On WP 5.3+, get_attached_file() may return the pre-`-scaled` original path.
+			// A site can legitimately keep the served `-scaled` file while the original is
+			// gone, so only report when the raw `_wp_attached_file` is also missing on disk.
+			if ( '' !== $relative && '' !== $uploads_basedir && file_exists( $uploads_basedir . '/' . $relative ) ) {
+				continue;
+			}
+
+			$candidates[] = array(
+				'type'          => 'database',
+				'attachment_id' => (string) $attachment_id,
+				'file'          => '' !== $relative ? basename( $relative ) : '',
+				'issue'         => 'Attachment file missing from disk',
+				'path'          => $relative,
+			);
+		}
+
+		return $candidates;
+	}
+
+	/**
+	 * Detects thumbnail files on disk whose parent original is gone (no original
+	 * file on disk and no matching size metadata entry).
+	 *
+	 * @param string $uploads_basedir Absolute path to the uploads root.
+	 * @return array<int,array<string,string>> Candidate rows.
+	 */
+	private function detect_thumbnail_orphans( $uploads_basedir ) {
+		$known            = $this->get_known_library_paths();
+		$ignored_prefixes = $this->get_ignored_path_prefixes();
+		$candidates       = array();
+
+		foreach ( $this->iterate_upload_files( $uploads_basedir ) as $absolute_path ) {
+			$relative = $this->absolute_to_relative_path( $absolute_path, $uploads_basedir );
+			if ( null === $relative ) {
+				continue;
+			}
+
+			// Skip generated/cache subdirectories (e.g. elementor/, cache/).
+			if ( $this->is_ignored_path( $relative, $ignored_prefixes ) ) {
+				continue;
+			}
+
+			$basename = basename( $relative );
+			if ( ! $this->is_thumbnail_filename( $basename ) ) {
+				continue;
+			}
+
+			// A thumbnail that is a known declared size is not orphaned.
+			if ( isset( $known[ $relative ] ) ) {
+				continue;
+			}
+
+			// Reconstruct the expected original path by stripping the -WxH suffix.
+			$original_basename = preg_replace( '/-\d+x\d+(\.[a-zA-Z0-9]+)$/', '$1', $basename );
+			$dir               = ltrim( dirname( $relative ), './' );
+			$original_relative = '' === $dir || '.' === $dir ? $original_basename : $dir . '/' . $original_basename;
+
+			// Parent original still present on disk or known to the library: not orphaned.
+			if ( isset( $known[ $this->normalize_relative_path( (string) $original_relative ) ] ) ) {
+				continue;
+			}
+			if ( file_exists( $uploads_basedir . '/' . $original_relative ) ) {
+				continue;
+			}
+
+			$candidates[] = array(
+				'type'          => 'thumbnails',
+				'attachment_id' => '',
+				'file'          => $basename,
+				'issue'         => 'Thumbnail parent attachment missing',
+				'path'          => $relative,
+			);
+		}
+
+		return $candidates;
+	}
+
+	/**
+	 * Detects attachments that do not appear to be referenced in content.
+	 *
+	 * Conservative: an attachment is considered used when referenced by ID
+	 * (`_thumbnail_id`, `post_parent`, gallery/block markup) or by URL (any size)
+	 * in the `post_content` of published or draft posts. The set of used IDs is
+	 * passed through the `wp_cli_media_find_orphans_used_ids` filter before
+	 * classification, so plugins can declare additional reference sources.
+	 *
+	 * @return array<int,array<string,string>> Candidate rows.
+	 */
+	private function detect_usage_orphans() {
+		global $wpdb;
+
+		$uploads         = wp_get_upload_dir();
+		$uploads_baseurl = isset( $uploads['baseurl'] ) && is_string( $uploads['baseurl'] ) ? $uploads['baseurl'] : '';
+
+		$attachment_ids = get_posts(
+			array(
+				'post_type'              => 'attachment',
+				'post_status'            => 'any',
+				'posts_per_page'         => -1,
+				'fields'                 => 'ids',
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			)
+		);
+		$attachment_ids = array_map( 'intval', $attachment_ids );
+
+		if ( empty( $attachment_ids ) ) {
+			return array();
+		}
+
+		$post_ids = get_posts(
+			array(
+				// Scan ALL registered post types: 'any' excludes those registered with
+				// exclude_from_search => true (many page builders, and attachment itself),
+				// which would misclassify media referenced only inside them as unused.
+				'post_type'              => array_values( get_post_types() ),
+				'post_status'            => array( 'publish', 'draft' ),
+				'posts_per_page'         => -1,
+				'fields'                 => 'ids',
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			)
+		);
+		$post_ids = array_map( 'intval', $post_ids );
+
+		$used_ids = array();
+
+		// Referenced by ID: featured images (_thumbnail_id).
+		$thumbnail_ids = $wpdb->get_col(
+			"SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_thumbnail_id'"
+		);
+		foreach ( $thumbnail_ids as $thumbnail_id ) {
+			$used_ids[ (int) $thumbnail_id ] = true;
+		}
+
+		// Referenced by ID: attachments uploaded to a post (post_parent).
+		$attached_ids = $wpdb->get_col(
+			"SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_parent > 0"
+		);
+		foreach ( $attached_ids as $attached_id ) {
+			$used_ids[ (int) $attached_id ] = true;
+		}
+
+		// Build a path -> attachment_id lookup ONCE (bulk query over _wp_attached_file),
+		// so URL references in content can be resolved without per-attachment work.
+		// Each attachment is indexed both by its full uploads-relative path and by the
+		// same path with any "-WxH" size suffix stripped, so that thumbnail URLs found
+		// in content map back to the parent attachment.
+		$path_to_id = array();
+		$meta_rows  = $wpdb->get_results(
+			"SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file'"
+		);
+		$id_set     = array_fill_keys( $attachment_ids, true );
+		foreach ( $meta_rows as $meta_row ) {
+			$attachment_id = (int) $meta_row->post_id;
+			if ( ! isset( $id_set[ $attachment_id ] ) || ! is_string( $meta_row->meta_value ) || '' === $meta_row->meta_value ) {
+				continue;
+			}
+			$relative = $this->normalize_relative_path( $meta_row->meta_value );
+
+			$path_to_id[ $relative ] = $attachment_id;
+
+			$stripped = $this->strip_size_suffix( $relative );
+			if ( ! isset( $path_to_id[ $stripped ] ) ) {
+				$path_to_id[ $stripped ] = $attachment_id;
+			}
+		}
+
+		// Resolve the uploads base URL once and match attachment URLs in content via a
+		// single regex per post.
+		$baseurl     = rtrim( $uploads_baseurl, '/' );
+		$url_pattern = '#' . preg_quote( $baseurl, '#' ) . '/([^\s"\'\\\\)]+)#';
+
+		// Referenced in content: gallery/block ID references and attachment URLs.
+		$number = 0;
+		foreach ( $post_ids as $post_id ) {
+			++$number;
+			if ( 0 === $number % self::WP_CLEAR_OBJECT_CACHE_INTERVAL ) {
+				// @phpstan-ignore function.deprecated
+				Utils\wp_clear_object_cache();
+			}
+
+			$content = get_post_field( 'post_content', $post_id );
+			if ( ! is_string( $content ) || '' === $content ) {
+				continue;
+			}
+
+			// Only mark IDs that are actual attachments; "id":N etc. also match
+			// non-attachment IDs in block markup.
+			if ( preg_match_all( '/wp-image-(\d+)/', $content, $matches ) ) {
+				foreach ( $matches[1] as $matched_id ) {
+					if ( isset( $id_set[ (int) $matched_id ] ) ) {
+						$used_ids[ (int) $matched_id ] = true;
+					}
+				}
+			}
+			if ( preg_match_all( '/ids=["\']?([\d,]+)/', $content, $matches ) ) {
+				foreach ( $matches[1] as $id_list ) {
+					foreach ( explode( ',', $id_list ) as $matched_id ) {
+						if ( '' !== trim( $matched_id ) && isset( $id_set[ (int) $matched_id ] ) ) {
+							$used_ids[ (int) $matched_id ] = true;
+						}
+					}
+				}
+			}
+			if ( preg_match_all( '/"id":(\d+)/', $content, $matches ) ) {
+				foreach ( $matches[1] as $matched_id ) {
+					if ( isset( $id_set[ (int) $matched_id ] ) ) {
+						$used_ids[ (int) $matched_id ] = true;
+					}
+				}
+			}
+
+			if ( '' !== $baseurl && preg_match_all( $url_pattern, $content, $matches ) ) {
+				foreach ( $matches[1] as $captured_path ) {
+					$candidate_path = $this->normalize_relative_path( $captured_path );
+					if ( isset( $path_to_id[ $candidate_path ] ) ) {
+						$used_ids[ $path_to_id[ $candidate_path ] ] = true;
+						continue;
+					}
+					$stripped = $this->strip_size_suffix( $candidate_path );
+					if ( isset( $path_to_id[ $stripped ] ) ) {
+						$used_ids[ $path_to_id[ $stripped ] ] = true;
+					}
+				}
+			}
+		}
+
+		$used_ids = array_keys( $used_ids );
+
+		/**
+		 * Filters the set of attachment IDs detected as referenced ("used")
+		 * before orphan classification.
+		 *
+		 * Allows plugins/themes to declare additional reference sources
+		 * (postmeta, ACF, page builders, serialized data) without modifying the
+		 * core scan.
+		 *
+		 * @param int[] $used_ids Attachment IDs detected as referenced.
+		 * @param array $context  Scan context: ['post_ids' => int[], 'attachment_ids' => int[]].
+		 */
+		$context = array(
+			'post_ids'       => $post_ids,
+			'attachment_ids' => $attachment_ids,
+		);
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Documented public extension point with a stable, intentionally namespaced hook name.
+		$used_ids = apply_filters( 'wp_cli_media_find_orphans_used_ids', $used_ids, $context );
+
+		$used_lookup = array_fill_keys( array_map( 'intval', (array) $used_ids ), true );
+
+		$candidates = array();
+		foreach ( $attachment_ids as $attachment_id ) {
+			if ( isset( $used_lookup[ $attachment_id ] ) ) {
+				continue;
+			}
+
+			$attached_file = get_post_meta( $attachment_id, '_wp_attached_file', true );
+			$relative      = is_string( $attached_file ) ? $this->normalize_relative_path( $attached_file ) : '';
+
+			$candidates[] = array(
+				'type'          => 'usage',
+				'attachment_id' => (string) $attachment_id,
+				'file'          => '' !== $relative ? basename( $relative ) : '',
+				'issue'         => 'Attachment appears unused in content',
+				'path'          => $relative,
+			);
+		}
+
+		return $candidates;
+	}
+
+	/**
+	 * Streams every regular file under the uploads directory.
+	 *
+	 * Skips hidden files (e.g. `.htaccess`, dotfiles) to match how WP-CLI/WP
+	 * treat non-media files.
+	 *
+	 * @param string $uploads_basedir Absolute path to the uploads root.
+	 * @return Generator<string> Absolute file paths.
+	 */
+	private function iterate_upload_files( $uploads_basedir ) {
+		$iterator = new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator(
+				$uploads_basedir,
+				FilesystemIterator::SKIP_DOTS
+			),
+			RecursiveIteratorIterator::LEAVES_ONLY
+		);
+
+		// Resolve the uploads root once so symlinked entries that escape it (or loop)
+		// can be skipped. Keeps the "uploads is itself a symlink" case working.
+		$real_basedir = realpath( $uploads_basedir );
+
+		/**
+		 * @var SplFileInfo $file_info
+		 */
+		foreach ( $iterator as $file_info ) {
+			if ( ! $file_info->isFile() ) {
+				continue;
+			}
+			$filename = $file_info->getFilename();
+			if ( '' === $filename || '.' === $filename[0] ) {
+				continue;
+			}
+
+			$pathname = $file_info->getPathname();
+			if ( false !== $real_basedir ) {
+				$real_pathname = realpath( $pathname );
+				if ( false === $real_pathname || 0 !== strpos( $real_pathname, $real_basedir . DIRECTORY_SEPARATOR ) ) {
+					continue;
+				}
+			}
+
+			yield $pathname;
+		}
+	}
+
+	/**
+	 * Determines whether a filename matches the generated thumbnail pattern
+	 * (`-WxH.ext`).
+	 *
+	 * @param string $filename Filename basename to test.
+	 * @return bool True when the filename matches the thumbnail pattern.
+	 */
+	private function is_thumbnail_filename( $filename ) {
+		return 1 === preg_match( '/-\d+x\d+\.[a-zA-Z0-9]+$/', $filename );
+	}
+
+	/**
+	 * Builds the set of file extensions allowed by WordPress for uploads.
+	 *
+	 * Derived from the allowed mime types, whose keys group extensions like
+	 * `jpg|jpeg|jpe`. Returns a flat lookup keyed by lowercased extension.
+	 *
+	 * @return array<string,bool> Map of allowed extensions to true.
+	 */
+	private function get_allowed_media_extensions() {
+		$mime_types = function_exists( 'get_allowed_mime_types' ) ? get_allowed_mime_types() : wp_get_mime_types();
+
+		$extensions = array();
+		foreach ( array_keys( $mime_types ) as $pattern ) {
+			foreach ( explode( '|', (string) $pattern ) as $extension ) {
+				$extension = strtolower( trim( $extension ) );
+				if ( '' !== $extension ) {
+					$extensions[ $extension ] = true;
+				}
+			}
+		}
+
+		return $extensions;
+	}
+
+	/**
+	 * Returns the uploads-relative directory prefixes to skip during the
+	 * filesystem and thumbnail scans.
+	 *
+	 * These cover generated/cache subdirectories created by page builders and
+	 * plugins (e.g. Elementor, Gravity Forms) that would otherwise produce
+	 * false-positive orphan candidates. The list is filterable so sites can
+	 * adjust it without modifying core.
+	 *
+	 * @return string[] Normalized directory prefixes (no surrounding slashes).
+	 */
+	private function get_ignored_path_prefixes() {
+		$prefixes = array( 'elementor', 'gravity_forms', 'cache', 'wpcf7_uploads' );
+
+		/**
+		 * Filters the uploads-relative directory prefixes ignored by the filesystem/thumbnails scans.
+		 *
+		 * @param string[] $prefixes Directory prefixes (relative to the uploads root) to skip.
+		 */
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Documented public extension point.
+		$prefixes = apply_filters( 'wp_cli_media_find_orphans_ignore_paths', $prefixes );
+
+		$normalized = array();
+		foreach ( (array) $prefixes as $prefix ) {
+			$prefix = trim( str_replace( '\\', '/', (string) $prefix ), '/' );
+			if ( '' !== $prefix ) {
+				$normalized[] = $prefix;
+			}
+		}
+
+		return $normalized;
+	}
+
+	/**
+	 * Determines whether an uploads-relative path falls under any ignored prefix.
+	 *
+	 * Matches on whole path segments, so `elementor` matches
+	 * `elementor/css/post-1.css` (and the bare `elementor` directory) but not
+	 * `elementor-foo/...`.
+	 *
+	 * @param string   $relative Uploads-relative path.
+	 * @param string[] $prefixes Normalized directory prefixes.
+	 * @return bool True when the path is under an ignored prefix.
+	 */
+	private function is_ignored_path( $relative, $prefixes ) {
+		foreach ( $prefixes as $prefix ) {
+			if ( $relative === $prefix || 0 === strpos( $relative, $prefix . '/' ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Strips a generated thumbnail size suffix (`-WxH`) from a path, mapping a
+	 * thumbnail path back to its parent original (e.g. `2023/04/img-150x150.jpg`
+	 * becomes `2023/04/img.jpg`). Returns the path unchanged when no size suffix
+	 * is present.
+	 *
+	 * @param string $path Uploads-relative path.
+	 * @return string Path with any size suffix removed.
+	 */
+	private function strip_size_suffix( $path ) {
+		return (string) preg_replace( '/-\d+x\d+(\.[a-zA-Z0-9]+)$/', '$1', $path );
+	}
+
+	/**
+	 * Normalizes a stored relative path (e.g. from `_wp_attached_file`) to a
+	 * uploads-relative path using forward slashes and no leading slash.
+	 *
+	 * @param string $path Stored relative path.
+	 * @return string Normalized uploads-relative path.
+	 */
+	private function normalize_relative_path( $path ) {
+		$path = str_replace( '\\', '/', $path );
+		return ltrim( $path, '/' );
+	}
+
+	/**
+	 * Converts an absolute filesystem path to a uploads-relative path.
+	 *
+	 * @param string $absolute_path   Absolute path to a file under the uploads root.
+	 * @param string $uploads_basedir Absolute path to the uploads root.
+	 * @return string|null Uploads-relative path, or null when outside the uploads root.
+	 */
+	private function absolute_to_relative_path( $absolute_path, $uploads_basedir ) {
+		$absolute_path   = str_replace( '\\', '/', $absolute_path );
+		$uploads_basedir = rtrim( str_replace( '\\', '/', $uploads_basedir ), '/' ) . '/';
+
+		if ( 0 !== strpos( $absolute_path, $uploads_basedir ) ) {
+			return null;
+		}
+
+		return substr( $absolute_path, strlen( $uploads_basedir ) );
+	}
 }
