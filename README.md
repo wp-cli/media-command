@@ -343,8 +343,22 @@ wp media regenerate [<attachment-id>...] [--image_size=<image_size>...] [--skip-
 
 Replaces the file for an existing attachment while preserving its identity.
 
+By default, the replacement is written over the attachment's existing file,
+keeping its path and URL intact. This is a change from earlier versions,
+which sideloaded the replacement into the current uploads directory and
+therefore changed the attachment's URL. Use --new-file-name to restore that
+behavior.
+
+When replacing an image that is not itself a WordPress big-image "-scaled"
+variant with one larger than the big-image threshold, the full-resolution
+file is kept at the existing URL and the generated "-scaled" file is
+discarded, so the URL still does not change. WordPress re-applies big-image
+scaling whenever attachment metadata is regenerated, so a later
+`wp media regenerate` may point the attachment at a "-scaled" file; use
+--new-file-name if you want WordPress's standard big-image handling instead.
+
 ~~~
-wp media replace <attachment-id> <file> [--skip-delete] [--porcelain]
+wp media replace <attachment-id> <file> [--skip-delete] [--new-file-name] [--porcelain]
 ~~~
 
 **OPTIONS**
@@ -356,7 +370,12 @@ wp media replace <attachment-id> <file> [--skip-delete] [--porcelain]
 		Path to the replacement file. Supports local paths and URLs.
 
 	[--skip-delete]
-		Skip deletion of old thumbnail files after replacement.
+		Skip deletion of the previous files after replacement.
+
+	[--new-file-name]
+		Store the replacement under its own file name in the current uploads
+		directory instead of overwriting the attachment's existing file. This
+		changes the attachment's URL.
 
 	[--porcelain]
 		Output just the attachment ID after replacement.
@@ -366,12 +385,17 @@ wp media replace <attachment-id> <file> [--skip-delete] [--porcelain]
     # Replace an attachment file with a local file.
     $ wp media replace 123 ~/new-image.jpg
     Replaced file for attachment ID 123 with '/home/user/new-image.jpg'.
-    Success: Replaced 1 of 1 images.
+    Success: Replaced 1 of 1 attachments.
 
     # Replace an attachment file with a file from a URL.
     $ wp media replace 123 'http://example.com/image.jpg'
     Replaced file for attachment ID 123 with 'http://example.com/image.jpg'.
-    Success: Replaced 1 of 1 images.
+    Success: Replaced 1 of 1 attachments.
+
+    # Replace a file and use the replacement's own name, changing the attachment URL.
+    $ wp media replace 123 ~/new-image.jpg --new-file-name
+    Replaced file for attachment ID 123 with '/home/user/new-image.jpg'.
+    Success: Replaced 1 of 1 attachments.
 
     # Replace and output just the attachment ID.
     $ wp media replace 123 ~/new-image.jpg --porcelain
